@@ -41,8 +41,9 @@ act -j validate -P ubuntu-latest=catthehacker/ubuntu:act-latest
 
 That path installs the full `requirements-test.txt` environment, including
 Home Assistant's test helpers and Bluetooth import dependencies such as
-`aiousbwatcher`. Tests mock Home Assistant's `bluetooth_adapters` dependency so
-CI never tries to open a real Bluetooth socket.
+`aiousbwatcher` and `pyserial`. Tests mock Home Assistant's
+`bluetooth_adapters` dependency so CI never tries to open a real Bluetooth
+socket.
 
 ## GitHub Actions
 
