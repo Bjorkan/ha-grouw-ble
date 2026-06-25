@@ -1,7 +1,9 @@
 {
   "domain": "grouw_ble_mower",
   "name": "Grouw / Daye BLE Mower",
-  "after_dependencies": ["bluetooth"],
+  "after_dependencies": [
+    "bluetooth"
+  ],
   "bluetooth": [
     {
       "service_uuid": "49535343-fe7d-4ae5-8fa9-9fafd205e455",
@@ -22,10 +24,14 @@
   ],
   "codeowners": [],
   "config_flow": true,
-  "dependencies": ["bluetooth_adapters"],
+  "dependencies": [
+    "bluetooth_adapters"
+  ],
   "documentation": "https://github.com/custom-components/grouw_ble_mower",
-  "issue_tracker": "https://github.com/Bjorkan/ha-grouw-ble/issues",
   "iot_class": "local_polling",
-  "requirements": ["bleak-retry-connector>=3.10.0"],
+  "issue_tracker": "https://github.com/Bjorkan/ha-grouw-ble/issues",
+  "requirements": [
+    "bleak-retry-connector>=3.10.0"
+  ],
   "version": "0.1.0"
 }
