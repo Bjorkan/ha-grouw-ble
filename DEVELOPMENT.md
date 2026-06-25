@@ -4,7 +4,7 @@ Durable development notes for this repository. Keep this file up to date when
 implementation details, Home Assistant conventions, or architecture decisions
 change.
 
-Last updated: 2026-06-25 (Daye APK/DYM protocol alignment)
+Last updated: 2026-06-25 (APK/DYM protocol alignment)
 
 ## Authoritative References
 
@@ -12,7 +12,7 @@ Last updated: 2026-06-25 (Daye APK/DYM protocol alignment)
   https://developers.home-assistant.io/docs/development_index/
 - Hassfest for custom components:
   https://developers.home-assistant.io/blog/2020/04/16/hassfest/
-- Daye Power robotic mower app:
+- Grouw mower app:
   https://play.google.com/store/apps/details?id=com.dayepower.dayeappleaf
 
 Store APK files and decompiler output in `APK/` (gitignored). These local-only
@@ -43,10 +43,10 @@ AGENTS.md                            Instructions for AI agents
 - Platforms: `lawn_mower`, `sensor`, `binary_sensor`
 - Config flow: supports Bluetooth discovery and manual BLE address entry.
   Discovery currently matches confirmed service UUID
-  `49535343-fe7d-4ae5-8fa9-9fafd205e455` and Daye local-name strings
+  `49535343-fe7d-4ae5-8fa9-9fafd205e455` and local-name strings
   `Robot Mower_DYM*`, `RobotMower_DYM*`, and `Robot_Mower*`.
   Manual setup rejects blank addresses before asking for the mower PIN.
-  The Daye app writes and subscribes to characteristic
+  The app writes and subscribes to characteristic
   `49535343-1e4d-4bd9-ba61-23c647249616`.
 - Options flow: not exposed.
 - Coordinator: `GrouwMowerCoordinator`
@@ -64,15 +64,15 @@ AGENTS.md                            Instructions for AI agents
 - Keep `has_entity_name = True` on entities. The lawn mower entity uses
   `_attr_name = None` so it becomes the main device entity.
 - Use `DataUpdateCoordinator` for shared polling state.
-- The coordinator polls with the captured Daye DYM status request. Before the
+- The coordinator polls with the captured DYM status request. Before the
   first successful poll, coordinator.data is None and last_update_success
   is False, so entities load as unavailable. On BLE failure the coordinator
   raises UpdateFailed instead of returning placeholder data.
-- Each BLE transaction sends the captured Daye session/auth prelude before the
+- Each BLE transaction sends the captured session/auth prelude before the
   requested status or command payload, then waits for the captured auth response
   command byte `0x8c`. Keep this unless hardware testing proves the mower no
   longer needs PIN/session setup after reconnect.
-- The Daye APK's MainLogic connection-state callback awaits FlutterBluePlus
+- The APK's MainLogic connection-state callback awaits FlutterBluePlus
   `requestMtu` before service discovery. FlutterBluePlus requests MTU 512 in
   that path. The integration mirrors this with a best-effort MTU request after
   connect; unsupported Bleak backends log and continue because the captured DYM
@@ -86,7 +86,7 @@ AGENTS.md                            Instructions for AI agents
   BlueKey commands are documented under `reverse_engineered/` from Dart AOT
   analysis but are not used for normal polling or controls until a hardware
   capture confirms when/how those 48-value payloads are written.
-- The Daye APK also contains BlueKey page flows for change PIN, mower settings,
+- The APK also contains BlueKey page flows for change PIN, mower settings,
   multi-area mowing, and weekly working-time settings. Current AOT findings map
   those query responses under `reverse_engineered/`, but the integration should
   not expose or write those settings until redacted HCI captures confirm the
@@ -104,7 +104,7 @@ AGENTS.md                            Instructions for AI agents
   entities. Current extra entities are: battery percentage, raw mode code, last
   response command, and docked state. Do not re-add rain, Wi-Fi, runtime, LED,
   ultrasonic, error-memory, or command-result entities until their response
-  bytes are confirmed from the Daye APK plus redacted hardware captures.
+  bytes are confirmed from the APK plus redacted hardware captures.
 - BLE communication is serialized per mower with an `asyncio.Lock`; do not
   remove this without a real concurrency-safe replacement.
 - Config entry unloading must continue to work. Clean up services and callbacks

@@ -1,7 +1,6 @@
 {
   "name": "Grouw / Daye BLE Mower",
   "render_readme": true,
-  "domain": "grouw_ble_mower",
   "country": "SE",
   "homeassistant": "2024.1.0"
 }

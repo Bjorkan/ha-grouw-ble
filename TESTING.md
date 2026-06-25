@@ -1,8 +1,8 @@
 # TESTING.md
 
-Testing notes for the Grouw / Daye BLE Mower Home Assistant custom integration.
+Testing notes for the Grouw BLE Mower Home Assistant custom integration.
 
-Last updated: 2026-06-25 (Daye APK/DYM protocol alignment)
+Last updated: 2026-06-25 (APK/DYM protocol alignment)
 
 ## Current Local Test Environment
 
