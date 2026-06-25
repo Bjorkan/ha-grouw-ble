@@ -2,7 +2,7 @@
 
 Testing notes for the Grouw / Daye BLE Mower Home Assistant custom integration.
 
-Last updated: 2026-06-25
+Last updated: 2026-06-25 (updated for issues #1-#8 fixes)
 
 ## Current Local Test Environment
 
@@ -111,10 +111,13 @@ Current tests cover:
 - BLE JSON frame encoding
 - chunked BLE notification reassembly
 - checksum rejection and resynchronization
-- coordinator setup retry behavior before first state
+- coordinator first-poll failure raises UpdateFailed instead of returning placeholder
+- coordinator poll cooldown after manual command
 - coordinator update failure behavior after a state exists
 - serialization of concurrent raw BLE payload requests
 - raw BLE payload action validation when no target mower can be resolved
+- lawn mower activity mapping (mowing, returning, docked, paused, unknown station)
+- lawn mower start command refreshes state when station is unknown
 - compile-time coverage for Home Assistant exception imports and platform
   constants through `compileall`
 
@@ -126,6 +129,7 @@ tests/test_ble_protocol.py
 tests/test_coordinator.py
 tests/test_init.py
 tests/test_services.py
+tests/test_lawn_mower.py
 ```
 
 ## Add Or Update Tests When Changing
@@ -139,6 +143,8 @@ tests/test_services.py
 - options flow behavior
 - service action routing and validation
 - entity availability, unique IDs, device info, or state mapping
+- lawn mower activity mapping from mode+station bytes
+- start command refresh-choosing logic
 
 ## Hardware Validation Checklist
 

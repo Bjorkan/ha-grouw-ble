@@ -4,7 +4,7 @@ Durable development notes for this repository. Keep this file up to date when
 implementation details, Home Assistant conventions, or architecture decisions
 change.
 
-Last updated: 2026-06-25
+Last updated: 2026-06-25 (fixes for issues #1-#8)
 
 ## Authoritative References
 
@@ -64,8 +64,9 @@ AGENTS.md                            Instructions for AI agents
   `_attr_name = None` so it becomes the main device entity.
 - Use `DataUpdateCoordinator` for shared polling state.
 - The coordinator polls with the captured Daye DYM status request. Before the
-  first successful poll, it returns placeholder state so the discovered device
-  and entities stay loaded with unknown values instead of staying unavailable.
+  first successful poll, coordinator.data is None and last_update_success
+  is False, so entities load as unavailable. On BLE failure the coordinator
+  raises UpdateFailed instead of returning placeholder data.
 - Each BLE transaction sends the captured Daye session/auth prelude before the
   requested status or command payload. Keep this unless hardware testing proves
   the mower no longer needs PIN/session setup after reconnect.
@@ -75,15 +76,20 @@ AGENTS.md                            Instructions for AI agents
   when the last entry unloads.
 - Diagnostics must be redacted. Avoid exposing BLE address, serial number, raw
   secrets, or personal/user-specific values unnecessarily.
-- User-facing text belongs in `strings.json` and translations under
-  `translations/`.
+- User-facing text belongs in `translations/` directory. Custom integrations
+  must use `translations/en.json`, not `strings.json`, which is only for
+  Home Assistant core components processed by the build-time pipeline.
 
 ## Current Implementation Notes
 
 - Initial setup stores the coordinator before first refresh, then attempts an
   initial BLE refresh. If the mower is asleep or temporarily unreachable before
-  any successful poll, setup continues with loaded entities and unknown values
-  instead of blocking the config entry.
+  any successful poll, setup continues with coordinator.data = None and
+  last_update_success = False so entities load as unavailable instead of
+  blocking the config entry or showing stale placeholder data.
+- The coordinator defers background polling after a manual command (cooldown)
+  and after a BLE failure (backoff) to avoid competing with user actions and
+  to let the mower/Bluetooth stack settle.
 - The debug action routes to a coordinator by `entry_id`, by normalized
   `address`, or by the sole loaded coordinator.
 - The debug action raises `ServiceValidationError` when the target mower cannot
@@ -91,10 +97,19 @@ AGENTS.md                            Instructions for AI agents
 - The integration intentionally reconnects for each BLE request. This keeps the
   code compatible with Home Assistant Bluetooth proxies, but makes request
   serialization important.
-- The polling interval is currently 60 seconds.
+- The polling interval is currently 60 seconds with a 30-second BLE failure
+  backoff interval.
 - `sensor` and `binary_sensor` set `PARALLEL_UPDATES = 0` because coordinator
   polling centralizes reads. `lawn_mower` sets `PARALLEL_UPDATES = 1` because it
   exposes command actions.
+- Every BLE transaction is logged with a per-request transaction ID, phase
+  labels (connect, start_notify, session_start write, auth_query write, command
+  write, follow-up write), notification hex values, and the selected response.
+- The notification queue is drained after the auth prelude to prevent stale
+  status notifications from being returned as command responses.
+- BLE errors are classified into GrouwBleConnectionError (connect timeout),
+  GrouwBleGattError (GATT write/notify failure), and GrouwBleTimeout
+  (notification timeout) for clearer logging and troubleshooting.
 
 ## When Adding Features
 
