@@ -44,7 +44,9 @@ SK derivation (aes_att_get_sk, 0x1644):
 BlueKey 48-byte command format:
   [0]=0x88, [1]=0xb2, [2]=0x9a, [3]=sub_cmd, [4..18]=data,
   [19..23]=trailer values [44,12,2,510,20], [24..47]=0
-  Sub-commands: 0x00=queryInfo, 0x04=setTime, 0x18=queryPin, 0x28=workTime
+  Sub-commands: 0x00=queryInfo, 0x04=setTime, 0x0c=changePin,
+    0x12=mowerSettingWrite, 0x18=queryPin, 0x28=workTime,
+    0x32=mowerSettingQuery, 0x3a=multiAreaQuery, 0x3c=errorMemory
   Control: 0=start, 2=stop, 4=goToWork, 6=backToStation
   (0x88 and 0xb2 at indices 0-1 are real wire bytes, not Dart metadata)
 
@@ -58,13 +60,21 @@ Work mode mapping (byte13):
 Battery is image-only in app (byte5→25/50/75/100.png thresholds), no numeric sensor
 BlueKey queryPin response byte5-byte8 are concatenated PIN digits; app compares
   the entered PIN locally against that returned robotPin
+BlueKey changePin response treats byte5 == "0" as success
+Mower settings response 0x32 maps byte5=mowInTheRain, byte6=boundaryCut,
+  byte7=ultrasound, byte8=helixSet, byte9=hour, byte10=minute, byte12=led
+Multi-area response 0x3a maps byte5=area2Per, byte6-byte8=area2Dis,
+  byte9=area3Per, byte10-byte12=area3Dis
+Working-time response 0x28 uses byte4 as response/display mode, then pairs
+  byte5-byte11 with byte12-byte18 for Monday-Sunday schedule values
 MainLogic awaits FlutterBluePlus requestMtu before service discovery; the
   bundled requestMtu implementation requests MTU 512 with a 15-second timeout
 Lift, tilt, charging are work mode values (byte13), not separate flags
 No rain status byte found — rain features are in settings UI, not BLE parsing
 @14069316 library unit is standard Dart runtime (dart:io/async/collection), NOT custom protocol code
 writeAndNotify signature: writeAndNotify(payload, callback, {canBack, errorTip, noLimitNotify, notifyType, showTip})
-Three state classes fully decoded: MainState (0x30, 10 fields), MowerStatusState (0x18, 4 fields), DeviceState (0x20, 6 fields)
+Seven state classes decoded: MainState, MowerStatusState, DeviceState,
+  ChangePinState, MowerSettingState, MultiAreaMowingState, WorkingTimeSettingState
 ```
 
 ## Not Yet Confirmed
@@ -78,6 +88,9 @@ Which protocol (DYM vs BlueKey) a given firmware generation actually uses on the
 How the app selects between DYM and BlueKey protocols (device type, firmware version, or auth state)
 Whether the 0x22 values at indices 4-11 of queryInfo command are significant
 Exact field mapping of DYM 0x8c auth response beyond numeric PIN-looking bytes
+Exact on-wire packing for BlueKey settings writes 0x12, working-time writes,
+  multi-area distance writes, and change-PIN digit chunks
+Units for multi-area distance values
 ```
 
 ## Validation Checklist
@@ -87,6 +100,8 @@ When validating against real hardware, capture and redact:
 2. Charging, error, rain, lift and tilt notification payloads
 3. Exact notification bytes after each newly tested action
 4. Mapping between UI actions in the Daye app and mower behavior
+5. Settings-page captures for rain delay, boundary cut, ultrasound, helix,
+   LED, multi-area, weekly schedule, and PIN change
 
 Record only summarized findings. Do not commit proprietary APK output or
 raw logs containing BLE addresses, serial numbers, credentials, or other private

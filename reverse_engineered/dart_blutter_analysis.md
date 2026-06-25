@@ -97,6 +97,61 @@ builds `BmMtuChangeRequest` with `mtu = 512` and a 15-second timeout.
 0x480164  <anonymous> (response)     — Parses byte5 (battery), byte9-12 (version), byte14-15 (model)
 ```
 
+## ChangePinLogic — PIN Change Controller
+
+`ChangePinLogic` at `pages/change_pin/logic.dart`:
+
+```text
+0x461584  changePin                  — Validate old/new/repeated PIN and send sub-cmd 0x0c
+0x46b25c  <anonymous> (response)     — Treat byte5 == "0" as success, update MainState.robotPin
+0x665ef0  getChangePIN               — Query current PIN with sub-cmd 0x18
+```
+
+The page packs old and new PIN chunks through `Helper.tenToHex`. The substring
+boundaries in AOT are unusual enough that the exact write packing should be
+confirmed before implementing PIN-change writes.
+
+## MowerSettingLogic — Mower Settings Controller
+
+`MowerSettingLogic` at `pages/mower_setting/logic.dart`:
+
+```text
+0x48217c  saveSetting                — Write sub-cmd 0x12 settings payload
+0x6640fc  getMowerSetting            — Query sub-cmd 0x32
+0x664378  <anonymous> (response)     — Parse rain/boundary/ultrasound/helix/LED/hour/minute
+```
+
+The decoded state fields are `hour`, `min`, `mowInTheRain`, `boundaryCut`,
+`ultrasound`, `helixSet`, `led`, `timer`, and `requestTimer`.
+
+## MultiAreaMowingLogic — Multi-Area Settings Controller
+
+`MultiAreaMowingLogic` at `pages/multi_area_mowing/logic.dart`:
+
+```text
+0x48fff4  setInfo                    — Validate and write area2/area3 percentage/distance settings
+0x664e44  getInfo                    — Query sub-cmd 0x3a
+0x6650c4  <anonymous> (response)     — Parse area2Per/area2Dis/area3Per/area3Dis
+```
+
+Distance values are assembled from multiple response bytes with leading-zero
+handling. Units and exact outgoing packing still need capture validation.
+
+## WorkingTimeSettingLogic — Weekly Schedule Controller
+
+`WorkingTimeSettingLogic` at `pages/working_time_setting/logic.dart`:
+
+```text
+0x498350  getSetList                 — Convert seven day maps into outgoing schedule values
+0x678288  initData                   — Query BlueKey.workTime with noLimitNotify=true
+0x6784bc  <anonymous> (response)     — Parse byte4 mode and byte5-byte18 weekday pairs
+0x6788f8  getResult                  — Map per-day response bytes into start/work fields
+```
+
+The state constructor defaults each day to `start="09:00"` and `work="3.0"`.
+Response mode `0x85` uses `"."` for work-duration display; other modes use
+`":"`.
+
 ## Helper — Utility Functions
 
 `Helper` at `common/util/helper.dart`:
@@ -105,7 +160,7 @@ builds `BmMtuChangeRequest` with `mtu = 512` and a 15-second timeout.
 0x42f7f0  cloudCallback             — Cloud operation callback (async)
 0x461c44  writeAndNotify            — Static wrapper: resolves MainLogic, calls writeAndNotify
 0x46b01c  parseBlueResult           — Map byte list → {"byte1":..., "byte2":..., ...}
-0x46b1e8  tenToHex                  — Parse string to int, convert to hex string
+0x46b1e8  tenToHex                  — decimal string -> int -> radix-16 text -> radix-32 int
 0x47830c  diyPicker                 — UI picker widget builder
 ```
 

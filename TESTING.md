@@ -127,6 +127,9 @@ Current tests cover:
 - coordinator poll cooldown after manual command
 - serialization of concurrent raw BLE payload requests
 - raw BLE payload action validation when no target mower can be resolved
+- BlueKey debug payload encoding for APK-shaped 48-byte probe commands
+- BlueKey notification parsing/redaction for queryPin, mower settings,
+  multi-area mowing and working-time response context
 - manual config flow address validation rejects blank addresses
 - lawn mower activity mapping (mowing, returning, docked, paused, unknown station)
 - lawn mower start command refreshes state when station is unknown
@@ -149,6 +152,8 @@ tests/test_lawn_mower.py
 
 - DYM command constants, session/auth prelude, status notification parsing, or
   response command handling
+- BlueKey debug command constants, APK `tenToHex` behavior, response parsing,
+  or raw-service payload options
 - PIN validation, auth response parsing, or PIN redaction
 - JSON parsing or `MowerState` field mapping
 - coordinator exception mapping

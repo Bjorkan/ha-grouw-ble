@@ -13,7 +13,10 @@ from custom_components.grouw_ble_mower.ble_client import (
     _coerce_expected_cmd,
     _drain_queue,
 )
-from custom_components.grouw_ble_mower.ble_protocol import DAYE_RESPONSE_PIN_OR_AUTH
+from custom_components.grouw_ble_mower.ble_protocol import (
+    DAYE_RESPONSE_PIN_OR_AUTH,
+    encode_bluekey_command,
+)
 from custom_components.grouw_ble_mower.const import DEFAULT_REQUESTED_MTU
 
 
@@ -197,6 +200,40 @@ def test_raw_payload_accepts_hex_expected_command_and_string_auth_flag() -> None
             "payload": b"DYM",
             "authenticate": False,
             "expected_cmd": 0x80,
+        }
+
+    asyncio.run(run())
+
+
+def test_raw_payload_bluekey_defaults_to_any_parsed_response() -> None:
+    """BlueKey probes do not default to the DYM status response command."""
+
+    async def run() -> None:
+        client = GrouwBleMowerClient(
+            _Hass(), "AA:BB:CC:DD:EE:FF", "Test mower"
+        )
+        seen: dict[str, object] = {}
+
+        async def fake_request(
+            payload: bytes,
+            *,
+            expected_cmd: int | None = 0x80,
+            command_name: str = "raw",
+            **kwargs: object,
+        ) -> dict[str, int]:
+            seen["payload"] = payload
+            seen["expected_cmd"] = expected_cmd
+            seen["command_name"] = command_name
+            return {"cmd": 0x32}
+
+        client.async_request_daye = fake_request  # type: ignore[method-assign]
+
+        await client.async_send_raw_json({"bluekey": "mower_settings"})
+
+        assert seen == {
+            "payload": encode_bluekey_command("mower_settings"),
+            "expected_cmd": None,
+            "command_name": "mower_settings",
         }
 
     asyncio.run(run())

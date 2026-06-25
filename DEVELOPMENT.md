@@ -86,6 +86,20 @@ AGENTS.md                            Instructions for AI agents
   BlueKey commands are documented under `reverse_engineered/` from Dart AOT
   analysis but are not used for normal polling or controls until a hardware
   capture confirms when/how those 48-value payloads are written.
+- The Daye APK also contains BlueKey page flows for change PIN, mower settings,
+  multi-area mowing, and weekly working-time settings. Current AOT findings map
+  those query responses under `reverse_engineered/`, but the integration should
+  not expose or write those settings until redacted HCI captures confirm the
+  exact on-wire payloads for the target mower firmware.
+- `grouw_ble_mower.send_raw_json` can build APK-shaped BlueKey probe payloads
+  with `bluekey` or `bluekey_sub_cmd`, and parses BlueKey notifications into
+  APK-style `byte1`, `byte2`, ... fields plus known settings/PIN helper maps.
+  This is debug/protocol-validation support only; normal polling and control
+  still use HCI-confirmed DYM packets.
+- The BlueKey debug encoder converts APK `List<int>` values to BLE bytes with
+  `value & 0xff`. That means the APK trailer value `510` is emitted as `0xfe`
+  for probe payloads. Keep this assumption documented until hardware captures
+  prove the exact native/platform conversion.
 - Expose only fields decoded from HCI-confirmed DYM status notifications as
   entities. Current extra entities are: battery percentage, raw mode code, last
   response command, and docked state. Do not re-add rain, Wi-Fi, runtime, LED,

@@ -50,9 +50,14 @@ Confirmed from that APK so far:
 - When a PIN is configured and the auth/PIN response exposes four numeric PIN
   digits, the integration verifies the configured PIN before sending status or
   command payloads. The PIN is redacted from diagnostics and normal debug logs.
-- The app has rain, ultrasound, working-time and other settings screens, but no
-  DYM status bytes for those features are confirmed yet. The integration does
-  not expose them as entities until hardware captures identify the fields.
+- The APK's BlueKey page logic documents change-PIN, rain delay, boundary cut,
+  ultrasound, helix, LED, multi-area mowing and weekly working-time settings.
+  These are recorded under `reverse_engineered/`, but the integration does not
+  expose or write them until hardware captures identify the exact DYM/BlueKey
+  on-wire behavior for the mower firmware.
+- The raw debug service can now build and parse APK-shaped BlueKey probe
+  payloads for protocol validation. These probes are not used by the normal
+  mower entities or controls.
 
 The raw BLE payload service is still experimental. Do not treat newly decoded
 fields as validated until they are confirmed against more Daye app captures or
@@ -111,6 +116,20 @@ data:
 
 Set `authenticate: false` only when deliberately probing the connection prelude
 itself.
+
+For APK-shaped BlueKey probes, use the `bluekey` field:
+
+```yaml
+action: grouw_ble_mower.send_raw_json
+data:
+  payload:
+    bluekey: mower_settings
+```
+
+Supported named BlueKey probes are `query_info`, `set_time`, `query_pin`,
+`work_time`, `mower_settings`, `multi_area`, and `error_memory`. Generic
+probes can use `bluekey_sub_cmd` plus optional `bluekey_data`, but settings
+writes should stay in raw validation until captures confirm the exact bytes.
 
 Capture the raw Home Assistant logs and mower behavior, then update
 `reverse_engineered/` with redacted durable findings.

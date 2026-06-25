@@ -17,6 +17,22 @@ result["byte3"] = string(b2)
 This map is returned to the callback closure, where the receiver accesses
 specific keys.
 
+## Helper::tenToHex
+
+`Helper::tenToHex` at address `0x46b1e8` is an APK-specific conversion helper.
+It parses a decimal string to an integer, formats that integer as radix-16 text,
+then parses the resulting text with radix 32.
+
+For single decimal digits this returns the same numeric value. For values above
+15 it is not the same as a normal byte conversion; for example decimal `"20"`
+becomes hex text `"14"`, which parses as radix-32 integer `36`.
+
+Treat this as a Daye UI/protocol packing helper, not as a generic
+decimal-to-hex conversion.
+
+The Home Assistant integration mirrors this helper as `daye_ten_to_hex()` for
+debug parsing of APK-derived BlueKey responses.
+
 ## BlueKey::queryInfo Response (sub-cmd 0x00)
 
 Parsed by both `MowerStatusLogic::changeWorkType` and
@@ -49,6 +65,68 @@ The app concatenates `byte5` through `byte8` as strings and stores the result
 as `MainState.robotPin`. `MainLogic::openDevice` then checks that the user's
 entered `pinCode` is at least 4 characters and equals `robotPin`. No separate
 Dart write containing the typed PIN was found in this flow.
+
+## BlueKey Change PIN Response (sub-cmd 0x0c)
+
+Parsed by `ChangePinLogic::changePin` callback:
+
+```text
+byte5 = "0" means PIN change success
+```
+
+On success the app updates `MainState.robotPin` to the new PIN, clears the
+change-PIN input controllers, and shows a success toast.
+
+## BlueKey Mower Settings Response (sub-cmd 0x32)
+
+Parsed by `MowerSettingLogic::getMowerSetting` callback:
+
+```text
+byte5   = mowInTheRain boolean string ("1" = true)
+byte6   = boundaryCut boolean string ("1" = true)
+byte7   = ultrasound boolean string ("1" = true)
+byte8   = helixSet boolean string ("1" = true)
+byte9   = rain-delay hour text
+byte10  = rain-delay minute text, left-padded for display when < 10
+byte12  = led boolean string ("1" = true)
+```
+
+The app default string for missing boolean setting bytes is `"2003"` and the
+UI only treats exact string `"1"` as enabled. This reinforces that rain is a
+settings field in the Daye app, not a confirmed status byte.
+
+## BlueKey Multi-Area Response (sub-cmd 0x3a)
+
+Parsed by `MultiAreaMowingLogic::getInfo` callback:
+
+```text
+byte5       = area2Per text
+byte6-byte8 = area2Dis text, assembled as a variable-width decimal value
+byte9       = area3Per text
+byte10-12   = area3Dis text, assembled as a variable-width decimal value
+```
+
+If leading distance bytes are zero, the page displays fewer chunks; otherwise
+it concatenates more chunks into the distance field. The distance unit and exact
+packing remain unconfirmed without hardware validation.
+
+## BlueKey Working-Time Response (sub-cmd 0x28)
+
+Parsed by `WorkingTimeSettingLogic::initData` callback:
+
+```text
+byte4       = response mode, converted through Helper.tenToHex and formatted as 0xXX
+byte5-byte11  = one value per weekday, Monday through Sunday
+byte12-byte18 = paired value per weekday, Monday through Sunday
+```
+
+The page iterates `byte5` through `byte11` and pairs each with the byte seven
+positions later. `byte4` controls display parsing: mode `0x85` uses `"."` as
+the work-duration delimiter, while other modes use `":"`.
+
+Because `byte4` is a response/display mode in this flow rather than a stable
+sub-command byte, Home Assistant's BlueKey debug parser uses the raw-service
+request context (`bluekey: work_time`) to decode these fields.
 
 ## BlueKey::errorMemory Response (sub-cmd 0x3c)
 

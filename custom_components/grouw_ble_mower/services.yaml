@@ -1,10 +1,10 @@
 send_raw_json:
   name: Send raw BLE payload
-  description: Send an experimental raw Daye BLE payload to the mower over Home Assistant Bluetooth.
+  description: Send an experimental raw Daye DYM or BlueKey BLE payload to the mower over Home Assistant Bluetooth.
   fields:
     payload:
       required: true
-      example: '{"command": "status"}'
+      example: '{"command": "status"} or {"bluekey": "mower_settings"}'
       selector:
         object:
     address:

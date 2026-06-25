@@ -62,3 +62,56 @@ calling `MainLogic::discoverServices` (0x470c98). In the bundled
 0x18  batteryImage (String, late)     — Asset path for battery icon
 0x1c  timer (Timer?, late)            — Timer reference
 ```
+
+### ChangePinState (pages/change_pin/state.dart, size 0x14)
+
+```text
+0x08  oldPin (TextEditingController)
+0x0c  newPin (TextEditingController)
+0x10  reNewPin (TextEditingController)
+```
+
+### MowerSettingState (pages/mower_setting/state.dart, size 0x2c)
+
+```text
+0x08  hour (String/Text controller value)
+0x0c  min (String/Text controller value)
+0x10  mowInTheRain (bool)
+0x14  boundaryCut (bool)
+0x18  ultrasound (bool)
+0x1c  helixSet (bool)
+0x20  led (bool)
+0x24  timer (Timer?)
+0x28  requestTimer (Timer?)
+```
+
+### MultiAreaMowingState (pages/multi_area_mowing/state.dart, size 0x20)
+
+```text
+0x08  area2Per (TextEditingController)
+0x0c  area2Dis (TextEditingController)
+0x10  area3Per (TextEditingController)
+0x14  area3Dis (TextEditingController)
+0x18  timer (Timer?)
+0x1c  requestTimer (Timer?)
+```
+
+### WorkingTimeSettingState (pages/working_time_setting/state.dart, size 0x44)
+
+```text
+0x08  data (weekday schedule map)
+0x0c  type
+0x10  day
+0x14  startHour
+0x18  startMinute
+0x1c  workHour
+0x20  workMinute
+0x24  workMinuteList
+0x28  startHourController
+0x2c  startMinuteController
+0x30  workHourController
+0x34  workMinuteController
+0x38  dayController
+0x3c  timer (Timer?)
+0x40  requestTimer (Timer?)
+```

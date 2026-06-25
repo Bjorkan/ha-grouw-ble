@@ -2,8 +2,14 @@
 from __future__ import annotations
 
 from custom_components.grouw_ble_mower.ble_protocol import (
+    BLUEKEY_MOWER_SETTING_QUERY,
+    BLUEKEY_MULTI_AREA_QUERY,
+    BLUEKEY_QUERY_PIN,
     DAYE_STATUS_REQUEST,
     MowerState,
+    daye_ten_to_hex,
+    encode_bluekey_command,
+    encode_bluekey_payload,
     encode_daye_command,
     encode_daye_session_start,
     encode_raw_payload,
@@ -31,7 +37,39 @@ def test_encode_raw_payload_accepts_hex_and_command() -> None:
     """The debug service can send raw hex or a named captured command."""
     assert encode_raw_payload({"raw_hex": "44 59 4d"}) == b"DYM"
     assert encode_raw_payload({"command": "dock"}) == encode_daye_command("dock")
+    assert encode_raw_payload({"command": "start"}) == encode_daye_command("start")
     assert encode_raw_payload({"command": "resume"}).hex().startswith("44594d0100")
+    assert encode_raw_payload({"command": "bluekey_query_pin"}) == encode_bluekey_command(
+        "query_pin"
+    )
+    assert encode_raw_payload({"bluekey": "query_pin"}) == encode_bluekey_command(
+        "query_pin"
+    )
+
+
+def test_daye_ten_to_hex_matches_apk_helper_shape() -> None:
+    """Helper.tenToHex is not a normal decimal-to-byte conversion."""
+    assert daye_ten_to_hex("9") == 9
+    assert daye_ten_to_hex("20") == 36
+
+
+def test_encode_bluekey_command_matches_apk_layout() -> None:
+    """Named BlueKey debug commands use the 48-byte APK layout."""
+    payload = encode_bluekey_command("bluekey_query_info")
+
+    assert len(payload) == 48
+    assert payload[:12] == bytes.fromhex("88b29a002222222222222222")
+    assert payload[19:24] == bytes.fromhex("2c0c02fe14")
+    assert payload[24:] == b"\x00" * 24
+
+
+def test_encode_bluekey_payload_accepts_generic_sub_command() -> None:
+    """The debug encoder can build an APK-shaped BlueKey probe payload."""
+    payload = encode_raw_payload({"bluekey_sub_cmd": "0x32", "bluekey_data": [1, 2]})
+
+    assert len(payload) == 48
+    assert payload[:6] == bytes.fromhex("88b29a320102")
+    assert payload[19:24] == bytes.fromhex("2c0c02fe14")
 
 
 def test_parse_daye_status_notification_maps_observed_fields() -> None:
@@ -95,6 +133,71 @@ def test_redact_daye_message_hides_pin_and_auth_pin_bytes() -> None:
         "cmd": 0x8C,
         "mower_pin": "****",
     }
+
+
+def test_parse_bluekey_query_pin_extracts_and_redacts_pin() -> None:
+    """BlueKey queryPin responses expose the same PIN byte shape."""
+    message = parse_daye_payload(encode_bluekey_payload(BLUEKEY_QUERY_PIN, [1, 2, 3, 4]))
+
+    assert message is not None
+    assert message["protocol"] == "bluekey"
+    assert message["cmd"] == BLUEKEY_QUERY_PIN
+    assert message["byte5"] == "1"
+    assert message["mower_pin"] == "1234"
+    assert redact_daye_message(message)["raw_hex"].startswith("88b29a18********")
+
+
+def test_parse_bluekey_mower_settings_response() -> None:
+    """Mower settings bytes are mapped from APK page logic."""
+    message = parse_daye_payload(
+        encode_bluekey_payload(
+            BLUEKEY_MOWER_SETTING_QUERY,
+            [1, 0, 1, 0, 2, 5, 0, 1],
+        )
+    )
+
+    assert message is not None
+    assert message["mower_settings"] == {
+        "mow_in_rain": True,
+        "boundary_cut": False,
+        "ultrasound": True,
+        "helix": False,
+        "rain_delay_hour": 2,
+        "rain_delay_minute": 5,
+        "led": True,
+    }
+
+
+def test_parse_bluekey_multi_area_response() -> None:
+    """Multi-area percentages and distance chunks are exposed for validation."""
+    message = parse_daye_payload(
+        encode_bluekey_payload(
+            BLUEKEY_MULTI_AREA_QUERY,
+            [30, 0, 12, 3, 40, 1, 2, 3],
+        )
+    )
+
+    assert message is not None
+    assert message["multi_area"] == {
+        "area2_percentage": 30,
+        "area2_distance": "123",
+        "area3_percentage": 40,
+        "area3_distance": "123",
+    }
+
+
+def test_parse_bluekey_work_time_uses_request_context() -> None:
+    """Working-time parsing needs the request context because byte4 is a mode."""
+    message = parse_daye_payload(
+        encode_bluekey_payload(69, range(1, 16)),
+        bluekey_context="bluekey_work_time",
+    )
+
+    assert message is not None
+    assert message["bluekey_command"] == "work_time"
+    assert message["work_time_mode"] == "0x85"
+    assert message["work_time_delimiter"] == "."
+    assert message["work_time"]["monday"] == {"primary": 1, "secondary": 8}
 
 
 def test_state_from_message_maps_confirmed_dym_fields() -> None:

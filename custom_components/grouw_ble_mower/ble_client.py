@@ -12,6 +12,7 @@ from bleak_retry_connector import establish_connection
 from homeassistant.core import HomeAssistant
 
 from .ble_protocol import (
+    BLUEKEY_PREFIX,
     DAYE_RESPONSE_PIN_OR_AUTH,
     DAYE_RESPONSE_STATUS,
     encode_daye_command,
@@ -170,7 +171,7 @@ class GrouwBleMowerClient:
         timeout: float,
         phase: str,
     ) -> dict[str, Any]:
-        """Wait for a parsed notification with the expected DYM command byte."""
+        """Wait for a parsed notification with the expected command byte."""
         while True:
             try:
                 message = await asyncio.wait_for(queue.get(), timeout=timeout)
@@ -258,7 +259,7 @@ class GrouwBleMowerClient:
         loop = asyncio.get_running_loop()
 
         def _notification_handler(_sender: int | str, data: bytearray) -> None:
-            message = parse_daye_payload(bytes(data))
+            message = parse_daye_payload(bytes(data), bluekey_context=command_name)
             if message is not None:
                 _LOGGER.debug(
                     "[%s tx=%s] notify raw=%s",
@@ -404,12 +405,19 @@ class GrouwBleMowerClient:
             raw_payload = encode_raw_payload(payload)
         except ValueError as err:
             raise GrouwBleError(str(err)) from err
-        expected = payload.get("expect_cmd", DAYE_RESPONSE_STATUS)
+        is_bluekey = raw_payload.startswith(BLUEKEY_PREFIX)
+        expected = payload.get("expect_cmd", None if is_bluekey else DAYE_RESPONSE_STATUS)
         expected_cmd = _coerce_expected_cmd(expected)
         authenticate = _coerce_bool(payload.get("authenticate", True))
+        command_name = str(
+            payload.get("command")
+            or payload.get("bluekey")
+            or payload.get("bluekey_context")
+            or ("bluekey_raw" if is_bluekey else "raw")
+        )
         return await self.async_request_daye(
             raw_payload,
             authenticate=authenticate,
             expected_cmd=expected_cmd,
-            command_name=str(payload.get("command", "raw")),
+            command_name=command_name,
         )
