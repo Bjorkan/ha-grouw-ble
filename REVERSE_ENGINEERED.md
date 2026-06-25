@@ -1,169 +1,112 @@
 # REVERSE_ENGINEERED.md
 
-Reverse-engineered protocol notes for the Grouw / `robotic-mower connect` BLE
-mower integration.
+Reverse-engineered protocol notes for the Grouw / Daye BLE mower integration.
 
 Last updated: 2026-06-25
 
 ## Sources
 
-- Grouw / robotic-mower connect app:
-  https://play.google.com/store/apps/details?id=com.cj.lawnmower
-- Local decompiled APK output may exist in `APK/`, but that folder is
-  not part of the git repo.
-- Durable code references:
-  - `custom_components/grouw_ble_mower/const.py`
-  - `custom_components/grouw_ble_mower/ble_protocol.py`
-  - `custom_components/grouw_ble_mower/ble_client.py`
+Only the Daye APK is authoritative for current protocol facts:
 
+- Daye Power robotic mower app (`com.dayepower.dayeappleaf`):
+  https://play.google.com/store/apps/details?id=com.dayepower.dayeappleaf
+- Local source used on 2026-06-25:
+  `/var/home/jesper/Projekt/grouw-mower-apk/`
+  - `manifest.json` reports package `com.dayepower.dayeappleaf`, version
+    `2.0.1`, version code `117`.
+  - `decoded/jadx/resources/lib/arm64-v8a/libapp.so` contains Flutter/Dart
+    strings for package `romow_bluetooth`, `flutter_blue_plus`, and user
+    guidance to choose BLE device name `RobotMower_DYM`.
+
+Do not use the previous `com.cj.lawnmower` app, old local reverse-engineering
+notes, or older APK-derived assumptions as protocol facts for this integration.
 Official APK files, extracted APK contents, decompiled Java/smali, native
-library dumps, and generated decompiler output must never be upstreamed. Use
-them only locally as reverse-engineering source material.
+library dumps, and generated decompiler output must never be upstreamed.
 
-When local APK output is used, summarize the finding here with enough detail
-that future agents do not need the local folder to understand the protocol.
+## Confirmed From Daye APK
 
-## BLE UUIDs
+Confirmed current facts:
 
 ```text
-Service:     0000fff0-0000-1000-8000-00805f9b34fb
-Notify/read: 0000fff1-0000-1000-8000-00805f9b34fb
-Write:       0000fff2-0000-1000-8000-00805f9b34fb
+Package:      com.dayepower.dayeappleaf
+Version:      2.0.1
+Version code: 117
+Flutter app:  romow_bluetooth
+BLE library:  flutter_blue_plus
+BLE names:    RobotMower_DYM, Robot_Mower-
 ```
 
-Home Assistant discovery matches either the service UUID or local names matching
-`Mower_*`.
+The app contains UI strings and routes for Bluetooth connection, mower control,
+mower status, mower settings, firmware update, working-time settings,
+multi-area mowing, rain mowing, rain delay, ultrasound, and back-to-station /
+go-to-work flows.
 
-## Frame Format
+The app strings include `service_uuid`, `characteristic_uuid`, `writeAndNotify`,
+`writeAll`, `writeFinalChunk`, `allow_long_write`,
+`blueWriteAndNotification`, `BmWriteCharacteristicRequest`,
+`BmSetNotifyValueRequest`, `OnDiscoveredServices`,
+`OnCharacteristicReceived`, and `OnCharacteristicWritten`.
 
-The Android app's BLE frame format has been mapped as:
+The app strings include these UUID values:
 
 ```text
-byte 0      header: 0xA4
-byte 1      payload length low byte
-byte 2      payload length high byte
-byte 3      XOR checksum of the UTF-8 JSON payload
-bytes 4..   UTF-8 JSON payload
+49535343-1E4D-4BD9-BA61-23C647249616
+49535343-fe7d-4ae5-8fa9-9fafd205e455
+00002902-0000-1000-8000-00805f9b34fb
 ```
 
-Payload length is little-endian. The checksum is XOR over the payload only, not
-the header or length bytes.
+`00002902-0000-1000-8000-00805f9b34fb` is the standard Client
+Characteristic Configuration descriptor. The two `49535343...` UUIDs are
+Daye APK candidates for the mower GATT service/characteristic set, but this
+pass did not recover which role each UUID has.
 
-BLE writes are split into 20-byte chunks. The first chunk includes the 4-byte
-frame header plus up to 16 payload bytes. Later chunks carry remaining payload
-bytes.
+The app strings also include `BlueKey`, `ENCRYPTED_SIZE`,
+`_isBufferEncrypted`, `get:_checkSum`, `parseStringToBuffer`, `createBuffer`,
+and `_makeDatagram`. Treat these as evidence that the Daye app has a framed
+payload layer with checksum/encryption-related logic. The exact framing,
+checksum, encryption, and command payload format are not yet recovered.
 
-## Commands
+## Home Assistant Discovery
 
-### Poll all info
-
-```json
-{"cmd":200}
-```
-
-Expected status responses currently parsed by the integration:
+Home Assistant discovery must currently match Daye APK local-name strings:
 
 ```text
-cmd=500  all info
-cmd=501  work status
-cmd=201  machine status
+RobotMower_DYM*
+Robot_Mower*
 ```
 
-### Work mode
+Do not add service UUID discovery matches until the UUID roles are confirmed
+from the Daye APK or real hardware captures.
 
-```json
-{"cmd":0,"mode":1}
-```
+## Not Yet Confirmed For Daye
 
-Known/default mode mapping:
+These details are intentionally not treated as facts until confirmed from the
+Daye APK or redacted real-hardware captures:
 
 ```text
-0 = idle / stop
-1 = working
-2 = return home / dock
-3 = charging
-4 = error in status display; also edge/trim command in app UI
-5 = lock in status display; also start-point command in app UI
-6 = OTA update
-7 = trimming / edge in status display
+Whether 49535343-1E4D-4BD9-BA61-23C647249616 is service or characteristic
+Whether 49535343-fe7d-4ae5-8fa9-9fafd205e455 is service or characteristic
+Payload framing
+Checksum
+Status request command
+Work/start/stop/dock command IDs and mode numbers
+Status response field names and numeric meanings
 ```
 
-Default integration command mapping:
+The integration still contains an experimental raw JSON BLE validation surface
+so hardware testing can probe candidates, but durable docs and user-facing text
+must not present those candidates as Daye protocol facts.
 
-```text
-Start mowing:   {"cmd":0,"mode":1}
-Pause/stop:     {"cmd":0,"mode":0}
-Return to dock: {"cmd":0,"mode":2}
-```
+## Validation Checklist
 
-The command mode codes are configurable through the integration options.
+When validating against real hardware, capture and redact:
 
-## Parsed Fields
+1. Advertised BLE local name and service UUIDs.
+2. GATT services and characteristics used by the Daye app.
+3. Exact bytes written for status refresh and control commands.
+4. Exact notification bytes returned by the mower.
+5. Mapping between UI actions in the Daye app and mower behavior.
 
-Current `MowerState` fields are populated from JSON keys including:
-
-```text
-name
-model
-sn
-deviceSn
-version
-version 
-power
-mode
-errortype
-station
-wifi_lv
-rain_en
-rain_status
-rain_delay_left
-rain_delay_set
-on_min
-total_min
-on_area
-cur_min
-cur_area
-led_en
-ultra_en
-result
-command
-cmd
-```
-
-The key `version ` with a trailing space is intentionally handled because it was
-seen in the Android parser.
-
-## Response/Ack Commands
-
-Known response command constants currently represented in code:
-
-```text
-400    generic ack
-500    all info
-501    work status
-201    machine status
-10100  stop result
-10101  work result
-10102  home result
-```
-
-## Validation Status
-
-Confirmed from APK/code analysis:
-
-- UUIDs
-- frame header, length, checksum, and chunking
-- poll command `cmd=200`
-- work mode command shape `cmd=0, mode=<mode>`
-- mode values for work, home, trim, and start-point behavior
-
-Still requiring real hardware validation:
-
-- exact meaning of every parsed field for all mower firmware versions
-- whether stop mode `0` behaves as pause or full stop on every model
-- whether `cmd=400` or result-specific responses are always emitted for commands
-- whether all listed sensors are available on every Grouw mower variant
-- edge/trim and start-point behavior through Home Assistant actions
-
-Record new packet captures or raw JSON responses here after redacting addresses,
-serial numbers, and other private values.
+Record only summarized findings here. Do not commit proprietary APK output or
+raw logs containing BLE addresses, serial numbers, credentials, or other private
+values.

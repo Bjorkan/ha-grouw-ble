@@ -1,14 +1,14 @@
 {
   "domain": "grouw_ble_mower",
-  "name": "Grouw BLE Mower",
+  "name": "Grouw / Daye BLE Mower",
   "after_dependencies": ["bluetooth"],
   "bluetooth": [
     {
-      "service_uuid": "0000fff0-0000-1000-8000-00805f9b34fb",
+      "local_name": "RobotMower_DYM*",
       "connectable": true
     },
     {
-      "local_name": "Mower_*",
+      "local_name": "Robot_Mower*",
       "connectable": true
     }
   ],

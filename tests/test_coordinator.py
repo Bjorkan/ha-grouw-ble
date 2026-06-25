@@ -4,7 +4,6 @@ from __future__ import annotations
 import asyncio
 from typing import Any
 
-from custom_components.grouw_ble_mower.ble_client import GrouwBleDeviceNotFound
 from custom_components.grouw_ble_mower.ble_protocol import MowerState
 from custom_components.grouw_ble_mower.const import CONF_ADDRESS
 from custom_components.grouw_ble_mower.coordinator import GrouwMowerCoordinator
@@ -23,18 +22,12 @@ class _Hass:
     pass
 
 
-def test_missing_ble_device_retries_setup_before_first_state() -> None:
-    """A never-seen BLE device keeps setup retry semantics."""
+def test_unconfirmed_daye_status_protocol_retries_setup_before_first_state() -> None:
+    """Polling waits for confirmed Daye status protocol before first state."""
     async def run() -> None:
         coordinator = GrouwMowerCoordinator(
             _Hass(), _Entry(), "AA:BB:CC:DD:EE:FF", "Test mower"
         )
-
-        class Client:
-            async def async_get_all_info(self) -> dict[str, Any]:
-                raise GrouwBleDeviceNotFound("not found")
-
-        coordinator.client = Client()
 
         try:
             await coordinator._async_update_data()
@@ -45,19 +38,13 @@ def test_missing_ble_device_retries_setup_before_first_state() -> None:
     asyncio.run(run())
 
 
-def test_missing_ble_device_is_update_failure_after_state_exists() -> None:
-    """A temporary BLE disappearance after setup does not look like setup retry."""
+def test_unconfirmed_daye_status_protocol_is_update_failure_after_state() -> None:
+    """After state exists, unconfirmed polling marks entities unavailable."""
     async def run() -> None:
         coordinator = GrouwMowerCoordinator(
             _Hass(), _Entry(), "AA:BB:CC:DD:EE:FF", "Test mower"
         )
         coordinator._last_state = MowerState(address="AA:BB:CC:DD:EE:FF")
-
-        class Client:
-            async def async_get_all_info(self) -> dict[str, Any]:
-                raise GrouwBleDeviceNotFound("not found")
-
-        coordinator.client = Client()
 
         try:
             await coordinator._async_update_data()
@@ -97,6 +84,10 @@ def test_raw_json_requests_are_serialized() -> None:
         )
 
         assert client.max_active == 1
-        assert coordinator.data.power in {41, 42}
+        assert coordinator.data.raw in (
+            {"cmd": 500, "power": 41},
+            {"cmd": 500, "power": 42},
+        )
+        assert coordinator.data.power is None
 
     asyncio.run(run())

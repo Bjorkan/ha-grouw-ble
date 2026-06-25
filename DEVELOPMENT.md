@@ -12,11 +12,12 @@ Last updated: 2026-06-25
   https://developers.home-assistant.io/docs/development_index/
 - Hassfest for custom components:
   https://developers.home-assistant.io/blog/2020/04/16/hassfest/
-- Grouw / robotic-mower connect app:
-  https://play.google.com/store/apps/details?id=com.cj.lawnmower
+- Daye Power robotic mower app:
+  https://play.google.com/store/apps/details?id=com.dayepower.dayeappleaf
 
-The local `APK/` folder is intentionally not part of the git repo. Summarize
-durable findings here instead of relying on that path.
+Local APK/decompiler folders such as `APK/` or
+`/var/home/jesper/Projekt/grouw-mower-apk/` are intentionally not part of the
+git repo. Summarize durable findings here instead of relying on those paths.
 
 Official APK files, extracted APK trees, and decompiled files must never be
 upstreamed. They are local-only reverse-engineering inputs.
@@ -40,8 +41,11 @@ AGENTS.md                            Instructions for AI agents
 - Domain: `grouw_ble_mower`
 - Integration type: local polling BLE custom component
 - Platforms: `lawn_mower`, `sensor`, `binary_sensor`
-- Config flow: supports Bluetooth discovery and manual BLE address entry
-- Options flow: command mode codes for start, pause/stop, and dock
+- Config flow: supports Bluetooth discovery and manual BLE address entry.
+  Discovery currently matches Daye APK local-name strings `RobotMower_DYM*`
+  and `Robot_Mower*`. Do not add service UUID matches until service UUID roles
+  are confirmed from the Daye APK or real hardware captures.
+- Options flow: not exposed while Daye command payloads are unconfirmed.
 - Coordinator: `GrouwMowerCoordinator`
 - BLE client: `GrouwBleMowerClient`
 - Protocol parser/framer: `ble_protocol.py`

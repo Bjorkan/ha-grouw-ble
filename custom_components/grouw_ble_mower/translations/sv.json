@@ -2,14 +2,11 @@
   "config": {
     "step": {
       "user": {
-        "title": "Grouw BLE Mower",
+        "title": "Grouw / Daye BLE Mower",
         "description": "Lägg till klipparen med Bluetooth-adress. Om Home Assistant har hittat den kan du välja den i listan.",
         "data": {
           "address": "Bluetooth-adress",
-          "name": "Namn",
-          "start_mode": "Lägeskod för start",
-          "pause_mode": "Lägeskod för paus/stopp",
-          "dock_mode": "Lägeskod för hemgång"
+          "name": "Namn"
         }
       },
       "bluetooth_confirm": {
@@ -22,19 +19,6 @@
     },
     "abort": {
       "already_configured": "Den här klipparen är redan konfigurerad."
-    }
-  },
-  "options": {
-    "step": {
-      "init": {
-        "title": "Inställningar för Grouw BLE Mower",
-        "description": "Lägeskoderna kommer från Android-appen: 0 idle/stopp, 1 arbete, 2 hemgång. Ändra bara om test visar andra koder för din klippare.",
-        "data": {
-          "start_mode": "Lägeskod för start",
-          "pause_mode": "Lägeskod för paus/stopp",
-          "dock_mode": "Lägeskod för hemgång"
-        }
-      }
     }
   },
   "entity": {

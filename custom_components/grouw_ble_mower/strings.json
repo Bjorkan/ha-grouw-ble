@@ -2,14 +2,11 @@
   "config": {
     "step": {
       "user": {
-        "title": "Grouw BLE Mower",
+        "title": "Grouw / Daye BLE Mower",
         "description": "Add a mower by Bluetooth address. If it was discovered by Home Assistant, select it from the list.",
         "data": {
           "address": "Bluetooth address",
-          "name": "Name",
-          "start_mode": "Start mowing mode code",
-          "pause_mode": "Pause/stop mode code",
-          "dock_mode": "Return-to-dock mode code"
+          "name": "Name"
         }
       },
       "bluetooth_confirm": {
@@ -22,19 +19,6 @@
     },
     "abort": {
       "already_configured": "This mower is already configured."
-    }
-  },
-  "options": {
-    "step": {
-      "init": {
-        "title": "Grouw BLE Mower options",
-        "description": "Mode codes are based on the Android app: 0 idle/stop, 1 work, 2 return home. Change only if testing shows your mower uses different codes.",
-        "data": {
-          "start_mode": "Start mowing mode code",
-          "pause_mode": "Pause/stop mode code",
-          "dock_mode": "Return-to-dock mode code"
-        }
-      }
     }
   },
   "entity": {

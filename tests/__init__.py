@@ -1,2 +1,2 @@
-"""Tests for the Grouw BLE Mower integration."""
+"""Tests for the Grouw / Daye BLE Mower integration."""
 

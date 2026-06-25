@@ -12,7 +12,17 @@ from homeassistant.components import bluetooth
 from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResultType
 
+from custom_components.grouw_ble_mower.config_flow import _is_supported_bluetooth_name
 from custom_components.grouw_ble_mower.const import DOMAIN
+
+
+def test_supported_bluetooth_names_include_daye_app_device_name() -> None:
+    """The Daye APK contains RobotMower_DYM and Robot_Mower name strings."""
+    assert _is_supported_bluetooth_name("RobotMower_DYM")
+    assert _is_supported_bluetooth_name("RobotMower_DYM-1234")
+    assert _is_supported_bluetooth_name("Robot_Mower")
+    assert _is_supported_bluetooth_name("Robot_Mower-1234")
+    assert not _is_supported_bluetooth_name("OtherDevice")
 
 
 async def test_user_form(hass: HomeAssistant, mock_bluetooth_adapters: None) -> None:

@@ -30,6 +30,7 @@ committed project documentation:
 
 ```text
 APK/
+/var/home/jesper/Projekt/grouw-mower-apk/
 ```
 
 Official APK files, extracted APK contents, and decompiled app files must never
@@ -47,13 +48,13 @@ Authoritative external references:
   https://developers.home-assistant.io/docs/development_index/
 - Hassfest for custom components:
   https://developers.home-assistant.io/blog/2020/04/16/hassfest/
-- Grouw / robotic-mower connect app:
-  https://play.google.com/store/apps/details?id=com.cj.lawnmower
+- Daye Power robotic mower app:
+  https://play.google.com/store/apps/details?id=com.dayepower.dayeappleaf
 
 ## Project
 
-This repository contains a Home Assistant custom integration for Grouw /
-`robotic-mower connect` BLE lawn mowers.
+This repository contains a Home Assistant custom integration for Grouw BLE
+lawn mowers controlled by the Daye Power app (`com.dayepower.dayeappleaf`).
 
 The integration lives in:
 
@@ -88,8 +89,11 @@ custom_components/grouw_ble_mower/
 
 ## Current BLE Protocol Facts
 
-The durable protocol summary is in `REVERSE_ENGINEERED.md`. Do not change BLE
-constants or parsers without updating that file and adding/updating tests.
+The durable protocol summary is in `REVERSE_ENGINEERED.md`. Use only the
+Daye app (`com.dayepower.dayeappleaf`) or redacted real-hardware captures as
+protocol facts. Do not reintroduce facts from the old `com.cj.lawnmower` app.
+Do not change BLE constants or parsers without updating that file and
+adding/updating tests.
 
 ## Service Actions
 
@@ -131,7 +135,8 @@ asks to remove CI.
   or byte handling is available.
 - Do not introduce network/cloud behavior; this integration is local BLE.
 - Use `rg` for searching.
-- Avoid touching local decompiled APK output under `APK/` unless needed for protocol
+- Avoid touching local decompiled APK output under `APK/` or
+  `/var/home/jesper/Projekt/grouw-mower-apk/` unless needed for protocol
   research, and summarize findings in `REVERSE_ENGINEERED.md`.
 - Never commit or upstream APK files, extracted APK trees, decompiled Java,
   smali, native-library dumps, or generated decompiler output.

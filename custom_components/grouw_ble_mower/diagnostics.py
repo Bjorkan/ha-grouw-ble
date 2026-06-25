@@ -1,4 +1,4 @@
-"""Diagnostics support for Grouw BLE Mower."""
+"""Diagnostics support for Grouw / Daye BLE Mower."""
 from __future__ import annotations
 
 from dataclasses import asdict

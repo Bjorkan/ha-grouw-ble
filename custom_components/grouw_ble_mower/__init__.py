@@ -1,4 +1,4 @@
-"""Grouw BLE Mower integration."""
+"""Grouw / Daye BLE Mower integration."""
 from __future__ import annotations
 
 import logging
@@ -37,7 +37,7 @@ SERVICE_SEND_RAW_JSON_SCHEMA = vol.Schema(
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    """Set up Grouw BLE Mower from a config entry."""
+    """Set up Grouw / Daye BLE Mower from a config entry."""
     hass.data.setdefault(DOMAIN, {})
 
     coordinator = GrouwMowerCoordinator(

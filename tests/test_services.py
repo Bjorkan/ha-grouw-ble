@@ -34,7 +34,7 @@ class _Hass:
 
 
 class _Call:
-    data: dict[str, Any] = {"payload": {"cmd": 200}}
+    data: dict[str, Any] = {"payload": {"probe": "daye"}}
 
 
 def test_send_raw_json_requires_resolvable_target_mower() -> None:

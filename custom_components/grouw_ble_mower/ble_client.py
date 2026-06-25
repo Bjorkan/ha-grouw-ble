@@ -1,4 +1,4 @@
-"""BLE client for Grouw/robotic-mower connect mowers."""
+"""BLE client for Grouw/Daye mower devices."""
 from __future__ import annotations
 
 import asyncio
@@ -13,18 +13,9 @@ from homeassistant.core import HomeAssistant
 
 from .ble_protocol import encode_json_frame, extract_payloads, parse_payload
 from .const import (
-    CMD_REQUEST_ALL_INFO,
-    CMD_SET_MODE,
     DEFAULT_BLE_TIMEOUT,
     DEFAULT_CHUNK_DELAY,
     READ_CHARACTERISTIC_UUID,
-    RESP_ACK,
-    RESP_ALL_INFO,
-    RESP_HOME_RESULT,
-    RESP_MACHINE_STATUS,
-    RESP_STOP_RESULT,
-    RESP_WORK_RESULT,
-    RESP_WORK_STATUS,
     WRITE_CHARACTERISTIC_UUID,
 )
 
@@ -74,6 +65,12 @@ class GrouwBleMowerClient:
                 f"No connectable Bluetooth device found for {self.address}"
             )
 
+        if not READ_CHARACTERISTIC_UUID or not WRITE_CHARACTERISTIC_UUID:
+            raise GrouwBleError(
+                "Daye BLE characteristic UUIDs are not confirmed yet. "
+                "Capture them from the Daye app or mower GATT table before sending."
+            )
+
         expected = set(expect_cmds or [])
         queue: asyncio.Queue[dict[str, Any]] = asyncio.Queue()
         buffer = bytearray()
@@ -109,7 +106,9 @@ class GrouwBleMowerClient:
                 cmd = message.get("cmd")
                 if not expected or cmd in expected:
                     return message
-                _LOGGER.debug("Ignoring BLE response with unexpected cmd %s: %s", cmd, message)
+                _LOGGER.debug(
+                    "Ignoring BLE response with unexpected cmd %s: %s", cmd, message
+                )
         except asyncio.TimeoutError as err:
             raise GrouwBleTimeout(f"Timeout waiting for {self.address}") from err
         except BleakError as err:
@@ -126,30 +125,15 @@ class GrouwBleMowerClient:
                     pass
 
     async def async_get_all_info(self) -> dict[str, Any]:
-        """Request the Android app's all-info packet."""
-        return await self.async_request_json(
-            {"cmd": CMD_REQUEST_ALL_INFO},
-            expect_cmds={RESP_ALL_INFO, RESP_WORK_STATUS, RESP_MACHINE_STATUS},
-        )
+        """Reject status polling until the Daye status payload is confirmed."""
+        raise GrouwBleError("Daye status request payload is not confirmed yet")
 
     async def async_set_mode(
         self, mode: int, point: int | None = None
     ) -> dict[str, Any]:
-        """Send a work-mode command."""
-        payload: dict[str, Any] = {"cmd": CMD_SET_MODE, "mode": int(mode)}
-        if point is not None:
-            payload["point"] = int(point)
-        return await self.async_request_json(
-            payload,
-            expect_cmds={
-                RESP_ACK,
-                RESP_STOP_RESULT,
-                RESP_WORK_RESULT,
-                RESP_HOME_RESULT,
-                RESP_WORK_STATUS,
-                RESP_MACHINE_STATUS,
-                RESP_ALL_INFO,
-            },
+        """Reject mode commands until Daye command payloads are confirmed."""
+        raise GrouwBleError(
+            "Daye start, pause, and dock command payloads are not confirmed yet"
         )
 
     async def async_send_raw_json(self, payload: dict[str, Any]) -> dict[str, Any]:

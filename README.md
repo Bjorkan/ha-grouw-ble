@@ -1,56 +1,36 @@
-# Grouw BLE Mower for Home Assistant
+# Grouw / Daye BLE Mower for Home Assistant
 
-Custom integration scaffold for Grouw / `robotic-mower connect` BLE lawn mowers.
+Custom integration for Grouw mowers controlled by the Daye Power Android app (`com.dayepower.dayeappleaf`).
 
 This integration intentionally uses Home Assistant's Bluetooth manager to resolve the device by address. It does not create its own scanner. That means the same code path should work through a local Bluetooth adapter or a connectable Home Assistant Bluetooth proxy.
 
 ## What is implemented
 
-- Bluetooth config flow discovery by service UUID `0000fff0-0000-1000-8000-00805f9b34fb` or local name `Mower_*`.
+- Bluetooth config flow discovery by Daye APK local-name strings
+  `RobotMower_DYM*` and `Robot_Mower*`.
+- Manual setup by BLE address.
 - BLE connect through Home Assistant Bluetooth's `async_ble_device_from_address(..., connectable=True)`.
-- Framing and parsing from the Android APK:
-  - Header byte `0xA4`.
-  - Little-endian payload length at bytes 1-2.
-  - XOR checksum at byte 3.
-  - UTF-8 JSON payload.
-  - 20-byte BLE write chunks.
-- Service UUIDs from the APK:
-  - Service: `0000fff0-0000-1000-8000-00805f9b34fb`
-  - Notify/read characteristic: `0000fff1-0000-1000-8000-00805f9b34fb`
-  - Write characteristic: `0000fff2-0000-1000-8000-00805f9b34fb`
-- Polling command: `{"cmd": 200}`.
-- Parsed status fields from responses `cmd=500`, `cmd=501` and `cmd=201`.
-- Lawn mower entity with start, pause/stop and dock.
-- Sensors for battery, mode code, error code, runtime, area, Wi-Fi level and rain delay.
-- Binary sensors for docked, rain enabled, LED enabled, ultrasonic enabled and last command result.
+- Coordinator-based polling and entity availability.
+- Lawn mower, sensor and binary sensor entities for the fields being decoded during protocol validation.
 - Debug service `grouw_ble_mower.send_raw_json` for protocol testing.
 
-## Important limitations
+## Protocol status
 
-The Android APK shows that work commands are sent as:
+The current authoritative APK is `com.dayepower.dayeappleaf` version `2.0.1` / version code `117`.
 
-```json
-{"cmd": 0, "mode": 1}
-```
+Confirmed from that APK so far:
 
-The app's mode mapping is:
+- The app is a Flutter app using `flutter_blue_plus`.
+- The Bluetooth setup text tells users to choose `RobotMower_DYM`; the same
+  APK also contains `Robot_Mower-`.
+- The app contains UUID strings `49535343-1E4D-4BD9-BA61-23C647249616`,
+  `49535343-fe7d-4ae5-8fa9-9fafd205e455`, and CCCD descriptor UUID
+  `00002902-0000-1000-8000-00805f9b34fb`.
+- The app contains Bluetooth write/notify concepts and mower-control UI, but
+  the exact service/characteristic roles, payload framing and command IDs still
+  need confirmation.
 
-- `0` = idle / stop
-- `1` = working
-- `2` = return home
-- `3` = charging
-- `4` = error in status display, and also used by the UI for edge/trim command
-- `5` = lock in status display, and also used by the UI for start-point command
-- `6` = OTA update
-- `7` = trimming / edge in status display
-
-Default command mappings in this integration:
-
-- Start mowing: `{"cmd":0,"mode":1}`
-- Pause/stop: `{"cmd":0,"mode":0}`
-- Return to dock: `{"cmd":0,"mode":2}`
-
-The command mode codes are configurable under the integration's options.
+The raw JSON service is therefore experimental. Do not treat default command codes or decoded fields as validated Daye protocol facts until they are confirmed against the new APK or real hardware captures.
 
 ## Installation
 
@@ -65,7 +45,7 @@ Restart Home Assistant.
 Then go to:
 
 ```text
-Settings → Devices & services → Add integration → Grouw BLE Mower
+Settings -> Devices & services -> Add integration -> Grouw / Daye BLE Mower
 ```
 
 Keep the mower awake and close to a Bluetooth adapter or a connectable BLE proxy during first setup.
@@ -82,50 +62,23 @@ logger:
     bleak_retry_connector: debug
 ```
 
-## Raw command examples
+## Raw command validation
 
-Request all info:
-
-```yaml
-action: grouw_ble_mower.send_raw_json
-data:
-  payload:
-    cmd: 200
-```
-
-Start mowing:
+Use this only while reverse-engineering the Daye BLE protocol:
 
 ```yaml
 action: grouw_ble_mower.send_raw_json
 data:
-  payload:
-    cmd: 0
-    mode: 1
+  payload: {}
 ```
 
-Return home:
-
-```yaml
-action: grouw_ble_mower.send_raw_json
-data:
-  payload:
-    cmd: 0
-    mode: 2
-```
-
-Stop/pause:
-
-```yaml
-action: grouw_ble_mower.send_raw_json
-data:
-  payload:
-    cmd: 0
-    mode: 0
-```
+Capture the raw Home Assistant logs and mower behavior, then update `REVERSE_ENGINEERED.md` with redacted durable findings.
 
 ## Expected next validation
 
-1. Confirm that setup discovers your mower or accepts its BLE address manually.
-2. Confirm that `cmd: 200` returns status.
-3. Confirm mode commands on the real mower.
-4. Send Home Assistant logs and raw responses if any field mapping needs adjustment.
+1. Confirm Home Assistant discovers the mower as `RobotMower_DYM*` /
+   `Robot_Mower*` or accepts its BLE address manually.
+2. Confirm whether the two `49535343...` UUIDs are the Daye GATT service and
+   notify/write characteristic UUIDs, and in which roles.
+3. Confirm the write payloads and notification payloads for status, start, stop and dock.
+4. Update code, tests and docs only with facts from the Daye APK or redacted hardware captures.

@@ -4,7 +4,7 @@ send_raw_json:
   fields:
     payload:
       required: true
-      example: '{"cmd": 200}'
+      example: '{}'
       selector:
         object:
     address:

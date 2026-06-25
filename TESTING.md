@@ -1,6 +1,6 @@
 # TESTING.md
 
-Testing notes for the Grouw BLE Mower Home Assistant custom integration.
+Testing notes for the Grouw / Daye BLE Mower Home Assistant custom integration.
 
 Last updated: 2026-06-25
 
@@ -144,15 +144,20 @@ tests/test_services.py
 
 Use this checklist when testing against a real mower:
 
-1. Confirm Home Assistant discovers the mower by service UUID or `Mower_*` name.
+1. Confirm Home Assistant discovers the mower by `RobotMower_DYM*` /
+   `Robot_Mower*` name or accepts its BLE address manually.
 2. Confirm manual setup by BLE address works.
-3. Confirm `cmd: 200` returns status through `grouw_ble_mower.send_raw_json`.
-4. Capture and redact raw responses for `cmd=500`, `cmd=501`, and `cmd=201`.
+3. Confirm whether `49535343-1E4D-4BD9-BA61-23C647249616` and
+   `49535343-fe7d-4ae5-8fa9-9fafd205e455` are the Daye GATT service and
+   characteristic UUIDs, and in which roles, before treating
+   `grouw_ble_mower.send_raw_json` results as protocol facts.
+4. Capture and redact the Daye app status-refresh write and notification
+   payloads.
 5. Confirm battery, mode, error, docked, runtime, area, Wi-Fi, rain, LED, and
-   ultrasonic fields map correctly.
-6. Confirm start mowing sends mode `1` and the mower behaves as expected.
-7. Confirm pause/stop sends mode `0` and the mower behaves as expected.
-8. Confirm dock/home sends mode `2` and the mower behaves as expected.
+   ultrasonic field mappings only after the Daye status payload is known.
+6. Capture and confirm the Daye app payload for start mowing.
+7. Capture and confirm the Daye app payload for pause/stop.
+8. Capture and confirm the Daye app payload for dock/home.
 9. Confirm unavailable behavior when the mower sleeps or moves out of range.
 10. Update `README.md`, `DEVELOPMENT.md`, and `REVERSE_ENGINEERED.md` with
     validated facts and any remaining uncertainty.

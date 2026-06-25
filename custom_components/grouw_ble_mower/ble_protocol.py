@@ -1,4 +1,4 @@
-"""BLE framing and JSON parsing for Grouw/robotic-mower connect devices."""
+"""Experimental BLE framing and JSON parsing for Grouw/Daye mower devices."""
 from __future__ import annotations
 
 from dataclasses import dataclass, replace
@@ -15,7 +15,7 @@ FIRST_PACKET_PAYLOAD_LENGTH = 16
 
 
 def _xor(data: bytes) -> int:
-    """Return the XOR checksum used by the Android app."""
+    """Return the XOR checksum used by the experimental BLE JSON transport."""
     value = 0
     for byte in data:
         value ^= byte
@@ -96,30 +96,6 @@ def _optional_int(data: dict[str, Any], key: str) -> int | None:
         return None
 
 
-def _optional_bool(data: dict[str, Any], key: str) -> bool | None:
-    value = data.get(key)
-    if value is None:
-        return None
-    if isinstance(value, bool):
-        return value
-    if isinstance(value, (int, float)):
-        return bool(value)
-    if isinstance(value, str):
-        lowered = value.strip().lower()
-        if lowered in {"1", "true", "yes", "on"}:
-            return True
-        if lowered in {"0", "false", "no", "off"}:
-            return False
-    return None
-
-
-def _optional_str(data: dict[str, Any], key: str) -> str | None:
-    value = data.get(key)
-    if value is None:
-        return None
-    return str(value)
-
-
 @dataclass(slots=True, frozen=True)
 class MowerState:
     """Latest parsed mower state."""
@@ -161,7 +137,12 @@ def state_from_message(
     message: dict[str, Any],
     previous: MowerState | None = None,
 ) -> MowerState:
-    """Update a state object from a parsed BLE JSON message."""
+    """Update a state object from a parsed BLE JSON message.
+
+    Daye status payload fields are not confirmed yet. Until they are, preserve
+    the raw message and response command only instead of mapping old app fields
+    into user-facing entity state.
+    """
     base = previous or MowerState(address=address)
     cmd = _optional_int(message, "cmd")
     updates: dict[str, Any] = {
@@ -169,60 +150,5 @@ def state_from_message(
         "last_response_cmd": cmd,
         "last_seen": datetime.now(timezone.utc),
     }
-
-    # Fields common to cmd 500, 501 and 201.
-    for src, dst in (
-        ("name", "name"),
-        ("model", "model"),
-        ("sn", "serial"),
-        ("deviceSn", "serial"),
-    ):
-        value = _optional_str(message, src)
-        if value is not None:
-            updates[dst] = value
-
-    firmware = message.get("version")
-    if firmware is None:
-        # The Android parser also checks "version " with a trailing space.
-        firmware = message.get("version ")
-    if firmware is not None:
-        updates["firmware_version"] = str(firmware)
-
-    int_fields = (
-        ("power", "power"),
-        ("mode", "mode"),
-        ("errortype", "error_type"),
-        ("wifi_lv", "wifi_level"),
-        ("rain_status", "rain_status"),
-        ("rain_delay_left", "rain_delay_left"),
-        ("rain_delay_set", "rain_delay_set"),
-        ("on_min", "on_min"),
-        ("total_min", "total_min"),
-        ("on_area", "on_area"),
-        ("cur_min", "cur_min"),
-        ("cur_area", "cur_area"),
-    )
-    for src, dst in int_fields:
-        value = _optional_int(message, src)
-        if value is not None:
-            updates[dst] = value
-
-    bool_fields = (
-        ("station", "station"),
-        ("rain_en", "rain_enabled"),
-        ("led_en", "led_enabled"),
-        ("ultra_en", "ultrasonic_enabled"),
-    )
-    for src, dst in bool_fields:
-        value = _optional_bool(message, src)
-        if value is not None:
-            updates[dst] = value
-
-    result = _optional_bool(message, "result")
-    if result is not None:
-        updates["last_command_result"] = result
-    command = _optional_int(message, "command")
-    if command is not None:
-        updates["last_command"] = command
 
     return replace(base, **updates)

@@ -1,4 +1,4 @@
-"""Sensor platform for Grouw BLE Mower."""
+"""Sensor platform for Grouw / Daye BLE Mower."""
 from __future__ import annotations
 
 from collections.abc import Callable
