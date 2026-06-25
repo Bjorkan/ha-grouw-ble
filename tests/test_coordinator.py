@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import asyncio
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 import pytest
@@ -72,6 +72,24 @@ def test_poll_is_deferred_when_ble_transaction_is_active() -> None:
                 await coordinator._async_update_data()
         finally:
             coordinator._ble_lock.release()
+
+    asyncio.run(run())
+
+
+def test_failure_backoff_after_state_raises_update_failed() -> None:
+    """Backoff after a BLE failure should keep entities unavailable."""
+    async def run() -> None:
+        coordinator = GrouwMowerCoordinator(
+            _Hass(), _Entry(), "AA:BB:CC:DD:EE:FF", "Test mower"
+        )
+        coordinator._last_state = MowerState(
+            address="AA:BB:CC:DD:EE:FF",
+            last_seen=datetime.now(timezone.utc) - timedelta(seconds=10),
+        )
+        coordinator._last_failure_time = datetime.now(timezone.utc)
+
+        with pytest.raises(UpdateFailed, match="failure backoff"):
+            await coordinator._async_update_data()
 
     asyncio.run(run())
 

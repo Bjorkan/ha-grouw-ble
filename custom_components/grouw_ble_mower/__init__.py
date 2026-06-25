@@ -10,10 +10,11 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_NAME, Platform
 from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.exceptions import (
-    HomeAssistantError,
+    ConfigEntryNotReady,
     ServiceValidationError,
 )
 from homeassistant.helpers import config_validation as cv
+from homeassistant.helpers.update_coordinator import UpdateFailed
 
 from .ble_protocol import redact_daye_message
 from .const import CONF_ADDRESS, CONF_PIN, DEFAULT_NAME, DOMAIN, SERVICE_SEND_RAW_JSON
@@ -51,7 +52,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     try:
         await coordinator.async_config_entry_first_refresh()
-    except Exception:
+    except (ConfigEntryNotReady, UpdateFailed):
         _LOGGER.debug("Initial BLE refresh failed, continuing with unavailable entities")
         coordinator.data = None
         coordinator.last_update_success = False

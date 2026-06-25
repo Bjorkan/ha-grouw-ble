@@ -113,11 +113,15 @@ Current tests cover:
 - DYM notification parsing for the confirmed 22-byte status shape
 - parsing and redaction of PIN-looking DYM `0x8c` auth/PIN responses
 - configured PIN verification against mower auth/PIN response data
+- draining queued notifications at auth/follow-up request boundaries
 - ignoring non-DYM notifications and avoiding state decoding from short packets
 - `MowerState` updates for confirmed DYM battery, mode, station and response
   command fields
 - BLE client response filtering by DYM command byte
+- raw debug service option coercion/validation for hex `expect_cmd` and string
+  booleans
 - coordinator first-poll failure raises UpdateFailed instead of returning placeholder
+- coordinator BLE failure backoff raises UpdateFailed even after a previous state
 - coordinator poll cooldown after manual command
 - serialization of concurrent raw BLE payload requests
 - raw BLE payload action validation when no target mower can be resolved

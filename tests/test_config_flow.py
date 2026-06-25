@@ -44,6 +44,7 @@ def test_pin_validation_matches_daye_four_digit_pin_shape() -> None:
     assert not _is_valid_pin("123")
     assert not _is_valid_pin("12345")
     assert not _is_valid_pin("abcd")
+    assert not _is_valid_pin("１２３４")
 
 
 async def test_user_form(hass: HomeAssistant, mock_bluetooth_adapters: None) -> None:

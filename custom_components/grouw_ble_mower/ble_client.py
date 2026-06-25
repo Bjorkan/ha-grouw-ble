@@ -62,6 +62,35 @@ def _drain_queue(queue: asyncio.Queue) -> None:
             break
 
 
+def _coerce_bool(value: Any) -> bool:
+    """Coerce common service payload boolean shapes."""
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        normalized = value.strip().lower()
+        if normalized in {"1", "true", "yes", "on"}:
+            return True
+        if normalized in {"0", "false", "no", "off"}:
+            return False
+        raise GrouwBleError("authenticate must be a boolean value")
+    return bool(value)
+
+
+def _coerce_expected_cmd(value: Any) -> int | None:
+    """Coerce a raw service expected command byte."""
+    if value is None:
+        return None
+    try:
+        command = int(value, 0) if isinstance(value, str) else int(value)
+    except (TypeError, ValueError) as err:
+        raise GrouwBleError(
+            "expect_cmd must be an integer command byte or null"
+        ) from err
+    if not 0 <= command <= 0xFF:
+        raise GrouwBleError("expect_cmd must be between 0 and 255")
+    return command
+
+
 class GrouwBleMowerClient:
     """Small stateless BLE client.
 
@@ -277,6 +306,11 @@ class GrouwBleMowerClient:
             await self._write_with_log(client, payload, "command")
             if follow_up_status:
                 await asyncio.sleep(DEFAULT_CHUNK_DELAY)
+                _drain_queue(queue)
+                _LOGGER.debug(
+                    "[%s tx=%s] queue drained before follow-up status",
+                    self.address, self._tx_id
+                )
                 await self._write_with_log(
                     client, encode_daye_command("status"), "follow_up_status"
                 )
@@ -339,8 +373,8 @@ class GrouwBleMowerClient:
         except ValueError as err:
             raise GrouwBleError(str(err)) from err
         expected = payload.get("expect_cmd", DAYE_RESPONSE_STATUS)
-        expected_cmd = None if expected is None else int(expected)
-        authenticate = bool(payload.get("authenticate", True))
+        expected_cmd = _coerce_expected_cmd(expected)
+        authenticate = _coerce_bool(payload.get("authenticate", True))
         return await self.async_request_daye(
             raw_payload,
             authenticate=authenticate,

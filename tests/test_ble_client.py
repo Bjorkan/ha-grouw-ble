@@ -7,13 +7,54 @@ import pytest
 
 from custom_components.grouw_ble_mower.ble_client import (
     GrouwBleAuthenticationError,
+    GrouwBleError,
     GrouwBleMowerClient,
+    _coerce_bool,
+    _coerce_expected_cmd,
+    _drain_queue,
 )
 from custom_components.grouw_ble_mower.ble_protocol import DAYE_RESPONSE_PIN_OR_AUTH
 
 
 class _Hass:
     """Minimal Home Assistant stub for client construction."""
+
+
+def test_drain_queue_discards_stale_notifications() -> None:
+    """Queued notifications can be discarded at request phase boundaries."""
+    queue: asyncio.Queue[dict[str, int]] = asyncio.Queue()
+    queue.put_nowait({"cmd": 0x80})
+    queue.put_nowait({"cmd": 0x8C})
+
+    _drain_queue(queue)
+
+    assert queue.empty()
+
+
+def test_coerce_bool_accepts_common_service_payload_strings() -> None:
+    """Raw service boolean options may arrive as strings."""
+    assert _coerce_bool(True)
+    assert _coerce_bool("true")
+    assert not _coerce_bool(False)
+    assert not _coerce_bool("false")
+    assert not _coerce_bool("0")
+    assert _coerce_bool("yes")
+    assert not _coerce_bool("off")
+    with pytest.raises(GrouwBleError, match="authenticate"):
+        _coerce_bool("flase")
+
+
+def test_coerce_expected_cmd_accepts_hex_strings_and_validates_range() -> None:
+    """Raw service expected command options are parsed as command bytes."""
+    assert _coerce_expected_cmd(None) is None
+    assert _coerce_expected_cmd("0x80") == 0x80
+    assert _coerce_expected_cmd("128") == 128
+    assert _coerce_expected_cmd(0x8C) == 0x8C
+
+    with pytest.raises(GrouwBleError, match="between 0 and 255"):
+        _coerce_expected_cmd("0x100")
+    with pytest.raises(GrouwBleError, match="integer command byte"):
+        _coerce_expected_cmd("eighty")
 
 
 def test_wait_for_response_skips_unexpected_notifications() -> None:
@@ -72,3 +113,43 @@ def test_verify_auth_response_requires_pin_data_when_pin_is_configured() -> None
 
     with pytest.raises(GrouwBleAuthenticationError, match="did not include PIN"):
         client._verify_auth_response({"cmd": DAYE_RESPONSE_PIN_OR_AUTH})
+
+
+def test_raw_payload_accepts_hex_expected_command_and_string_auth_flag() -> None:
+    """Raw service options support hex command strings and string booleans."""
+
+    async def run() -> None:
+        client = GrouwBleMowerClient(
+            _Hass(), "AA:BB:CC:DD:EE:FF", "Test mower"
+        )
+        seen: dict[str, object] = {}
+
+        async def fake_request(
+            payload: bytes,
+            *,
+            authenticate: bool = True,
+            expected_cmd: int | None = None,
+            **kwargs: object,
+        ) -> dict[str, int]:
+            seen["payload"] = payload
+            seen["authenticate"] = authenticate
+            seen["expected_cmd"] = expected_cmd
+            return {"cmd": 0x80}
+
+        client.async_request_daye = fake_request  # type: ignore[method-assign]
+
+        await client.async_send_raw_json(
+            {
+                "raw_hex": "44594d",
+                "authenticate": "false",
+                "expect_cmd": "0x80",
+            }
+        )
+
+        assert seen == {
+            "payload": b"DYM",
+            "authenticate": False,
+            "expected_cmd": 0x80,
+        }
+
+    asyncio.run(run())

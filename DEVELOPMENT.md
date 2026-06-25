@@ -104,7 +104,10 @@ AGENTS.md                            Instructions for AI agents
   blocking the config entry or showing stale placeholder data.
 - The coordinator defers background polling after a manual command (cooldown)
   and after a BLE failure (backoff) to avoid competing with user actions and
-  to let the mower/Bluetooth stack settle.
+  to let the mower/Bluetooth stack settle. Manual-command cooldown may return
+  the latest state, but BLE failure backoff raises `UpdateFailed` even after a
+  previous successful state so entities become unavailable instead of looking
+  healthy with stale data.
 - The debug action routes to a coordinator by `entry_id`, by normalized
   `address`, or by the sole loaded coordinator.
 - The debug action raises `ServiceValidationError` when the target mower cannot
@@ -121,7 +124,10 @@ AGENTS.md                            Instructions for AI agents
   labels (connect, start_notify, session_start write, auth_query write, command
   write, follow-up write), notification hex values, and the selected response.
 - The notification queue is drained after the `0x8c` auth response to prevent
-  stale notifications from being returned as command responses.
+  stale notifications from being returned as command responses. For command
+  transactions with a follow-up status poll, the queue is drained again
+  immediately before writing that status poll so the selected `0x80` response
+  belongs to the follow-up request boundary.
 - PIN/auth responses are redacted before being stored in coordinator state or
   written to normal debug/service logs.
 - BLE errors are classified into GrouwBleConnectionError (connect timeout),

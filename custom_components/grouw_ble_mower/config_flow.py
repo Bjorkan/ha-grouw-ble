@@ -34,7 +34,7 @@ def _is_supported_bluetooth_name(name: str) -> bool:
 
 def _is_valid_pin(pin: str) -> bool:
     """Return true for a blank PIN or the Daye app's 4-digit PIN shape."""
-    return pin == "" or (len(pin) == PIN_LENGTH and pin.isdecimal())
+    return pin == "" or (len(pin) == PIN_LENGTH and pin.isascii() and pin.isdecimal())
 
 
 def _has_supported_service_uuid(service_uuids: list[str] | tuple[str, ...]) -> bool:

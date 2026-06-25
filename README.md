@@ -101,7 +101,7 @@ action: grouw_ble_mower.send_raw_json
 data:
   payload:
     raw_hex: "44594d00111111111111111100000000000000160601ff0a"
-    expect_cmd: 128
+    expect_cmd: "0x80"
 ```
 
 Set `authenticate: false` only when deliberately probing the connection prelude

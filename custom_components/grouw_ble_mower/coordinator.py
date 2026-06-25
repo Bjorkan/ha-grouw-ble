@@ -74,9 +74,7 @@ class GrouwMowerCoordinator(DataUpdateCoordinator[MowerState]):
                     "[%s] skipping poll: BLE failure %.1fs ago (backoff)",
                     self.address, since_failure.total_seconds()
                 )
-                if self._last_state is not None:
-                    return self._last_state
-                raise UpdateFailed("No data yet and poll deferred for failure backoff")
+                raise UpdateFailed("Poll deferred for BLE failure backoff")
 
         if self._ble_lock.locked():
             _LOGGER.debug("[%s] skipping poll: BLE transaction already active", self.address)
@@ -89,7 +87,7 @@ class GrouwMowerCoordinator(DataUpdateCoordinator[MowerState]):
                 _LOGGER.debug("[%s] BLE lock acquired for poll", self.address)
                 message = await self.client.async_get_all_info()
         except GrouwBleError as err:
-            self._last_failure_time = now
+            self._last_failure_time = datetime.now(timezone.utc)
             raise UpdateFailed(str(err)) from err
 
         self._last_failure_time = None
