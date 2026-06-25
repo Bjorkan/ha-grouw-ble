@@ -58,6 +58,8 @@ Work mode mapping (byte13):
 Battery is image-only in app (byte5→25/50/75/100.png thresholds), no numeric sensor
 BlueKey queryPin response byte5-byte8 are concatenated PIN digits; app compares
   the entered PIN locally against that returned robotPin
+MainLogic awaits FlutterBluePlus requestMtu before service discovery; the
+  bundled requestMtu implementation requests MTU 512 with a 15-second timeout
 Lift, tilt, charging are work mode values (byte13), not separate flags
 No rain status byte found — rain features are in settings UI, not BLE parsing
 @14069316 library unit is standard Dart runtime (dart:io/async/collection), NOT custom protocol code

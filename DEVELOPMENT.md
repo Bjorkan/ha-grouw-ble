@@ -72,6 +72,11 @@ AGENTS.md                            Instructions for AI agents
   requested status or command payload, then waits for the captured auth response
   command byte `0x8c`. Keep this unless hardware testing proves the mower no
   longer needs PIN/session setup after reconnect.
+- The Daye APK's MainLogic connection-state callback awaits FlutterBluePlus
+  `requestMtu` before service discovery. FlutterBluePlus requests MTU 512 in
+  that path. The integration mirrors this with a best-effort MTU request after
+  connect; unsupported Bleak backends log and continue because the captured DYM
+  packets are short.
 - Configured PIN handling follows the APK-observed query/compare shape: the
   config flow accepts blank or exactly four decimal digits, and the BLE client
   compares the configured PIN with `mower_pin` parsed from bytes 4-7 of a DYM

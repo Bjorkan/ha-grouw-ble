@@ -10,6 +10,8 @@ Only the Daye APK is authoritative for current protocol facts:
   - `decoded/jadx/resources/lib/arm64-v8a/libapp.so` contains Flutter/Dart
     strings for package `romow_bluetooth`, `flutter_blue_plus`, and user
     guidance to choose BLE device name `RobotMower_DYM`.
+  - `blutter_out/asm/` was used on 2026-06-25 to inspect Dart AOT symbols for
+    `MainLogic`, `MowerStatusLogic`, `BlueKey`, and FlutterBluePlus BLE flow.
 - Hardware scan from an iPhone near the mower on 2026-06-25:
   - Local JSON file (not committed) with the mower's GATT table.
   - Durable findings are summarized in `gatt_table.md`.

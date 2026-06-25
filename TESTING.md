@@ -113,6 +113,8 @@ Current tests cover:
 - DYM notification parsing for the confirmed 22-byte status shape
 - parsing and redaction of PIN-looking DYM `0x8c` auth/PIN responses
 - configured PIN verification against mower auth/PIN response data
+- best-effort MTU request behavior for Bleak clients with and without
+  `request_mtu`
 - draining queued notifications at auth/follow-up request boundaries
 - ignoring non-DYM notifications and avoiding state decoding from short packets
 - `MowerState` updates for confirmed DYM battery, mode, station and response

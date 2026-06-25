@@ -11,6 +11,8 @@ This integration intentionally uses Home Assistant's Bluetooth manager to resolv
   `Robot Mower_DYM*`, `RobotMower_DYM*`, and `Robot_Mower*`.
 - Manual setup by non-empty BLE address.
 - BLE connect through Home Assistant Bluetooth's `async_ble_device_from_address(..., connectable=True)`.
+- Best-effort MTU request after connect, matching the Daye app's
+  FlutterBluePlus connection flow.
 - PIN entry during setup. A blank PIN is allowed for mowers without PIN; a
   configured PIN must be exactly four digits.
 - Coordinator-based polling and entity availability.
@@ -35,6 +37,9 @@ Confirmed from that APK so far:
   `49535343-1E4D-4BD9-BA61-23C647249616`.
 - A Bluetooth HCI snoop log from the Daye app confirmed that characteristic
   `49535343-1E4D-4BD9-BA61-23C647249616` is used for both write and notify.
+- Dart AOT analysis shows the app requests MTU 512 before service discovery.
+  The integration attempts the same after connect and continues when the local
+  Bleak backend does not expose MTU negotiation.
 - The status poll, start, pause/stop and dock payloads are captured from the
   Daye app. More status field meanings still need validation.
 - Two captures show different start payloads: one for starting from station and

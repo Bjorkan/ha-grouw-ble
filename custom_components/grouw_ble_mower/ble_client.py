@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import asyncio
+import inspect
 import logging
 from typing import Any
 
@@ -22,6 +23,7 @@ from .ble_protocol import (
 from .const import (
     DEFAULT_BLE_TIMEOUT,
     DEFAULT_CHUNK_DELAY,
+    DEFAULT_REQUESTED_MTU,
     READ_CHARACTERISTIC_UUID,
     WRITE_CHARACTERISTIC_UUID,
 )
@@ -132,6 +134,34 @@ class GrouwBleMowerClient:
             raise GrouwBleGattError(
                 f"GATT write failed for {label} on {self.address}: {err}"
             ) from err
+
+    async def _request_mtu_with_log(self, client: BleakClient) -> None:
+        """Best-effort MTU request matching the official app connection flow."""
+        request_mtu = getattr(client, "request_mtu", None)
+        current_mtu = getattr(client, "mtu_size", "unknown")
+        if request_mtu is None:
+            _LOGGER.debug(
+                "[%s tx=%s] MTU request unsupported (current_mtu=%s)",
+                self.address, self._tx_id, current_mtu
+            )
+            return
+
+        try:
+            result = request_mtu(DEFAULT_REQUESTED_MTU)
+            if inspect.isawaitable(result):
+                result = await result
+        except Exception as err:  # noqa: BLE001 - MTU support is backend-specific
+            _LOGGER.debug(
+                "[%s tx=%s] MTU request skipped: %s (current_mtu=%s)",
+                self.address, self._tx_id, err, current_mtu
+            )
+            return
+
+        _LOGGER.debug(
+            "[%s tx=%s] MTU request ok requested=%s result=%s current_mtu=%s",
+            self.address, self._tx_id, DEFAULT_REQUESTED_MTU, result,
+            getattr(client, "mtu_size", "unknown")
+        )
 
     async def _wait_for_response(
         self,
@@ -259,6 +289,8 @@ class GrouwBleMowerClient:
                 raise GrouwBleConnectionError(
                     f"BLE connect failed for {self.address}: {err}"
                 ) from err
+
+            await self._request_mtu_with_log(client)
 
             _LOGGER.debug(
                 "[%s tx=%s] connected, starting notify",

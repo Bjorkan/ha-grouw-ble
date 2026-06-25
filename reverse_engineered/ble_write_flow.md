@@ -1,7 +1,16 @@
 # BLE Write/Notification Flow
 
-Confirmed from `MainLogic::writeAndNotify` (0x461eb4) and
-`blueWriteAndNotification` (0x461fa4).
+Confirmed from `MainLogic::writeAndNotify` (0x461eb4),
+`blueWriteAndNotification` (0x461fa4), and the connection-state callback at
+0x4709c4.
+
+## Connection Sequence
+
+When `BluetoothDevice.connectionState` changes to connected, `MainLogic`
+awaits `BluetoothDevice::requestMtu` before showing the success toast and
+calling `MainLogic::discoverServices` (0x470c98). In the bundled
+`flutter_blue_plus` code, `requestMtu` creates `BmMtuChangeRequest` with
+`mtu = 512`, waits for the MTU response, and uses a 15-second timeout.
 
 ## Sequence
 

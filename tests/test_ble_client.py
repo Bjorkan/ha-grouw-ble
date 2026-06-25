@@ -14,6 +14,7 @@ from custom_components.grouw_ble_mower.ble_client import (
     _drain_queue,
 )
 from custom_components.grouw_ble_mower.ble_protocol import DAYE_RESPONSE_PIN_OR_AUTH
+from custom_components.grouw_ble_mower.const import DEFAULT_REQUESTED_MTU
 
 
 class _Hass:
@@ -113,6 +114,52 @@ def test_verify_auth_response_requires_pin_data_when_pin_is_configured() -> None
 
     with pytest.raises(GrouwBleAuthenticationError, match="did not include PIN"):
         client._verify_auth_response({"cmd": DAYE_RESPONSE_PIN_OR_AUTH})
+
+
+def test_request_mtu_with_log_calls_supported_client() -> None:
+    """The client requests the APK-observed MTU when the backend exposes it."""
+
+    class _Client:
+        mtu_size = 23
+
+        def __init__(self) -> None:
+            self.requested: list[int] = []
+
+        async def request_mtu(self, mtu: int) -> int:
+            self.requested.append(mtu)
+            self.mtu_size = mtu
+            return mtu
+
+    async def run() -> None:
+        client = GrouwBleMowerClient(
+            _Hass(), "AA:BB:CC:DD:EE:FF", "Test mower"
+        )
+        client._tx_id = 1
+        ble_client = _Client()
+
+        await client._request_mtu_with_log(ble_client)  # type: ignore[arg-type]
+
+        assert ble_client.requested == [DEFAULT_REQUESTED_MTU]
+        assert ble_client.mtu_size == DEFAULT_REQUESTED_MTU
+
+    asyncio.run(run())
+
+
+def test_request_mtu_with_log_ignores_unsupported_client() -> None:
+    """MTU negotiation is optional because Bleak backends differ."""
+
+    class _Client:
+        mtu_size = 23
+
+    async def run() -> None:
+        client = GrouwBleMowerClient(
+            _Hass(), "AA:BB:CC:DD:EE:FF", "Test mower"
+        )
+        client._tx_id = 1
+
+        await client._request_mtu_with_log(_Client())  # type: ignore[arg-type]
+
+    asyncio.run(run())
 
 
 def test_raw_payload_accepts_hex_expected_command_and_string_auth_flag() -> None:

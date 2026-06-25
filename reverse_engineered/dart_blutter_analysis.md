@@ -60,7 +60,12 @@ layer or is transparent to the Dart write path.
 0x46f4b4  resetPinInput               — Clear PIN text field
 0x46f720  openDevice                  — Validate PIN length (≥4), verify against robotPin
 0x47086c  setDevice                   — Set connected device, handle duplicate connection
+0x4709c4  connectionState callback    — On connected: await requestMtu, then discoverServices
 ```
+
+The connection-state callback calls `BluetoothDevice::requestMtu` before
+`MainLogic::discoverServices`. The bundled FlutterBluePlus implementation
+builds `BmMtuChangeRequest` with `mtu = 512` and a 15-second timeout.
 
 ## MowerStatusLogic — Status Display Controller
 
