@@ -34,11 +34,11 @@ class _Hass:
 
 
 class _Call:
-    data: dict[str, Any] = {"payload": {"probe": "daye"}}
+    data: dict[str, Any] = {"payload": {"command": "status"}}
 
 
-def test_send_raw_json_requires_resolvable_target_mower() -> None:
-    """The raw JSON action reports bad targeting as a validation error."""
+def test_send_raw_payload_requires_resolvable_target_mower() -> None:
+    """The raw BLE payload action reports bad targeting as a validation error."""
     async def run() -> None:
         hass = _Hass()
         _async_register_services(hass)

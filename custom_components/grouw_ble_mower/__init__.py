@@ -10,7 +10,6 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_NAME, Platform
 from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.exceptions import (
-    ConfigEntryNotReady,
     HomeAssistantError,
     ServiceValidationError,
 )
@@ -48,14 +47,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     )
     hass.data[DOMAIN][entry.entry_id] = coordinator
 
-    try:
-        await coordinator.async_config_entry_first_refresh()
-    except ConfigEntryNotReady as err:
-        _LOGGER.debug(
-            "Initial BLE refresh failed for %s; setting up unavailable entities: %s",
-            coordinator.address,
-            err,
-        )
+    await coordinator.async_config_entry_first_refresh()
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
@@ -111,7 +103,7 @@ def _async_register_services(hass: HomeAssistant) -> None:
             )
 
         result = await coordinator.async_send_raw_json(payload)
-        _LOGGER.info("Raw BLE JSON response from %s: %s", coordinator.address, result)
+        _LOGGER.info("Raw BLE response from %s: %s", coordinator.address, result)
 
     hass.services.async_register(
         DOMAIN,

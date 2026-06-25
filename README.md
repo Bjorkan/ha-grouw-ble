@@ -12,8 +12,11 @@ This integration intentionally uses Home Assistant's Bluetooth manager to resolv
 - Manual setup by BLE address.
 - BLE connect through Home Assistant Bluetooth's `async_ble_device_from_address(..., connectable=True)`.
 - Coordinator-based polling and entity availability.
-- Lawn mower, sensor and binary sensor entities for the fields being decoded during protocol validation.
-- Debug service `grouw_ble_mower.send_raw_json` for protocol testing.
+- Daye status polling over the captured DYM BLE payload.
+- Lawn mower controls for captured start, pause/stop and dock payloads.
+- Sensor and binary sensor entities for fields being decoded during protocol
+  validation.
+- Debug service `grouw_ble_mower.send_raw_json` for raw BLE payload testing.
 
 ## Protocol status
 
@@ -28,11 +31,14 @@ Confirmed from that APK so far:
 - The hardware scan confirmed service
   `49535343-FE7D-4AE5-8FA9-9FAFD205E455` with characteristic
   `49535343-1E4D-4BD9-BA61-23C647249616`.
-- The app contains Bluetooth write/notify concepts and mower-control UI, but
-  the exact characteristic properties, payload framing and command IDs still
-  need confirmation.
+- A Bluetooth HCI snoop log from the Daye app confirmed that characteristic
+  `49535343-1E4D-4BD9-BA61-23C647249616` is used for both write and notify.
+- The status poll, start, pause/stop and dock payloads are captured from the
+  Daye app. More status field meanings still need validation.
 
-The raw JSON service is therefore experimental. Do not treat default command codes or decoded fields as validated Daye protocol facts until they are confirmed against the new APK or real hardware captures.
+The raw BLE payload service is still experimental. Do not treat newly decoded
+fields as validated until they are confirmed against more Daye app captures or
+real hardware observations.
 
 ## Installation
 
@@ -64,23 +70,35 @@ logger:
     bleak_retry_connector: debug
 ```
 
-## Raw command validation
+## Raw BLE Payload Validation
 
 Use this only while reverse-engineering the Daye BLE protocol:
 
 ```yaml
 action: grouw_ble_mower.send_raw_json
 data:
-  payload: {}
+  payload:
+    command: status
 ```
 
-Capture the raw Home Assistant logs and mower behavior, then update `REVERSE_ENGINEERED.md` with redacted durable findings.
+You can also send a captured payload directly:
+
+```yaml
+action: grouw_ble_mower.send_raw_json
+data:
+  payload:
+    raw_hex: "44594d00111111111111111100000000000000160601ff0a"
+```
+
+Capture the raw Home Assistant logs and mower behavior, then update
+`REVERSE_ENGINEERED.md` with redacted durable findings.
 
 ## Expected next validation
 
 1. Confirm Home Assistant discovers the mower by service UUID or as
    `Robot Mower_DYM*` / `RobotMower_DYM*` / `Robot_Mower*`.
-2. Confirm characteristic properties for the `49535343...` characteristics so
-   read/notify/write roles can be mapped.
-3. Confirm the write payloads and notification payloads for status, start, stop and dock.
-4. Update code, tests and docs only with facts from the Daye APK or redacted hardware captures.
+2. Confirm battery and mode field meanings across more mower states.
+3. Capture additional notification payloads for charging, mowing errors and
+   rain/tilt/lift events.
+4. Update code, tests and docs only with facts from the Daye APK or redacted
+   hardware captures.

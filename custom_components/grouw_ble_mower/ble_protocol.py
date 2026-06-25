@@ -1,89 +1,84 @@
-"""Experimental BLE framing and JSON parsing for Grouw/Daye mower devices."""
+"""BLE framing and parsing for Grouw/Daye mower devices."""
 from __future__ import annotations
 
 from dataclasses import dataclass, replace
 from datetime import datetime, timezone
-import json
 import logging
 from typing import Any
 
 _LOGGER = logging.getLogger(__name__)
 
-HEADER = 0xA4
-POCKET_LENGTH = 20
-FIRST_PACKET_PAYLOAD_LENGTH = 16
+DYM_PREFIX = b"DYM"
+DYM_TRAILER = bytes.fromhex("160601ff0a")
+DYM_NOTIFICATION_TRAILER = bytes.fromhex("160601")
+
+DAYE_STATUS_REQUEST = bytes.fromhex(
+    "44594d00111111111111111100000000000000160601ff0a"
+)
+DAYE_START_MOWING = bytes.fromhex(
+    "44594d01020000000000000000000000000000160601ff0a"
+)
+DAYE_PAUSE_MOWING = bytes.fromhex(
+    "44594d01010000000000000000000000000000160601ff0a"
+)
+DAYE_DOCK = bytes.fromhex("44594d01030000000000000000000000000000160601ff0a")
+
+DAYE_RESPONSE_PIN_OR_AUTH = 0x8C
+DAYE_RESPONSE_STATUS = 0x80
 
 
-def _xor(data: bytes) -> int:
-    """Return the XOR checksum used by the experimental BLE JSON transport."""
-    value = 0
-    for byte in data:
-        value ^= byte
-    return value & 0xFF
+def encode_daye_command(command: str) -> bytes:
+    """Return a Daye command payload captured from the official app."""
+    if command == "status":
+        return DAYE_STATUS_REQUEST
+    if command == "start":
+        return DAYE_START_MOWING
+    if command == "pause":
+        return DAYE_PAUSE_MOWING
+    if command == "dock":
+        return DAYE_DOCK
+    raise ValueError(f"Unsupported Daye command: {command}")
 
 
-def encode_json_frame(payload: dict[str, Any]) -> list[bytes]:
-    """Encode a JSON payload into one or more BLE writes."""
-    body = json.dumps(payload, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
-    length = len(body)
-    frame = bytearray((HEADER, length & 0xFF, (length >> 8) & 0xFF, _xor(body)))
-    frame.extend(body)
+def encode_raw_payload(payload: dict[str, Any]) -> bytes:
+    """Encode a raw debug payload for the Daye BLE characteristic."""
+    raw_hex = payload.get("raw_hex")
+    if raw_hex is not None:
+        return bytes.fromhex(str(raw_hex).replace(" ", ""))
 
-    if len(frame) <= POCKET_LENGTH:
-        return [bytes(frame)]
+    command = payload.get("command")
+    if command is not None:
+        return encode_daye_command(str(command))
 
-    packets: list[bytes] = [bytes(frame[:POCKET_LENGTH])]
-    offset = POCKET_LENGTH
-    while offset < len(frame):
-        packets.append(bytes(frame[offset : offset + POCKET_LENGTH]))
-        offset += POCKET_LENGTH
-    return packets
+    raise ValueError("Payload must contain raw_hex or command")
 
 
-def extract_payloads(buffer: bytearray) -> list[bytes]:
-    """Extract complete payloads from a notification byte stream."""
-    payloads: list[bytes] = []
-
-    while True:
-        try:
-            header_pos = buffer.index(HEADER)
-        except ValueError:
-            buffer.clear()
-            return payloads
-
-        if header_pos:
-            del buffer[:header_pos]
-
-        if len(buffer) < 4:
-            return payloads
-
-        length = buffer[1] | (buffer[2] << 8)
-        total_length = 4 + length
-        if len(buffer) < total_length:
-            return payloads
-
-        checksum = buffer[3]
-        payload = bytes(buffer[4:total_length])
-        del buffer[:total_length]
-
-        if _xor(payload) != checksum:
-            _LOGGER.warning("Discarding BLE frame with invalid checksum")
-            continue
-
-        payloads.append(payload)
-
-
-def parse_payload(payload: bytes) -> dict[str, Any] | None:
-    """Parse a UTF-8 JSON BLE payload."""
-    try:
-        data = json.loads(payload.decode("utf-8"))
-    except (UnicodeDecodeError, json.JSONDecodeError):
-        _LOGGER.debug("Ignoring non-JSON BLE payload: %s", payload.hex())
+def parse_daye_payload(payload: bytes) -> dict[str, Any] | None:
+    """Parse a Daye DYM notification payload."""
+    if not payload:
+        return None
+    if not payload.startswith(DYM_PREFIX):
+        _LOGGER.debug("Ignoring non-Daye BLE payload: %s", payload.hex())
         return None
 
-    if not isinstance(data, dict):
-        return None
-    return data
+    message: dict[str, Any] = {
+        "raw_hex": payload.hex(),
+        "cmd": payload[3] if len(payload) > 3 else None,
+    }
+    if payload.endswith(DYM_NOTIFICATION_TRAILER):
+        message["trailer"] = payload[-3:].hex()
+
+    # Status notifications captured from the official app are 22 bytes:
+    # 44 59 4d 80 <battery> ... <mode> 44 41 ... 16 06 01.
+    if len(payload) >= 16 and payload[3] == DAYE_RESPONSE_STATUS:
+        message.update(
+            {
+                "power": payload[4],
+                "mode": payload[12],
+                "station": payload[12] == 0x14,
+            }
+        )
+    return message
 
 
 def _optional_int(data: dict[str, Any], key: str) -> int | None:
@@ -137,12 +132,7 @@ def state_from_message(
     message: dict[str, Any],
     previous: MowerState | None = None,
 ) -> MowerState:
-    """Update a state object from a parsed BLE JSON message.
-
-    Daye status payload fields are not confirmed yet. Until they are, preserve
-    the raw message and response command only instead of mapping old app fields
-    into user-facing entity state.
-    """
+    """Update a state object from a parsed Daye BLE message."""
     base = previous or MowerState(address=address)
     cmd = _optional_int(message, "cmd")
     updates: dict[str, Any] = {
@@ -150,5 +140,17 @@ def state_from_message(
         "last_response_cmd": cmd,
         "last_seen": datetime.now(timezone.utc),
     }
+
+    for src, dst in (
+        ("power", "power"),
+        ("mode", "mode"),
+    ):
+        value = _optional_int(message, src)
+        if value is not None:
+            updates[dst] = value
+
+    station = message.get("station")
+    if isinstance(station, bool):
+        updates["station"] = station
 
     return replace(base, **updates)

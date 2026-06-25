@@ -2,8 +2,6 @@
 from __future__ import annotations
 
 import asyncio
-from collections.abc import Iterable
-import logging
 from typing import Any
 
 from bleak import BleakClient, BleakError
@@ -11,15 +9,13 @@ from bleak_retry_connector import establish_connection
 
 from homeassistant.core import HomeAssistant
 
-from .ble_protocol import encode_json_frame, extract_payloads, parse_payload
+from .ble_protocol import encode_daye_command, encode_raw_payload, parse_daye_payload
 from .const import (
     DEFAULT_BLE_TIMEOUT,
     DEFAULT_CHUNK_DELAY,
     READ_CHARACTERISTIC_UUID,
     WRITE_CHARACTERISTIC_UUID,
 )
-
-_LOGGER = logging.getLogger(__name__)
 
 
 class GrouwBleError(Exception):
@@ -47,14 +43,13 @@ class GrouwBleMowerClient:
         self.address = address.upper()
         self.name = name
 
-    async def async_request_json(
+    async def async_request_daye(
         self,
-        payload: dict[str, Any],
-        *,
-        expect_cmds: Iterable[int] | None = None,
+        payload: bytes,
+        follow_up_status: bool = False,
         timeout: float = DEFAULT_BLE_TIMEOUT,
     ) -> dict[str, Any]:
-        """Send a framed JSON payload and wait for a matching JSON response."""
+        """Send a Daye DYM payload and wait for the first parsed notification."""
         from homeassistant.components import bluetooth
 
         ble_device = bluetooth.async_ble_device_from_address(
@@ -65,23 +60,12 @@ class GrouwBleMowerClient:
                 f"No connectable Bluetooth device found for {self.address}"
             )
 
-        if not READ_CHARACTERISTIC_UUID or not WRITE_CHARACTERISTIC_UUID:
-            raise GrouwBleError(
-                "Daye BLE characteristic UUIDs are not confirmed yet. "
-                "Capture them from the Daye app or mower GATT table before sending."
-            )
-
-        expected = set(expect_cmds or [])
         queue: asyncio.Queue[dict[str, Any]] = asyncio.Queue()
-        buffer = bytearray()
         loop = asyncio.get_running_loop()
 
         def _notification_handler(_sender: int | str, data: bytearray) -> None:
-            buffer.extend(bytes(data))
-            for raw_payload in extract_payloads(buffer):
-                message = parse_payload(raw_payload)
-                if message is None:
-                    continue
+            message = parse_daye_payload(bytes(data))
+            if message is not None:
                 loop.call_soon_threadsafe(queue.put_nowait, message)
 
         client: BleakClient | None = None
@@ -95,20 +79,20 @@ class GrouwBleMowerClient:
             )
             await client.start_notify(READ_CHARACTERISTIC_UUID, _notification_handler)
 
-            for packet in encode_json_frame(payload):
-                await client.write_gatt_char(
-                    WRITE_CHARACTERISTIC_UUID, packet, response=False
-                )
+            await client.write_gatt_char(
+                WRITE_CHARACTERISTIC_UUID, payload, response=True
+            )
+            if follow_up_status:
                 await asyncio.sleep(DEFAULT_CHUNK_DELAY)
+                await client.write_gatt_char(
+                    WRITE_CHARACTERISTIC_UUID,
+                    encode_daye_command("status"),
+                    response=True,
+                )
 
             while True:
                 message = await asyncio.wait_for(queue.get(), timeout=timeout)
-                cmd = message.get("cmd")
-                if not expected or cmd in expected:
-                    return message
-                _LOGGER.debug(
-                    "Ignoring BLE response with unexpected cmd %s: %s", cmd, message
-                )
+                return message
         except asyncio.TimeoutError as err:
             raise GrouwBleTimeout(f"Timeout waiting for {self.address}") from err
         except BleakError as err:
@@ -125,17 +109,20 @@ class GrouwBleMowerClient:
                     pass
 
     async def async_get_all_info(self) -> dict[str, Any]:
-        """Reject status polling until the Daye status payload is confirmed."""
-        raise GrouwBleError("Daye status request payload is not confirmed yet")
+        """Request the Daye status packet captured from the official app."""
+        return await self.async_request_daye(encode_daye_command("status"))
 
-    async def async_set_mode(
-        self, mode: int, point: int | None = None
-    ) -> dict[str, Any]:
-        """Reject mode commands until Daye command payloads are confirmed."""
-        raise GrouwBleError(
-            "Daye start, pause, and dock command payloads are not confirmed yet"
+    async def async_command(self, command: str) -> dict[str, Any]:
+        """Send a Daye mower command and refresh status."""
+        return await self.async_request_daye(
+            encode_daye_command(command),
+            follow_up_status=True,
         )
 
     async def async_send_raw_json(self, payload: dict[str, Any]) -> dict[str, Any]:
-        """Send a raw JSON payload and return the first JSON response."""
-        return await self.async_request_json(payload)
+        """Send a raw debug payload and return the first parsed notification."""
+        try:
+            raw_payload = encode_raw_payload(payload)
+        except ValueError as err:
+            raise GrouwBleError(str(err)) from err
+        return await self.async_request_daye(raw_payload)

@@ -45,9 +45,9 @@ AGENTS.md                            Instructions for AI agents
   Discovery currently matches confirmed service UUID
   `49535343-fe7d-4ae5-8fa9-9fafd205e455` and Daye local-name strings
   `Robot Mower_DYM*`, `RobotMower_DYM*`, and `Robot_Mower*`.
-  Do not set read/write/notify characteristic constants until characteristic
-  properties and Daye app usage are confirmed.
-- Options flow: not exposed while Daye command payloads are unconfirmed.
+  The Daye app writes and subscribes to characteristic
+  `49535343-1e4d-4bd9-ba61-23c647249616`.
+- Options flow: not exposed.
 - Coordinator: `GrouwMowerCoordinator`
 - BLE client: `GrouwBleMowerClient`
 - Protocol parser/framer: `ble_protocol.py`
@@ -63,9 +63,9 @@ AGENTS.md                            Instructions for AI agents
 - Keep `has_entity_name = True` on entities. The lawn mower entity uses
   `_attr_name = None` so it becomes the main device entity.
 - Use `DataUpdateCoordinator` for shared polling state.
-- A missing BLE device before first data should behave like setup-not-ready.
-  Once state exists, temporary BLE loss should be an update failure so entities
-  become unavailable without resetting setup.
+- The coordinator polls with the captured Daye DYM status request. Before the
+  first successful poll, it returns placeholder state so the discovered device
+  and entities stay loaded with unknown values instead of staying unavailable.
 - BLE communication is serialized per mower with an `asyncio.Lock`; do not
   remove this without a real concurrency-safe replacement.
 - Config entry unloading must continue to work. Clean up services and callbacks
@@ -78,8 +78,9 @@ AGENTS.md                            Instructions for AI agents
 ## Current Implementation Notes
 
 - Initial setup stores the coordinator before first refresh, then attempts an
-  initial BLE refresh. If the mower is asleep or temporarily unreachable, setup
-  continues with unavailable entities instead of blocking the config entry.
+  initial BLE refresh. If the mower is asleep or temporarily unreachable before
+  any successful poll, setup continues with loaded entities and unknown values
+  instead of blocking the config entry.
 - The debug action routes to a coordinator by `entry_id`, by normalized
   `address`, or by the sole loaded coordinator.
 - The debug action raises `ServiceValidationError` when the target mower cannot

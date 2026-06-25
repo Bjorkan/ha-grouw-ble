@@ -10,6 +10,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
+from .const import DAYE_MODE_MOWING, DAYE_MODE_RETURNING, DAYE_MODE_STOPPED
 from .coordinator import GrouwMowerCoordinator
 from .entity import GrouwMowerEntity
 
@@ -29,9 +30,11 @@ async def async_setup_entry(
 class GrouwBleLawnMower(GrouwMowerEntity, LawnMowerEntity):
     """Grouw BLE lawn mower entity."""
 
-    # Daye command payloads are not confirmed yet; keep controls hidden until
-    # start/pause/dock writes are validated from the Daye APK or hardware logs.
-    _attr_supported_features = LawnMowerEntityFeature(0)
+    _attr_supported_features = (
+        LawnMowerEntityFeature.START_MOWING
+        | LawnMowerEntityFeature.PAUSE
+        | LawnMowerEntityFeature.DOCK
+    )
 
     def __init__(self, coordinator: GrouwMowerCoordinator) -> None:
         super().__init__(coordinator, None)
@@ -39,7 +42,16 @@ class GrouwBleLawnMower(GrouwMowerEntity, LawnMowerEntity):
 
     @property
     def activity(self) -> LawnMowerActivity | None:
-        """Return no activity until Daye status fields are mapped."""
+        """Return mower activity from the captured Daye status mode byte."""
+        data = self.coordinator.data
+        if data is None:
+            return None
+        if data.mode == DAYE_MODE_MOWING:
+            return LawnMowerActivity.MOWING
+        if data.mode == DAYE_MODE_RETURNING:
+            return LawnMowerActivity.RETURNING
+        if data.mode == DAYE_MODE_STOPPED:
+            return LawnMowerActivity.DOCKED
         return None
 
     @property
@@ -49,12 +61,12 @@ class GrouwBleLawnMower(GrouwMowerEntity, LawnMowerEntity):
 
     async def async_start_mowing(self) -> None:
         """Start mowing."""
-        await self.coordinator.async_send_mode()
+        await self.coordinator.async_send_command("start")
 
     async def async_pause(self) -> None:
         """Pause/stop mowing."""
-        await self.coordinator.async_send_mode()
+        await self.coordinator.async_send_command("pause")
 
     async def async_dock(self) -> None:
         """Return to dock."""
-        await self.coordinator.async_send_mode()
+        await self.coordinator.async_send_command("dock")

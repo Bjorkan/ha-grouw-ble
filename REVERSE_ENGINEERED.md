@@ -21,6 +21,12 @@ Only the Daye APK is authoritative for current protocol facts:
   - Local file used as source:
     `/var/home/jesper/Hämtningar/Robot Mower_DYM_A30D43FD-EFDF-A723-E51D-C8B5A0038111.json`
   - The file is not committed; durable findings are summarized below.
+- Android Bluetooth HCI snoop bugreport captured near the mower on 2026-06-25:
+  - Local file used as source:
+    `/var/home/jesper/Hämtningar/bugreport-m3qxeea-BP4A/FS/data/log/bt/btsnoop_hci.log`
+  - User action sequence: connect, enter PIN `1234`, start, stop, start, go
+    to base station.
+  - The file is not committed; durable findings are summarized below.
 
 Do not use the previous `com.cj.lawnmower` app, old local reverse-engineering
 notes, or older APK-derived assumptions as protocol facts for this integration.
@@ -60,9 +66,7 @@ The app strings include these UUID values:
 ```
 
 `00002902-0000-1000-8000-00805f9b34fb` is the standard Client
-Characteristic Configuration descriptor. The two `49535343...` UUIDs are
-Daye APK candidates for the mower GATT service/characteristic set, but this
-pass did not recover which role each UUID has.
+Characteristic Configuration descriptor.
 
 ## Confirmed From Hardware Scan
 
@@ -95,8 +99,74 @@ Service 49535343-FE7D-4AE5-8FA9-9FAFD205E455
 
 This confirms that `49535343-FE7D-4AE5-8FA9-9FAFD205E455` is a Daye/Grouw
 mower GATT service, and that `49535343-1E4D-4BD9-BA61-23C647249616` is a
-characteristic under that service. The scan did not include characteristic
-properties, so read/notify/write roles are still not confirmed.
+characteristic under that service.
+
+## Confirmed From Android HCI Snoop
+
+The Daye app's ATT discovery confirmed the primary control characteristic:
+
+```text
+Service 49535343-FE7D-4AE5-8FA9-9FAFD205E455, handles 0x0017-0x0020
+  Declaration handle 0x0018
+  Value handle       0x0019
+  UUID               49535343-1E4D-4BD9-BA61-23C647249616
+  Properties         0x1c: write without response, write, notify
+  CCCD handle        0x001a
+```
+
+The Daye app enables notifications by writing `0100` to handle `0x001a`, then
+uses ATT Write Request, not Write Command, to write 24-byte DYM payloads to
+handle `0x0019`. Notifications arrive on the same handle.
+
+Captured Daye write payloads:
+
+```text
+Status poll:
+44594d00111111111111111100000000000000160601ff0a
+
+Initial/auth-related:
+44594d02141a0619121c000000000000000000160601ff0a
+44594d02141a06191220000000000000000000160601ff0a
+44594d0c000000000000000000000000000000160601ff0a
+
+Start mowing:
+44594d01020000000000000000000000000000160601ff0a
+
+Pause/stop:
+44594d01010000000000000000000000000000160601ff0a
+
+Go to base station:
+44594d01030000000000000000000000000000160601ff0a
+```
+
+The app also sent `44594d01000000000000000000000000000000160601ff0a`
+during the captured session. Its UI action is not yet confidently identified,
+so it is not used by the integration.
+
+Captured status notifications are 22-byte DYM payloads such as:
+
+```text
+44594d8064321b000004000114444100000000160601
+44594d8064321b000004000100444100000000160601
+44594d8064321b000004000103444100000000160601
+```
+
+Observed status field mapping:
+
+```text
+byte 0..2  "DYM"
+byte 3     response type, 0x80 for status
+byte 4     battery percentage candidate, observed 0x64 and 0x32
+byte 12    mode candidate:
+            0x00 mowing / active after start
+            0x03 returning after go-to-base
+            0x14 stopped / docked / idle after stop
+byte 19..21 notification trailer: 16 06 01
+```
+
+The field names above are based on the recorded action sequence and need more
+captures across charging, error, rain, lift and tilt states before being
+treated as complete.
 
 The app strings also include `BlueKey`, `ENCRYPTED_SIZE`,
 `_isBufferEncrypted`, `get:_checkSum`, `parseStringToBuffer`, `createBuffer`,
@@ -115,8 +185,8 @@ RobotMower_DYM*
 Robot_Mower*
 ```
 
-Do not set read/write/notify characteristic constants until characteristic
-properties and Daye app usage are confirmed.
+The integration uses `49535343-1E4D-4BD9-BA61-23C647249616` for both write and
+notify.
 
 ## Not Yet Confirmed For Daye
 
@@ -124,30 +194,24 @@ These details are intentionally not treated as facts until confirmed from the
 Daye APK or redacted real-hardware captures:
 
 ```text
-Characteristic properties for the 49535343... characteristics
-Notify/read characteristic UUID used by the Daye app
-Write characteristic UUID used by the Daye app
-Payload framing
-Checksum
-Status request command
-Work/start/stop/dock command IDs and mode numbers
-Status response field names and numeric meanings
+Meaning of every status response byte
+Whether any checksum exists beyond the fixed ff0a write trailer
+Charging, error, rain, lift and tilt status values
+Meaning of the captured 44594d0100... command
 ```
 
-The integration still contains an experimental raw JSON BLE validation surface
-so hardware testing can probe candidates, but durable docs and user-facing text
-must not present those candidates as Daye protocol facts.
+The integration still contains an experimental raw BLE payload validation
+surface so hardware testing can probe additional captures.
 
 ## Validation Checklist
 
 When validating against real hardware, capture and redact:
 
-1. Characteristic properties for all `49535343...` characteristics.
-2. Which characteristic the Daye app subscribes to for notifications.
-3. Which characteristic the Daye app writes for status refresh and commands.
-4. Exact bytes written for status refresh and control commands.
-5. Exact notification bytes returned by the mower.
-6. Mapping between UI actions in the Daye app and mower behavior.
+1. Battery and mode mapping over more mower states.
+2. Charging, error, rain, lift and tilt notification payloads.
+3. Whether `44594d0100...` has a distinct UI action.
+4. Exact notification bytes after each newly tested action.
+5. Mapping between UI actions in the Daye app and mower behavior.
 
 Record only summarized findings here. Do not commit proprietary APK output or
 raw logs containing BLE addresses, serial numbers, credentials, or other private

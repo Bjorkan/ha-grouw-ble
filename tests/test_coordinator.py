@@ -4,11 +4,10 @@ from __future__ import annotations
 import asyncio
 from typing import Any
 
+from custom_components.grouw_ble_mower.ble_client import GrouwBleError
 from custom_components.grouw_ble_mower.ble_protocol import MowerState
 from custom_components.grouw_ble_mower.const import CONF_ADDRESS
 from custom_components.grouw_ble_mower.coordinator import GrouwMowerCoordinator
-from homeassistant.exceptions import ConfigEntryNotReady
-from homeassistant.helpers.update_coordinator import UpdateFailed
 
 
 class _Entry:
@@ -22,40 +21,28 @@ class _Hass:
     pass
 
 
-def test_unconfirmed_daye_status_protocol_retries_setup_before_first_state() -> None:
-    """Polling waits for confirmed Daye status protocol before first state."""
+def test_initial_poll_failure_returns_placeholder_state() -> None:
+    """Initial poll failure keeps setup loaded with placeholder data."""
     async def run() -> None:
         coordinator = GrouwMowerCoordinator(
             _Hass(), _Entry(), "AA:BB:CC:DD:EE:FF", "Test mower"
         )
 
-        try:
-            await coordinator._async_update_data()
-        except ConfigEntryNotReady:
-            return
-        raise AssertionError("Expected ConfigEntryNotReady")
+        class Client:
+            async def async_get_all_info(self) -> dict[str, Any]:
+                raise GrouwBleError("not reachable")
+
+        coordinator.client = Client()
+        state = await coordinator._async_update_data()
+
+        assert state.address == "AA:BB:CC:DD:EE:FF"
+        assert state.name == "Test mower"
+        assert state.power is None
 
     asyncio.run(run())
 
 
-def test_unconfirmed_daye_status_protocol_is_update_failure_after_state() -> None:
-    """After state exists, unconfirmed polling marks entities unavailable."""
-    async def run() -> None:
-        coordinator = GrouwMowerCoordinator(
-            _Hass(), _Entry(), "AA:BB:CC:DD:EE:FF", "Test mower"
-        )
-        coordinator._last_state = MowerState(address="AA:BB:CC:DD:EE:FF")
-
-        try:
-            await coordinator._async_update_data()
-        except UpdateFailed:
-            return
-        raise AssertionError("Expected UpdateFailed")
-
-    asyncio.run(run())
-
-
-def test_raw_json_requests_are_serialized() -> None:
+def test_raw_payload_requests_are_serialized() -> None:
     """Concurrent service calls do not create overlapping BLE transactions."""
     async def run() -> None:
         coordinator = GrouwMowerCoordinator(
@@ -73,7 +60,7 @@ def test_raw_json_requests_are_serialized() -> None:
                 self.max_active = max(self.max_active, self.active)
                 await asyncio.sleep(0)
                 self.active -= 1
-                return {"cmd": 500, "power": payload["power"]}
+                return {"cmd": 0x80, "power": payload["power"]}
 
         client = Client()
         coordinator.client = client
@@ -85,9 +72,9 @@ def test_raw_json_requests_are_serialized() -> None:
 
         assert client.max_active == 1
         assert coordinator.data.raw in (
-            {"cmd": 500, "power": 41},
-            {"cmd": 500, "power": 42},
+            {"cmd": 0x80, "power": 41},
+            {"cmd": 0x80, "power": 42},
         )
-        assert coordinator.data.power is None
+        assert coordinator.data.power in {41, 42}
 
     asyncio.run(run())

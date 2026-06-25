@@ -7,7 +7,7 @@ from typing import Any
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
-from homeassistant.exceptions import ConfigEntryNotReady, HomeAssistantError
+from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from .ble_client import GrouwBleError, GrouwBleMowerClient
@@ -39,23 +39,40 @@ class GrouwMowerCoordinator(DataUpdateCoordinator[MowerState]):
         self.address = address.upper()
         self.device_name = name or DEFAULT_NAME
         self.client = GrouwBleMowerClient(hass, self.address, self.device_name)
-        self._last_state: MowerState | None = None
+        self._last_state: MowerState | None = MowerState(
+            address=self.address,
+            name=self.device_name,
+        )
         self._ble_lock = asyncio.Lock()
 
     async def _async_update_data(self) -> MowerState:
-        """Fetch latest mower data once the Daye status protocol is known."""
-        if self._last_state is not None:
-            raise UpdateFailed("Daye BLE status protocol is not confirmed yet")
-        raise ConfigEntryNotReady("Daye BLE status protocol is not confirmed yet")
+        """Fetch latest mower data."""
+        try:
+            async with self._ble_lock:
+                message = await self.client.async_get_all_info()
+        except GrouwBleError as err:
+            if self._last_state is not None and self._last_state.last_seen is None:
+                return self._last_state
+            raise UpdateFailed(str(err)) from err
 
-    async def async_send_mode(self) -> None:
-        """Reject mode commands until Daye command payloads are confirmed."""
-        raise HomeAssistantError(
-            "Daye start, pause, and dock command payloads are not confirmed yet"
-        )
+        state = state_from_message(self.address, message, self._last_state)
+        self._last_state = state
+        return state
+
+    async def async_send_command(self, command: str) -> None:
+        """Send a mower command and refresh state."""
+        try:
+            async with self._ble_lock:
+                message = await self.client.async_command(command)
+        except GrouwBleError as err:
+            raise HomeAssistantError(str(err)) from err
+
+        state = state_from_message(self.address, message, self._last_state)
+        self._last_state = state
+        self.async_set_updated_data(state)
 
     async def async_send_raw_json(self, payload: dict[str, Any]) -> dict[str, Any]:
-        """Send raw JSON over BLE for protocol validation."""
+        """Send a raw BLE payload for protocol validation."""
         try:
             async with self._ble_lock:
                 message = await self.client.async_send_raw_json(payload)

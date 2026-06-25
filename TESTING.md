@@ -113,8 +113,8 @@ Current tests cover:
 - checksum rejection and resynchronization
 - coordinator setup retry behavior before first state
 - coordinator update failure behavior after a state exists
-- serialization of concurrent raw JSON BLE requests
-- raw JSON action validation when no target mower can be resolved
+- serialization of concurrent raw BLE payload requests
+- raw BLE payload action validation when no target mower can be resolved
 - compile-time coverage for Home Assistant exception imports and platform
   constants through `compileall`
 
@@ -147,18 +147,15 @@ Use this checklist when testing against a real mower:
 1. Confirm Home Assistant discovers the mower by service UUID or by
    `Robot Mower_DYM*` / `RobotMower_DYM*` / `Robot_Mower*` name.
 2. Confirm manual setup by BLE address works.
-3. Confirm characteristic properties for all `49535343...` characteristics.
-4. Confirm which characteristic the Daye app writes and which one it subscribes
-   to before treating `grouw_ble_mower.send_raw_json` results as protocol facts.
-5. Capture and redact the Daye app status-refresh write and notification
-   payloads.
-6. Confirm battery, mode, error, docked, runtime, area, Wi-Fi, rain, LED, and
-   ultrasonic field mappings only after the Daye status payload is known.
-7. Capture and confirm the Daye app payload for start mowing.
-8. Capture and confirm the Daye app payload for pause/stop.
-9. Capture and confirm the Daye app payload for dock/home.
-10. Confirm unavailable behavior when the mower sleeps or moves out of range.
-11. Update `README.md`, `DEVELOPMENT.md`, and `REVERSE_ENGINEERED.md` with
+3. Confirm Home Assistant can read status with the captured DYM status poll.
+4. Confirm battery and mode mapping during stopped, mowing and returning states.
+5. Confirm start mowing sends the captured start payload and the mower starts.
+6. Confirm pause/stop sends the captured stop payload and the mower stops.
+7. Confirm dock/home sends the captured dock payload and the mower returns.
+8. Capture additional charging, error, rain, lift and tilt status payloads.
+9. Confirm unavailable behavior after a successful poll when the mower sleeps or
+   moves out of range.
+10. Update `README.md`, `DEVELOPMENT.md`, and `REVERSE_ENGINEERED.md` with
     validated facts and any remaining uncertainty.
 
 ## Useful Debug Logging
