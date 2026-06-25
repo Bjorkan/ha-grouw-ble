@@ -29,6 +29,7 @@
       "missing_data": "Missing configuration data."
     },
     "error": {
+      "invalid_address": "Enter a Bluetooth address, or select a discovered mower from the list.",
       "invalid_pin": "Enter a 4-digit PIN code, or leave the field blank if no PIN is set."
     }
   },

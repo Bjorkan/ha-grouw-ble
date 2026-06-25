@@ -27,6 +27,11 @@ def _normalize_address(address: str) -> str:
     return address.strip().upper()
 
 
+def _is_valid_address(address: str) -> bool:
+    """Return true when the manual setup address is not blank."""
+    return bool(_normalize_address(address))
+
+
 def _is_supported_bluetooth_name(name: str) -> bool:
     """Return true for BLE local names used by supported mower apps/devices."""
     return name.startswith(SUPPORTED_LOCAL_NAME_PREFIXES)
@@ -165,14 +170,17 @@ class GrouwBleMowerConfigFlow(ConfigFlow, domain=DOMAIN):
 
         if user_input is not None:
             address = _normalize_address(user_input[CONF_ADDRESS])
-            await self.async_set_unique_id(address)
-            self._abort_if_unique_id_configured()
-            return await self.async_step_pin(
-                user_input={
-                    CONF_ADDRESS: address,
-                    CONF_NAME: user_input.get(CONF_NAME) or DEFAULT_NAME,
-                }
-            )
+            if not _is_valid_address(address):
+                errors[CONF_ADDRESS] = "invalid_address"
+            else:
+                await self.async_set_unique_id(address)
+                self._abort_if_unique_id_configured()
+                return await self.async_step_pin(
+                    user_input={
+                        CONF_ADDRESS: address,
+                        CONF_NAME: user_input.get(CONF_NAME) or DEFAULT_NAME,
+                    }
+                )
 
         current = bluetooth.async_discovered_service_info(self.hass, connectable=True)
         choices: list[selector.SelectOptionDict] = []

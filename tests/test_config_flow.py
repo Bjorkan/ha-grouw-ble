@@ -15,6 +15,7 @@ from homeassistant.data_entry_flow import FlowResultType
 from custom_components.grouw_ble_mower.config_flow import (
     _has_supported_service_uuid,
     _is_supported_bluetooth_name,
+    _is_valid_address,
     _is_valid_pin,
 )
 from custom_components.grouw_ble_mower.const import DAYE_PRIMARY_SERVICE_UUID, DOMAIN
@@ -35,6 +36,13 @@ def test_supported_service_uuid_includes_confirmed_hardware_gatt_service() -> No
     """The iPhone hardware scan confirmed the Daye primary GATT service."""
     assert _has_supported_service_uuid([DAYE_PRIMARY_SERVICE_UUID.upper()])
     assert not _has_supported_service_uuid(["0000180a-0000-1000-8000-00805f9b34fb"])
+
+
+def test_manual_address_validation_rejects_blank_values() -> None:
+    """Manual setup should not create config entries without a BLE address."""
+    assert _is_valid_address("AA:BB:CC:DD:EE:FF")
+    assert not _is_valid_address("")
+    assert not _is_valid_address("   ")
 
 
 def test_pin_validation_matches_daye_four_digit_pin_shape() -> None:

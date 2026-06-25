@@ -45,6 +45,7 @@ AGENTS.md                            Instructions for AI agents
   Discovery currently matches confirmed service UUID
   `49535343-fe7d-4ae5-8fa9-9fafd205e455` and Daye local-name strings
   `Robot Mower_DYM*`, `RobotMower_DYM*`, and `Robot_Mower*`.
+  Manual setup rejects blank addresses before asking for the mower PIN.
   The Daye app writes and subscribes to characteristic
   `49535343-1e4d-4bd9-ba61-23c647249616`.
 - Options flow: not exposed.

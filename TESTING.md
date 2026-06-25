@@ -125,6 +125,7 @@ Current tests cover:
 - coordinator poll cooldown after manual command
 - serialization of concurrent raw BLE payload requests
 - raw BLE payload action validation when no target mower can be resolved
+- manual config flow address validation rejects blank addresses
 - lawn mower activity mapping (mowing, returning, docked, paused, unknown station)
 - lawn mower start command refreshes state when station is unknown
 - compile-time coverage for Home Assistant exception imports and platform

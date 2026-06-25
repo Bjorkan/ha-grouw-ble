@@ -29,6 +29,7 @@
       "missing_data": "Konfigurationsdata saknas."
     },
     "error": {
+      "invalid_address": "Ange en Bluetooth-adress, eller välj en hittad klippare i listan.",
       "invalid_pin": "Ange en 4-siffrig PIN-kod, eller lämna fältet tomt om ingen PIN är inställd."
     }
   },

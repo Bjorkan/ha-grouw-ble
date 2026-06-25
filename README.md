@@ -9,7 +9,7 @@ This integration intentionally uses Home Assistant's Bluetooth manager to resolv
 - Bluetooth config flow discovery by confirmed Daye service UUID
   `49535343-fe7d-4ae5-8fa9-9fafd205e455` and local-name strings
   `Robot Mower_DYM*`, `RobotMower_DYM*`, and `Robot_Mower*`.
-- Manual setup by BLE address.
+- Manual setup by non-empty BLE address.
 - BLE connect through Home Assistant Bluetooth's `async_ble_device_from_address(..., connectable=True)`.
 - PIN entry during setup. A blank PIN is allowed for mowers without PIN; a
   configured PIN must be exactly four digits.
