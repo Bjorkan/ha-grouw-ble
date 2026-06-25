@@ -13,6 +13,7 @@ from homeassistant.helpers import selector
 
 from .const import (
     CONF_ADDRESS,
+    DAYE_SERVICE_UUIDS,
     DEFAULT_NAME,
     DOMAIN,
     SUPPORTED_LOCAL_NAME_PREFIXES,
@@ -26,6 +27,22 @@ def _normalize_address(address: str) -> str:
 def _is_supported_bluetooth_name(name: str) -> bool:
     """Return true for BLE local names used by supported mower apps/devices."""
     return name.startswith(SUPPORTED_LOCAL_NAME_PREFIXES)
+
+
+def _has_supported_service_uuid(service_uuids: list[str] | tuple[str, ...]) -> bool:
+    """Return true if a discovery includes a confirmed Daye mower service UUID."""
+    supported = {uuid.lower() for uuid in DAYE_SERVICE_UUIDS}
+    return any(uuid.lower() in supported for uuid in service_uuids)
+
+
+def _is_supported_bluetooth_service_info(
+    info: bluetooth.BluetoothServiceInfoBleak,
+) -> bool:
+    """Return true for supported Daye mower Bluetooth discoveries."""
+    name = info.name or info.local_name or ""
+    return _is_supported_bluetooth_name(name) or _has_supported_service_uuid(
+        tuple(info.service_uuids or ())
+    )
 
 
 class GrouwBleMowerConfigFlow(ConfigFlow, domain=DOMAIN):
@@ -104,7 +121,7 @@ class GrouwBleMowerConfigFlow(ConfigFlow, domain=DOMAIN):
         choices: list[selector.SelectOptionDict] = []
         for info in current:
             name = info.name or info.local_name or ""
-            if _is_supported_bluetooth_name(name):
+            if _is_supported_bluetooth_service_info(info):
                 choices.append(
                     selector.SelectOptionDict(
                         value=_normalize_address(info.address),

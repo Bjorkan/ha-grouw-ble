@@ -144,22 +144,21 @@ tests/test_services.py
 
 Use this checklist when testing against a real mower:
 
-1. Confirm Home Assistant discovers the mower by `RobotMower_DYM*` /
-   `Robot_Mower*` name or accepts its BLE address manually.
+1. Confirm Home Assistant discovers the mower by service UUID or by
+   `Robot Mower_DYM*` / `RobotMower_DYM*` / `Robot_Mower*` name.
 2. Confirm manual setup by BLE address works.
-3. Confirm whether `49535343-1E4D-4BD9-BA61-23C647249616` and
-   `49535343-fe7d-4ae5-8fa9-9fafd205e455` are the Daye GATT service and
-   characteristic UUIDs, and in which roles, before treating
-   `grouw_ble_mower.send_raw_json` results as protocol facts.
-4. Capture and redact the Daye app status-refresh write and notification
+3. Confirm characteristic properties for all `49535343...` characteristics.
+4. Confirm which characteristic the Daye app writes and which one it subscribes
+   to before treating `grouw_ble_mower.send_raw_json` results as protocol facts.
+5. Capture and redact the Daye app status-refresh write and notification
    payloads.
-5. Confirm battery, mode, error, docked, runtime, area, Wi-Fi, rain, LED, and
+6. Confirm battery, mode, error, docked, runtime, area, Wi-Fi, rain, LED, and
    ultrasonic field mappings only after the Daye status payload is known.
-6. Capture and confirm the Daye app payload for start mowing.
-7. Capture and confirm the Daye app payload for pause/stop.
-8. Capture and confirm the Daye app payload for dock/home.
-9. Confirm unavailable behavior when the mower sleeps or moves out of range.
-10. Update `README.md`, `DEVELOPMENT.md`, and `REVERSE_ENGINEERED.md` with
+7. Capture and confirm the Daye app payload for start mowing.
+8. Capture and confirm the Daye app payload for pause/stop.
+9. Capture and confirm the Daye app payload for dock/home.
+10. Confirm unavailable behavior when the mower sleeps or moves out of range.
+11. Update `README.md`, `DEVELOPMENT.md`, and `REVERSE_ENGINEERED.md` with
     validated facts and any remaining uncertainty.
 
 ## Useful Debug Logging

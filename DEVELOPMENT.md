@@ -42,9 +42,11 @@ AGENTS.md                            Instructions for AI agents
 - Integration type: local polling BLE custom component
 - Platforms: `lawn_mower`, `sensor`, `binary_sensor`
 - Config flow: supports Bluetooth discovery and manual BLE address entry.
-  Discovery currently matches Daye APK local-name strings `RobotMower_DYM*`
-  and `Robot_Mower*`. Do not add service UUID matches until service UUID roles
-  are confirmed from the Daye APK or real hardware captures.
+  Discovery currently matches confirmed service UUID
+  `49535343-fe7d-4ae5-8fa9-9fafd205e455` and Daye local-name strings
+  `Robot Mower_DYM*`, `RobotMower_DYM*`, and `Robot_Mower*`.
+  Do not set read/write/notify characteristic constants until characteristic
+  properties and Daye app usage are confirmed.
 - Options flow: not exposed while Daye command payloads are unconfirmed.
 - Coordinator: `GrouwMowerCoordinator`
 - BLE client: `GrouwBleMowerClient`

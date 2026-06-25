@@ -4,6 +4,14 @@
   "after_dependencies": ["bluetooth"],
   "bluetooth": [
     {
+      "service_uuid": "49535343-fe7d-4ae5-8fa9-9fafd205e455",
+      "connectable": true
+    },
+    {
+      "local_name": "Robot Mower_DYM*",
+      "connectable": true
+    },
+    {
       "local_name": "RobotMower_DYM*",
       "connectable": true
     },
