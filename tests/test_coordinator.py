@@ -2,12 +2,18 @@
 from __future__ import annotations
 
 import asyncio
+from datetime import datetime, timezone
 from typing import Any
+
+import pytest
 
 from custom_components.grouw_ble_mower.ble_client import GrouwBleError
 from custom_components.grouw_ble_mower.ble_protocol import MowerState
 from custom_components.grouw_ble_mower.const import CONF_ADDRESS
-from custom_components.grouw_ble_mower.coordinator import GrouwMowerCoordinator
+from custom_components.grouw_ble_mower.coordinator import (
+    GrouwMowerCoordinator,
+    UpdateFailed,
+)
 
 
 class _Entry:
@@ -21,8 +27,23 @@ class _Hass:
     pass
 
 
-def test_initial_poll_failure_returns_placeholder_state() -> None:
-    """Initial poll failure keeps setup loaded with placeholder data."""
+def test_initial_poll_cooldown_after_command() -> None:
+    """Poll is skipped when a manual command happened recently."""
+    async def run() -> None:
+        coordinator = GrouwMowerCoordinator(
+            _Hass(), _Entry(), "AA:BB:CC:DD:EE:FF", "Test mower"
+        )
+        coordinator._last_command_time = datetime.now(timezone.utc)
+
+        from custom_components.grouw_ble_mower.coordinator import UpdateFailed
+        with pytest.raises(UpdateFailed, match="cooldown"):
+            await coordinator._async_update_data()
+
+    asyncio.run(run())
+
+
+def test_initial_poll_failure_raises_update_failed() -> None:
+    """Initial poll failure raises UpdateFailed and does not return placeholder state."""
     async def run() -> None:
         coordinator = GrouwMowerCoordinator(
             _Hass(), _Entry(), "AA:BB:CC:DD:EE:FF", "Test mower"
@@ -33,11 +54,8 @@ def test_initial_poll_failure_returns_placeholder_state() -> None:
                 raise GrouwBleError("not reachable")
 
         coordinator.client = Client()
-        state = await coordinator._async_update_data()
-
-        assert state.address == "AA:BB:CC:DD:EE:FF"
-        assert state.name == "Test mower"
-        assert state.power is None
+        with pytest.raises(UpdateFailed, match="not reachable"):
+            await coordinator._async_update_data()
 
     asyncio.run(run())
 

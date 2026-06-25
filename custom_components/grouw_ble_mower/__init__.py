@@ -47,7 +47,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     )
     hass.data[DOMAIN][entry.entry_id] = coordinator
 
-    await coordinator.async_config_entry_first_refresh()
+    try:
+        await coordinator.async_config_entry_first_refresh()
+    except Exception:
+        _LOGGER.debug("Initial BLE refresh failed, continuing with unavailable entities")
+        coordinator.data = None
+        coordinator.last_update_success = False
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 

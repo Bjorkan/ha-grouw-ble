@@ -36,4 +36,9 @@ class GrouwMowerEntity(CoordinatorEntity[GrouwMowerCoordinator]):
 
     @property
     def available(self) -> bool:
-        return self.coordinator.last_update_success and self.coordinator.data is not None
+        data = self.coordinator.data
+        return (
+            self.coordinator.last_update_success
+            and data is not None
+            and data.last_seen is not None
+        )
