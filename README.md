@@ -1,3 +1,7 @@
+<p align="left">
+  <img src="custom_components/grouw_ble_mower/brand/logo.png" alt="Grouw logo" width="200"/>
+</p>
+
 # Grouw BLE Mower for Home Assistant
 
 Custom integration for Grouw BLE lawn mowers.
