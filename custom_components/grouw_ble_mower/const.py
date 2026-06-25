@@ -1,0 +1,50 @@
+"""Constants for the Grouw BLE Mower integration."""
+from __future__ import annotations
+
+from datetime import timedelta
+
+DOMAIN = "grouw_ble_mower"
+
+SERVICE_UUID = "0000fff0-0000-1000-8000-00805f9b34fb"
+READ_CHARACTERISTIC_UUID = "0000fff1-0000-1000-8000-00805f9b34fb"
+WRITE_CHARACTERISTIC_UUID = "0000fff2-0000-1000-8000-00805f9b34fb"
+
+DEFAULT_NAME = "Grouw BLE Mower"
+DEFAULT_UPDATE_INTERVAL = timedelta(seconds=60)
+DEFAULT_BLE_TIMEOUT = 15.0
+DEFAULT_CHUNK_DELAY = 0.03
+
+CONF_ADDRESS = "address"
+CONF_START_MODE = "start_mode"
+CONF_PAUSE_MODE = "pause_mode"
+CONF_DOCK_MODE = "dock_mode"
+CONF_TRIM_MODE = "trim_mode"
+CONF_START_POINT_MODE = "start_point_mode"
+
+# Work modes found in the decompiled Android app's DeviceVM.sendWorkCmd().
+MODE_IDLE = 0
+MODE_WORK = 1
+MODE_HOME = 2
+MODE_ERROR = 4
+MODE_TRIM = 4
+MODE_START_POINT = 5
+
+DEFAULT_START_MODE = MODE_WORK
+DEFAULT_PAUSE_MODE = MODE_IDLE
+DEFAULT_DOCK_MODE = MODE_HOME
+DEFAULT_TRIM_MODE = MODE_TRIM
+DEFAULT_START_POINT_MODE = MODE_START_POINT
+
+CMD_REQUEST_ALL_INFO = 200
+CMD_SET_MODE = 0
+
+# Notification/response cmd values parsed by the Android app.
+RESP_ACK = 400
+RESP_ALL_INFO = 500
+RESP_WORK_STATUS = 501
+RESP_MACHINE_STATUS = 201
+RESP_STOP_RESULT = 10100
+RESP_WORK_RESULT = 10101
+RESP_HOME_RESULT = 10102
+
+SERVICE_SEND_RAW_JSON = "send_raw_json"

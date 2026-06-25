@@ -1,0 +1,63 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Grouw BLE Mower",
+        "description": "Add a mower by Bluetooth address. If it was discovered by Home Assistant, select it from the list.",
+        "data": {
+          "address": "Bluetooth address",
+          "name": "Name",
+          "start_mode": "Start mowing mode code",
+          "pause_mode": "Pause/stop mode code",
+          "dock_mode": "Return-to-dock mode code"
+        }
+      },
+      "bluetooth_confirm": {
+        "title": "Add {name}",
+        "description": "Found {name} at {address}.",
+        "data": {
+          "name": "Name"
+        }
+      }
+    },
+    "abort": {
+      "already_configured": "This mower is already configured."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Grouw BLE Mower options",
+        "description": "Mode codes are based on the Android app: 0 idle/stop, 1 work, 2 return home. Change only if testing shows your mower uses different codes.",
+        "data": {
+          "start_mode": "Start mowing mode code",
+          "pause_mode": "Pause/stop mode code",
+          "dock_mode": "Return-to-dock mode code"
+        }
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "battery": { "name": "Battery" },
+      "mode": { "name": "Mode code" },
+      "error_type": { "name": "Error code" },
+      "wifi_level": { "name": "Wi-Fi level" },
+      "rain_delay_left": { "name": "Rain delay left" },
+      "rain_delay_set": { "name": "Rain delay setting" },
+      "current_runtime": { "name": "Current runtime" },
+      "last_runtime": { "name": "Last runtime" },
+      "total_runtime": { "name": "Total runtime" },
+      "current_area": { "name": "Current area" },
+      "last_area": { "name": "Last area" },
+      "last_response_cmd": { "name": "Last response command" }
+    },
+    "binary_sensor": {
+      "docked": { "name": "Docked" },
+      "rain_enabled": { "name": "Rain sensor enabled" },
+      "led_enabled": { "name": "LED enabled" },
+      "ultrasonic_enabled": { "name": "Ultrasonic enabled" },
+      "last_command_result": { "name": "Last command successful" }
+    }
+  }
+}

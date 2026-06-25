@@ -1,0 +1,22 @@
+{
+  "domain": "grouw_ble_mower",
+  "name": "Grouw BLE Mower",
+  "bluetooth": [
+    {
+      "service_uuid": "0000fff0-0000-1000-8000-00805f9b34fb",
+      "connectable": true
+    },
+    {
+      "local_name": "Mower_*",
+      "connectable": true
+    }
+  ],
+  "codeowners": [],
+  "config_flow": true,
+  "dependencies": ["bluetooth_adapters"],
+  "after_dependencies": ["bluetooth"],
+  "documentation": "https://github.com/custom-components/grouw_ble_mower",
+  "iot_class": "local_polling",
+  "requirements": ["bleak-retry-connector>=3.10.0"],
+  "version": "0.1.0"
+}

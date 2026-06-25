@@ -1,0 +1,18 @@
+send_raw_json:
+  name: Send raw BLE JSON
+  description: Send an experimental raw JSON command to the mower over Home Assistant Bluetooth.
+  fields:
+    payload:
+      required: true
+      example: '{"cmd": 200}'
+      selector:
+        object:
+    address:
+      required: false
+      example: 'AA:BB:CC:DD:EE:FF'
+      selector:
+        text:
+    entry_id:
+      required: false
+      selector:
+        text:

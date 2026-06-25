@@ -1,0 +1,10 @@
+APK/
+*.apk
+APK/apktool_out/
+APK/jadx_out/
+APK/smali/
+APK/smali_classes*/
+*.smali
+.pytest_cache/
+__pycache__/
+*.py[cod]
