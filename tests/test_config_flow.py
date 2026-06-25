@@ -8,6 +8,7 @@ import pytest
 pytest.importorskip("pytest_homeassistant_custom_component")
 
 from homeassistant import config_entries
+from homeassistant.components import bluetooth
 from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResultType
 
@@ -16,8 +17,9 @@ from custom_components.grouw_ble_mower.const import DOMAIN
 
 async def test_user_form(hass: HomeAssistant, mock_bluetooth_adapters: None) -> None:
     """Test that the config flow user form can be shown."""
-    with patch(
-        "homeassistant.components.bluetooth.async_discovered_service_info",
+    with patch.object(
+        bluetooth,
+        "async_discovered_service_info",
         return_value=[],
     ):
         result = await hass.config_entries.flow.async_init(

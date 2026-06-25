@@ -7,8 +7,9 @@ from typing import Any
 import voluptuous as vol
 
 from homeassistant.components import bluetooth
-from homeassistant.config_entries import ConfigFlow, ConfigFlowResult, OptionsFlow
+from homeassistant.config_entries import ConfigFlow, OptionsFlow
 from homeassistant.const import CONF_NAME
+from homeassistant.data_entry_flow import FlowResult
 from homeassistant.helpers import selector
 
 from .const import (
@@ -41,7 +42,7 @@ class GrouwBleMowerConfigFlow(ConfigFlow, domain=DOMAIN):
 
     async def async_step_bluetooth(
         self, discovery_info: bluetooth.BluetoothServiceInfoBleak
-    ) -> ConfigFlowResult:
+    ) -> FlowResult:
         """Handle Bluetooth discovery."""
         self._discovery_info = discovery_info
         await self.async_set_unique_id(_normalize_address(discovery_info.address))
@@ -53,7 +54,7 @@ class GrouwBleMowerConfigFlow(ConfigFlow, domain=DOMAIN):
 
     async def async_step_bluetooth_confirm(
         self, user_input: dict[str, Any] | None = None
-    ) -> ConfigFlowResult:
+    ) -> FlowResult:
         """Confirm a Bluetooth-discovered device."""
         assert self._discovery_info is not None
         if user_input is not None:
@@ -79,7 +80,7 @@ class GrouwBleMowerConfigFlow(ConfigFlow, domain=DOMAIN):
 
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
-    ) -> ConfigFlowResult:
+    ) -> FlowResult:
         """Handle manual setup."""
         errors: dict[str, str] = {}
 
@@ -146,7 +147,7 @@ class GrouwBleMowerOptionsFlow(OptionsFlow):
 
     async def async_step_init(
         self, user_input: dict[str, Any] | None = None
-    ) -> ConfigFlowResult:
+    ) -> FlowResult:
         """Manage options."""
         if user_input is not None:
             return self.async_create_entry(title="", data=user_input)
