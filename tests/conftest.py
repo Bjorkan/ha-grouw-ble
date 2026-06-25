@@ -42,6 +42,27 @@ def _install_lightweight_stubs() -> None:
     components.bluetooth = bluetooth
     bluetooth.async_ble_device_from_address = lambda *args, **kwargs: None
 
+    lawn_mower = _install_module("homeassistant.components.lawn_mower")
+    components.lawn_mower = lawn_mower
+
+    class _LawnMowerActivity:
+        MOWING = "mowing"
+        PAUSED = "paused"
+        DOCKED = "docked"
+        RETURNING = "returning"
+
+    class _LawnMowerEntityFeature:
+        START_MOWING = 1
+        PAUSE = 2
+        DOCK = 4
+
+    class _LawnMowerEntity:
+        """Minimal LawnMowerEntity stub."""
+
+    lawn_mower.LawnMowerActivity = _LawnMowerActivity
+    lawn_mower.LawnMowerEntity = _LawnMowerEntity
+    lawn_mower.LawnMowerEntityFeature = _LawnMowerEntityFeature
+
     config_entries = _install_module("homeassistant.config_entries")
 
     class ConfigEntry:
@@ -90,6 +111,14 @@ def _install_lightweight_stubs() -> None:
     helpers.config_validation = config_validation
     config_validation.string = str
 
+    entity_platform = _install_module("homeassistant.helpers.entity_platform")
+    helpers.entity_platform = entity_platform
+
+    def _add_entities_callback(*args: Any, **kwargs: Any) -> Any:
+        return None
+
+    entity_platform.AddEntitiesCallback = _add_entities_callback
+
     update_coordinator = _install_module("homeassistant.helpers.update_coordinator")
 
     class UpdateFailed(Exception):
@@ -98,7 +127,7 @@ def _install_lightweight_stubs() -> None:
     class DataUpdateCoordinator:
         """Small subset of Home Assistant's DataUpdateCoordinator."""
 
-        def __class_getitem__(cls, item: Any) -> type["DataUpdateCoordinator"]:
+        def __class_getitem__(cls, item: Any) -> type:
             return cls
 
         def __init__(
@@ -133,6 +162,41 @@ def _install_lightweight_stubs() -> None:
 
     update_coordinator.DataUpdateCoordinator = DataUpdateCoordinator
     update_coordinator.UpdateFailed = UpdateFailed
+
+    device_registry = _install_module("homeassistant.helpers.device_registry")
+    helpers.device_registry = device_registry
+    device_registry.CONNECTION_BLUETOOTH = "bluetooth"
+
+    entity = _install_module("homeassistant.helpers.entity")
+    helpers.entity = entity
+
+    class DeviceInfo(dict):
+        """Minimal DeviceInfo stub."""
+
+    entity.DeviceInfo = DeviceInfo
+
+    class CoordinatorEntity:
+        """Minimal CoordinatorEntity stub."""
+
+        def __class_getitem__(cls, item: Any) -> type:
+            return cls
+
+        def __init__(self, coordinator: Any) -> None:
+            self.coordinator = coordinator
+            self.entity_description: Any = None
+            self._attr_has_entity_name = True
+            self._attr_name: str | None = None
+            self._attr_unique_id: str | None = None
+
+        @property
+        def available(self) -> bool:
+            return True
+
+        @property
+        def device_info(self) -> DeviceInfo:
+            return DeviceInfo()
+
+    update_coordinator.CoordinatorEntity = CoordinatorEntity
 
     bleak = _install_module("bleak")
 

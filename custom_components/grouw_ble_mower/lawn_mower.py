@@ -8,6 +8,7 @@ from homeassistant.components.lawn_mower import (
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import DAYE_MODE_MOWING, DAYE_MODE_RETURNING, DAYE_MODE_STOPPED
@@ -51,7 +52,11 @@ class GrouwBleLawnMower(GrouwMowerEntity, LawnMowerEntity):
         if data.mode == DAYE_MODE_RETURNING:
             return LawnMowerActivity.RETURNING
         if data.mode == DAYE_MODE_STOPPED:
-            return LawnMowerActivity.DOCKED
+            if data.station is True:
+                return LawnMowerActivity.DOCKED
+            if data.station is False:
+                return LawnMowerActivity.PAUSED
+            return None
         return None
 
     @property
@@ -62,7 +67,17 @@ class GrouwBleLawnMower(GrouwMowerEntity, LawnMowerEntity):
     async def async_start_mowing(self) -> None:
         """Start mowing."""
         data = self.coordinator.data
-        command = "start" if data and data.station is True else "resume"
+        if data is None or data.station is None:
+            await self.coordinator.async_request_refresh()
+            data = self.coordinator.data
+
+        if data is None or data.station is None:
+            raise HomeAssistantError(
+                "Cannot determine mower station state before starting. "
+                "Ensure the mower is reachable, then try again."
+            )
+
+        command = "start" if data.station is True else "resume"
         await self.coordinator.async_send_command(command)
 
     async def async_pause(self) -> None:
