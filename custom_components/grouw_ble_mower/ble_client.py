@@ -9,7 +9,6 @@ from typing import Any
 from bleak import BleakClient, BleakError
 from bleak_retry_connector import establish_connection
 
-from homeassistant.components import bluetooth
 from homeassistant.core import HomeAssistant
 
 from .ble_protocol import encode_json_frame, extract_payloads, parse_payload
@@ -65,6 +64,8 @@ class GrouwBleMowerClient:
         timeout: float = DEFAULT_BLE_TIMEOUT,
     ) -> dict[str, Any]:
         """Send a framed JSON payload and wait for a matching JSON response."""
+        from homeassistant.components import bluetooth
+
         ble_device = bluetooth.async_ble_device_from_address(
             self.hass, self.address, connectable=True
         )

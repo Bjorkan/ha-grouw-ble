@@ -1,3 +1,4 @@
 pytest
 pytest-homeassistant-custom-component
+aiousbwatcher
 bleak-retry-connector>=3.10.0

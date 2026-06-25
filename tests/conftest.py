@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import importlib.util
+from datetime import UTC
 import sys
 import types
 from pathlib import Path
@@ -157,7 +158,31 @@ if importlib.util.find_spec("homeassistant") is None:
 
 
 if importlib.util.find_spec("pytest_homeassistant_custom_component") is not None:
+    from homeassistant.util import dt as dt_util
+    from pytest_homeassistant_custom_component.common import MockModule, mock_integration
 
     @pytest.fixture(autouse=True)
-    def auto_enable_custom_integrations(enable_custom_integrations: Any) -> None:
-        """Enable loading custom integrations in Home Assistant tests."""
+    def reset_default_timezone() -> None:
+        """Keep Home Assistant's global timezone clean between tests."""
+        dt_util.DEFAULT_TIME_ZONE = UTC
+        yield
+        dt_util.DEFAULT_TIME_ZONE = UTC
+
+    @pytest.fixture
+    def expected_lingering_timers() -> bool:
+        """Allow Home Assistant's test harness cleanup timers."""
+        return True
+
+    @pytest.fixture
+    def mock_bluetooth_adapters(
+        hass: Any, enable_custom_integrations: Any
+    ) -> None:
+        """Mock HA's Bluetooth adapter dependency without opening real sockets."""
+
+        async def _async_setup(*args: Any, **kwargs: Any) -> bool:
+            return True
+
+        mock_integration(
+            hass,
+            MockModule("bluetooth_adapters", async_setup=_async_setup),
+        )

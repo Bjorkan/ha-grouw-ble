@@ -31,6 +31,19 @@ rm -rf .pytest_cache
 
 The `-p no:cacheprovider` flag keeps pytest from creating `.pytest_cache`.
 
+When Docker and `act` are available, reproduce the GitHub Actions test workflow
+with:
+
+```bash
+act -j tests -P ubuntu-latest=catthehacker/ubuntu:act-latest
+act -j validate -P ubuntu-latest=catthehacker/ubuntu:act-latest
+```
+
+That path installs the full `requirements-test.txt` environment, including
+Home Assistant's test helpers and Bluetooth import dependencies such as
+`aiousbwatcher`. Tests mock Home Assistant's `bluetooth_adapters` dependency so
+CI never tries to open a real Bluetooth socket.
+
 ## GitHub Actions
 
 This repository runs validation on both `push` and `pull_request`:
