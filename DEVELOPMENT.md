@@ -4,7 +4,7 @@ Durable development notes for this repository. Keep this file up to date when
 implementation details, Home Assistant conventions, or architecture decisions
 change.
 
-Last updated: 2026-06-25 (fixes for issues #1-#8)
+Last updated: 2026-06-25 (Daye APK/DYM protocol alignment)
 
 ## Authoritative References
 
@@ -15,9 +15,9 @@ Last updated: 2026-06-25 (fixes for issues #1-#8)
 - Daye Power robotic mower app:
   https://play.google.com/store/apps/details?id=com.dayepower.dayeappleaf
 
-Local APK/decompiler folders such as `APK/` or
-`/var/home/jesper/Projekt/grouw-mower-apk/` are intentionally not part of the
-git repo. Summarize durable findings here instead of relying on those paths.
+Store APK files and decompiler output in `APK/` (gitignored). These local-only
+inputs are for reverse-engineering only. Summarize durable findings here
+instead of relying on those paths.
 
 Official APK files, extracted APK trees, and decompiled files must never be
 upstreamed. They are local-only reverse-engineering inputs.
@@ -32,7 +32,7 @@ requirements-test.txt                GitHub Actions test dependencies
 README.md                            User-facing setup and protocol notes
 DEVELOPMENT.md                       Development and HA integration notes
 TESTING.md                           Test strategy and commands
-REVERSE_ENGINEERED.md                BLE protocol findings
+reverse_engineered/                  BLE protocol findings (per-topic files)
 AGENTS.md                            Instructions for AI agents
 ```
 
@@ -68,8 +68,23 @@ AGENTS.md                            Instructions for AI agents
   is False, so entities load as unavailable. On BLE failure the coordinator
   raises UpdateFailed instead of returning placeholder data.
 - Each BLE transaction sends the captured Daye session/auth prelude before the
-  requested status or command payload. Keep this unless hardware testing proves
-  the mower no longer needs PIN/session setup after reconnect.
+  requested status or command payload, then waits for the captured auth response
+  command byte `0x8c`. Keep this unless hardware testing proves the mower no
+  longer needs PIN/session setup after reconnect.
+- Configured PIN handling follows the APK-observed query/compare shape: the
+  config flow accepts blank or exactly four decimal digits, and the BLE client
+  compares the configured PIN with `mower_pin` parsed from bytes 4-7 of a DYM
+  `0x8c` response only when those bytes look like numeric digit bytes. The
+  captured DYM auth query does not include the typed PIN in its write payload.
+- The active integration uses the HCI-confirmed DYM payloads on the wire.
+  BlueKey commands are documented under `reverse_engineered/` from Dart AOT
+  analysis but are not used for normal polling or controls until a hardware
+  capture confirms when/how those 48-value payloads are written.
+- Expose only fields decoded from HCI-confirmed DYM status notifications as
+  entities. Current extra entities are: battery percentage, raw mode code, last
+  response command, and docked state. Do not re-add rain, Wi-Fi, runtime, LED,
+  ultrasonic, error-memory, or command-result entities until their response
+  bytes are confirmed from the Daye APK plus redacted hardware captures.
 - BLE communication is serialized per mower with an `asyncio.Lock`; do not
   remove this without a real concurrency-safe replacement.
 - Config entry unloading must continue to work. Clean up services and callbacks
@@ -105,8 +120,10 @@ AGENTS.md                            Instructions for AI agents
 - Every BLE transaction is logged with a per-request transaction ID, phase
   labels (connect, start_notify, session_start write, auth_query write, command
   write, follow-up write), notification hex values, and the selected response.
-- The notification queue is drained after the auth prelude to prevent stale
-  status notifications from being returned as command responses.
+- The notification queue is drained after the `0x8c` auth response to prevent
+  stale notifications from being returned as command responses.
+- PIN/auth responses are redacted before being stored in coordinator state or
+  written to normal debug/service logs.
 - BLE errors are classified into GrouwBleConnectionError (connect timeout),
   GrouwBleGattError (GATT write/notify failure), and GrouwBleTimeout
   (notification timeout) for clearer logging and troubleshooting.
@@ -119,7 +136,7 @@ Update all applicable files:
 README.md
 DEVELOPMENT.md
 TESTING.md
-REVERSE_ENGINEERED.md
+reverse_engineered/
 custom_components/grouw_ble_mower/services.yaml
 custom_components/grouw_ble_mower/strings.json
 custom_components/grouw_ble_mower/translations/sv.json

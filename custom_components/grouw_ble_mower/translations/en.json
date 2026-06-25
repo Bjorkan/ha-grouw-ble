@@ -15,33 +15,31 @@
         "data": {
           "name": "Name"
         }
+      },
+      "pin": {
+        "title": "Enter PIN code",
+        "description": "Enter the 4-digit PIN code shown on the mower's display. Leave blank if no PIN is set.",
+        "data": {
+          "pin": "PIN code"
+        }
       }
     },
     "abort": {
-      "already_configured": "This mower is already configured."
+      "already_configured": "This mower is already configured.",
+      "missing_data": "Missing configuration data."
+    },
+    "error": {
+      "invalid_pin": "Enter a 4-digit PIN code, or leave the field blank if no PIN is set."
     }
   },
   "entity": {
     "sensor": {
       "battery": { "name": "Battery" },
       "mode": { "name": "Mode code" },
-      "error_type": { "name": "Error code" },
-      "wifi_level": { "name": "Wi-Fi level" },
-      "rain_delay_left": { "name": "Rain delay left" },
-      "rain_delay_set": { "name": "Rain delay setting" },
-      "current_runtime": { "name": "Current runtime" },
-      "last_runtime": { "name": "Last runtime" },
-      "total_runtime": { "name": "Total runtime" },
-      "current_area": { "name": "Current area" },
-      "last_area": { "name": "Last area" },
       "last_response_cmd": { "name": "Last response command" }
     },
     "binary_sensor": {
-      "docked": { "name": "Docked" },
-      "rain_enabled": { "name": "Rain sensor enabled" },
-      "led_enabled": { "name": "LED enabled" },
-      "ultrasonic_enabled": { "name": "Ultrasonic enabled" },
-      "last_command_result": { "name": "Last command successful" }
+      "docked": { "name": "Docked" }
     }
   }
 }

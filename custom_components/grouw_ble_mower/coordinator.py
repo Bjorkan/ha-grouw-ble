@@ -34,6 +34,7 @@ class GrouwMowerCoordinator(DataUpdateCoordinator[MowerState]):
         config_entry: ConfigEntry,
         address: str,
         name: str | None,
+        pin: str = "",
     ) -> None:
         super().__init__(
             hass,
@@ -44,7 +45,8 @@ class GrouwMowerCoordinator(DataUpdateCoordinator[MowerState]):
         self.config_entry = config_entry
         self.address = address.upper()
         self.device_name = name or DEFAULT_NAME
-        self.client = GrouwBleMowerClient(hass, self.address, self.device_name)
+        self.pin = pin
+        self.client = GrouwBleMowerClient(hass, self.address, self.device_name, pin)
         self._last_state: MowerState | None = None
         self._ble_lock = asyncio.Lock()
         self._last_command_time: datetime | None = None
@@ -76,8 +78,15 @@ class GrouwMowerCoordinator(DataUpdateCoordinator[MowerState]):
                     return self._last_state
                 raise UpdateFailed("No data yet and poll deferred for failure backoff")
 
+        if self._ble_lock.locked():
+            _LOGGER.debug("[%s] skipping poll: BLE transaction already active", self.address)
+            if self._last_state is not None:
+                return self._last_state
+            raise UpdateFailed("No data yet and poll deferred for active BLE transaction")
+
         try:
             async with self._ble_lock:
+                _LOGGER.debug("[%s] BLE lock acquired for poll", self.address)
                 message = await self.client.async_get_all_info()
         except GrouwBleError as err:
             self._last_failure_time = now
@@ -92,7 +101,16 @@ class GrouwMowerCoordinator(DataUpdateCoordinator[MowerState]):
         """Send a mower command and refresh state."""
         self._last_command_time = datetime.now(timezone.utc)
         try:
+            if self._ble_lock.locked():
+                _LOGGER.debug(
+                    "[%s] command %s waiting for active BLE transaction",
+                    self.address, command
+                )
             async with self._ble_lock:
+                _LOGGER.debug(
+                    "[%s] BLE lock acquired for command %s",
+                    self.address, command
+                )
                 message = await self.client.async_command(command)
         except GrouwBleError as err:
             self._last_failure_time = datetime.now(timezone.utc)
@@ -107,7 +125,13 @@ class GrouwMowerCoordinator(DataUpdateCoordinator[MowerState]):
         """Send a raw BLE payload for protocol validation."""
         self._last_command_time = datetime.now(timezone.utc)
         try:
+            if self._ble_lock.locked():
+                _LOGGER.debug(
+                    "[%s] raw BLE payload waiting for active BLE transaction",
+                    self.address
+                )
             async with self._ble_lock:
+                _LOGGER.debug("[%s] BLE lock acquired for raw BLE payload", self.address)
                 message = await self.client.async_send_raw_json(payload)
         except GrouwBleError as err:
             self._last_failure_time = datetime.now(timezone.utc)

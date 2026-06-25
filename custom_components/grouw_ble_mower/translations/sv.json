@@ -15,33 +15,31 @@
         "data": {
           "name": "Namn"
         }
+      },
+      "pin": {
+        "title": "Ange PIN-kod",
+        "description": "Ange den 4-siffriga PIN-koden som visas på klipparens display. Lämna tomt om ingen PIN är inställd.",
+        "data": {
+          "pin": "PIN-kod"
+        }
       }
     },
     "abort": {
-      "already_configured": "Den här klipparen är redan konfigurerad."
+      "already_configured": "Den här klipparen är redan konfigurerad.",
+      "missing_data": "Konfigurationsdata saknas."
+    },
+    "error": {
+      "invalid_pin": "Ange en 4-siffrig PIN-kod, eller lämna fältet tomt om ingen PIN är inställd."
     }
   },
   "entity": {
     "sensor": {
       "battery": { "name": "Batteri" },
       "mode": { "name": "Lägeskod" },
-      "error_type": { "name": "Felkod" },
-      "wifi_level": { "name": "Wi-Fi-nivå" },
-      "rain_delay_left": { "name": "Regnfördröjning kvar" },
-      "rain_delay_set": { "name": "Regnfördröjning inställning" },
-      "current_runtime": { "name": "Nuvarande körtid" },
-      "last_runtime": { "name": "Senaste körtid" },
-      "total_runtime": { "name": "Total körtid" },
-      "current_area": { "name": "Nuvarande yta" },
-      "last_area": { "name": "Senaste yta" },
       "last_response_cmd": { "name": "Senaste svarskommando" }
     },
     "binary_sensor": {
-      "docked": { "name": "Dockad" },
-      "rain_enabled": { "name": "Regnsensor aktiverad" },
-      "led_enabled": { "name": "LED aktiverad" },
-      "ultrasonic_enabled": { "name": "Ultraljud aktiverat" },
-      "last_command_result": { "name": "Senaste kommando lyckades" }
+      "docked": { "name": "Dockad" }
     }
   }
 }

@@ -19,6 +19,7 @@ async def async_get_config_entry_diagnostics(
     if data is not None:
         data.pop("address", None)
         data.pop("serial", None)
+        data.pop("raw", None)
     return {
         "entry": {
             "title": entry.title,

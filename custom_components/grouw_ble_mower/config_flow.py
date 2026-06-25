@@ -13,11 +13,14 @@ from homeassistant.helpers import selector
 
 from .const import (
     CONF_ADDRESS,
+    CONF_PIN,
     DAYE_SERVICE_UUIDS,
     DEFAULT_NAME,
     DOMAIN,
     SUPPORTED_LOCAL_NAME_PREFIXES,
 )
+
+PIN_LENGTH = 4
 
 
 def _normalize_address(address: str) -> str:
@@ -27,6 +30,11 @@ def _normalize_address(address: str) -> str:
 def _is_supported_bluetooth_name(name: str) -> bool:
     """Return true for BLE local names used by supported mower apps/devices."""
     return name.startswith(SUPPORTED_LOCAL_NAME_PREFIXES)
+
+
+def _is_valid_pin(pin: str) -> bool:
+    """Return true for a blank PIN or the Daye app's 4-digit PIN shape."""
+    return pin == "" or (len(pin) == PIN_LENGTH and pin.isdecimal())
 
 
 def _has_supported_service_uuid(service_uuids: list[str] | tuple[str, ...]) -> bool:
@@ -77,12 +85,12 @@ class GrouwBleMowerConfigFlow(ConfigFlow, domain=DOMAIN):
                 or self._discovery_info.local_name
                 or DEFAULT_NAME
             )
-            return self.async_create_entry(
-                title=user_input.get(CONF_NAME) or name,
-                data={
+            self._discovery_info = None
+            return await self.async_step_pin(
+                user_input={
                     CONF_ADDRESS: address,
                     CONF_NAME: user_input.get(CONF_NAME) or name,
-                },
+                }
             )
 
         name = (
@@ -99,6 +107,56 @@ class GrouwBleMowerConfigFlow(ConfigFlow, domain=DOMAIN):
             },
         )
 
+    async def async_step_pin(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Ask for the mower PIN code."""
+        if user_input is not None:
+            if CONF_ADDRESS in user_input:
+                self.context["pin_data"] = {
+                    CONF_ADDRESS: user_input[CONF_ADDRESS],
+                    CONF_NAME: user_input.get(CONF_NAME, DEFAULT_NAME),
+                }
+                return self.async_show_form(
+                    step_id="pin",
+                    data_schema=vol.Schema(
+                        {
+                            vol.Required(CONF_PIN, default=""): str,
+                        }
+                    ),
+                    description_placeholders={
+                        "name": user_input.get(CONF_NAME, DEFAULT_NAME),
+                    },
+                )
+
+            pin = user_input.get(CONF_PIN, "").strip()
+            pin_data = self.context.get("pin_data", {})
+            if not pin_data:
+                return self.async_abort(reason="missing_data")
+            if not _is_valid_pin(pin):
+                return self.async_show_form(
+                    step_id="pin",
+                    data_schema=vol.Schema(
+                        {
+                            vol.Required(CONF_PIN, default=pin): str,
+                        }
+                    ),
+                    errors={CONF_PIN: "invalid_pin"},
+                    description_placeholders={
+                        "name": pin_data.get(CONF_NAME, DEFAULT_NAME),
+                    },
+                )
+            return self.async_create_entry(
+                title=pin_data.get(CONF_NAME, DEFAULT_NAME),
+                data={
+                    CONF_ADDRESS: pin_data[CONF_ADDRESS],
+                    CONF_NAME: pin_data.get(CONF_NAME, DEFAULT_NAME),
+                    CONF_PIN: pin,
+                },
+            )
+
+        return self.async_abort(reason="missing_data")
+
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
@@ -109,12 +167,11 @@ class GrouwBleMowerConfigFlow(ConfigFlow, domain=DOMAIN):
             address = _normalize_address(user_input[CONF_ADDRESS])
             await self.async_set_unique_id(address)
             self._abort_if_unique_id_configured()
-            return self.async_create_entry(
-                title=user_input.get(CONF_NAME) or DEFAULT_NAME,
-                data={
+            return await self.async_step_pin(
+                user_input={
                     CONF_ADDRESS: address,
                     CONF_NAME: user_input.get(CONF_NAME) or DEFAULT_NAME,
-                },
+                }
             )
 
         current = bluetooth.async_discovered_service_info(self.hass, connectable=True)

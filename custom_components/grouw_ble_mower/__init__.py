@@ -15,7 +15,8 @@ from homeassistant.exceptions import (
 )
 from homeassistant.helpers import config_validation as cv
 
-from .const import CONF_ADDRESS, DEFAULT_NAME, DOMAIN, SERVICE_SEND_RAW_JSON
+from .ble_protocol import redact_daye_message
+from .const import CONF_ADDRESS, CONF_PIN, DEFAULT_NAME, DOMAIN, SERVICE_SEND_RAW_JSON
 from .coordinator import GrouwMowerCoordinator
 
 _LOGGER = logging.getLogger(__name__)
@@ -44,6 +45,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         entry,
         entry.data[CONF_ADDRESS],
         entry.data.get(CONF_NAME, DEFAULT_NAME),
+        entry.data.get(CONF_PIN, ""),
     )
     hass.data[DOMAIN][entry.entry_id] = coordinator
 
@@ -108,7 +110,11 @@ def _async_register_services(hass: HomeAssistant) -> None:
             )
 
         result = await coordinator.async_send_raw_json(payload)
-        _LOGGER.info("Raw BLE response from %s: %s", coordinator.address, result)
+        _LOGGER.info(
+            "Raw BLE response from %s: %s",
+            coordinator.address,
+            redact_daye_message(result),
+        )
 
     hass.services.async_register(
         DOMAIN,

@@ -14,7 +14,7 @@ def _make_state(mode: int | None, station: bool | None) -> MowerState:
     return MowerState(
         address="AA:BB:CC:DD:EE:FF",
         name="Test mower",
-        power=80,
+        battery_level=80,
         mode=mode,
         station=station,
     )

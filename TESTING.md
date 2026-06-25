@@ -2,7 +2,7 @@
 
 Testing notes for the Grouw / Daye BLE Mower Home Assistant custom integration.
 
-Last updated: 2026-06-25 (updated for issues #1-#8 fixes)
+Last updated: 2026-06-25 (Daye APK/DYM protocol alignment)
 
 ## Current Local Test Environment
 
@@ -108,12 +108,17 @@ coordinator unit tests still run against stubs.
 
 Current tests cover:
 
-- BLE JSON frame encoding
-- chunked BLE notification reassembly
-- checksum rejection and resynchronization
+- captured DYM command encoding
+- captured DYM session/auth prelude encoding
+- DYM notification parsing for the confirmed 22-byte status shape
+- parsing and redaction of PIN-looking DYM `0x8c` auth/PIN responses
+- configured PIN verification against mower auth/PIN response data
+- ignoring non-DYM notifications and avoiding state decoding from short packets
+- `MowerState` updates for confirmed DYM battery, mode, station and response
+  command fields
+- BLE client response filtering by DYM command byte
 - coordinator first-poll failure raises UpdateFailed instead of returning placeholder
 - coordinator poll cooldown after manual command
-- coordinator update failure behavior after a state exists
 - serialization of concurrent raw BLE payload requests
 - raw BLE payload action validation when no target mower can be resolved
 - lawn mower activity mapping (mowing, returning, docked, paused, unknown station)
@@ -125,6 +130,7 @@ Test files:
 
 ```text
 tests/test_config_flow.py
+tests/test_ble_client.py
 tests/test_ble_protocol.py
 tests/test_coordinator.py
 tests/test_init.py
@@ -134,9 +140,10 @@ tests/test_lawn_mower.py
 
 ## Add Or Update Tests When Changing
 
-- BLE frame constants, checksum, length handling, chunking, or buffering
+- DYM command constants, session/auth prelude, status notification parsing, or
+  response command handling
+- PIN validation, auth response parsing, or PIN redaction
 - JSON parsing or `MowerState` field mapping
-- response command handling
 - coordinator exception mapping
 - BLE serialization or connection behavior
 - config flow discovery/manual setup/duplicate prevention
@@ -156,16 +163,19 @@ Use this checklist when testing against a real mower:
 3. Confirm Home Assistant can read status with the captured DYM status poll.
 4. Confirm polling still works after the mower/app has disconnected and the
    integration performs the captured session/auth prelude itself.
-5. Confirm battery, station and mode mapping during docked, stopped, mowing and
+5. With a configured PIN, confirm the integration verifies the PIN against the
+   auth/PIN response and refuses commands with a deliberately wrong PIN.
+6. Confirm battery, station and mode mapping during docked, stopped, mowing and
    returning states.
-6. Confirm start mowing sends the station-start payload while docked and the
+7. Confirm start mowing sends the station-start payload while docked and the
    resume payload after pause/stop.
-7. Confirm pause/stop sends the captured stop payload and the mower stops.
-8. Confirm dock/home sends the captured dock payload and the mower returns.
-9. Capture additional charging, error, rain, lift and tilt status payloads.
-10. Confirm unavailable behavior after a successful poll when the mower sleeps or
+8. Confirm pause/stop sends the captured stop payload and the mower stops.
+9. Confirm dock/home sends the captured dock payload and the mower returns.
+10. Capture additional charging, error, lift and tilt status payloads. Treat rain
+   as a settings feature unless a BLE status byte is captured for it.
+11. Confirm unavailable behavior after a successful poll when the mower sleeps or
    moves out of range.
-11. Update `README.md`, `DEVELOPMENT.md`, and `REVERSE_ENGINEERED.md` with
+12. Update `README.md`, `DEVELOPMENT.md`, and `reverse_engineered/` with
     validated facts and any remaining uncertainty.
 
 ## Useful Debug Logging

@@ -60,6 +60,22 @@ def test_initial_poll_failure_raises_update_failed() -> None:
     asyncio.run(run())
 
 
+def test_poll_is_deferred_when_ble_transaction_is_active() -> None:
+    """Background polling does not wait behind an active BLE transaction."""
+    async def run() -> None:
+        coordinator = GrouwMowerCoordinator(
+            _Hass(), _Entry(), "AA:BB:CC:DD:EE:FF", "Test mower"
+        )
+        await coordinator._ble_lock.acquire()
+        try:
+            with pytest.raises(UpdateFailed, match="active BLE transaction"):
+                await coordinator._async_update_data()
+        finally:
+            coordinator._ble_lock.release()
+
+    asyncio.run(run())
+
+
 def test_raw_payload_requests_are_serialized() -> None:
     """Concurrent service calls do not create overlapping BLE transactions."""
     async def run() -> None:
@@ -78,21 +94,21 @@ def test_raw_payload_requests_are_serialized() -> None:
                 self.max_active = max(self.max_active, self.active)
                 await asyncio.sleep(0)
                 self.active -= 1
-                return {"cmd": 0x80, "power": payload["power"]}
+                return {"cmd": 0x80, "battery_level": payload["battery_level"]}
 
         client = Client()
         coordinator.client = client
 
         await asyncio.gather(
-            coordinator.async_send_raw_json({"power": 41}),
-            coordinator.async_send_raw_json({"power": 42}),
+            coordinator.async_send_raw_json({"battery_level": 41}),
+            coordinator.async_send_raw_json({"battery_level": 42}),
         )
 
         assert client.max_active == 1
         assert coordinator.data.raw in (
-            {"cmd": 0x80, "power": 41},
-            {"cmd": 0x80, "power": 42},
+            {"cmd": 0x80, "battery_level": 41},
+            {"cmd": 0x80, "battery_level": 42},
         )
-        assert coordinator.data.power in {41, 42}
+        assert coordinator.data.battery_level in {41, 42}
 
     asyncio.run(run())

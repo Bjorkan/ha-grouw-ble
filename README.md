@@ -11,11 +11,13 @@ This integration intentionally uses Home Assistant's Bluetooth manager to resolv
   `Robot Mower_DYM*`, `RobotMower_DYM*`, and `Robot_Mower*`.
 - Manual setup by BLE address.
 - BLE connect through Home Assistant Bluetooth's `async_ble_device_from_address(..., connectable=True)`.
+- PIN entry during setup. A blank PIN is allowed for mowers without PIN; a
+  configured PIN must be exactly four digits.
 - Coordinator-based polling and entity availability.
 - Daye status polling over the captured DYM BLE payload.
 - Lawn mower controls for captured start, pause/stop and dock payloads.
-- Sensor and binary sensor entities for fields being decoded during protocol
-  validation.
+- Entities for currently decoded DYM status fields from hardware captures:
+  mower activity, battery, mode code, last response command, and docked state.
 - Debug service `grouw_ble_mower.send_raw_json` for raw BLE payload testing.
 
 ## Protocol status
@@ -38,7 +40,14 @@ Confirmed from that APK so far:
 - Two captures show different start payloads: one for starting from station and
   one for resuming after stop on the lawn.
 - The integration sends the captured Daye session/auth prelude after each BLE
-  reconnect, matching the app behavior after PIN entry.
+  reconnect and waits for the captured auth response (`0x8c`) before polling or
+  sending a command.
+- When a PIN is configured and the auth/PIN response exposes four numeric PIN
+  digits, the integration verifies the configured PIN before sending status or
+  command payloads. The PIN is redacted from diagnostics and normal debug logs.
+- The app has rain, ultrasound, working-time and other settings screens, but no
+  DYM status bytes for those features are confirmed yet. The integration does
+  not expose them as entities until hardware captures identify the fields.
 
 The raw BLE payload service is still experimental. Do not treat newly decoded
 fields as validated until they are confirmed against more Daye app captures or
@@ -99,14 +108,15 @@ Set `authenticate: false` only when deliberately probing the connection prelude
 itself.
 
 Capture the raw Home Assistant logs and mower behavior, then update
-`REVERSE_ENGINEERED.md` with redacted durable findings.
+`reverse_engineered/` with redacted durable findings.
 
 ## Expected next validation
 
 1. Confirm Home Assistant discovers the mower by service UUID or as
    `Robot Mower_DYM*` / `RobotMower_DYM*` / `Robot_Mower*`.
 2. Confirm battery and mode field meanings across more mower states.
-3. Capture additional notification payloads for charging, mowing errors and
-   rain/tilt/lift events.
+3. Capture additional notification payloads for charging, mowing errors, lift
+   and tilt events. Treat rain as a settings feature unless a BLE status byte is
+   captured for it.
 4. Update code, tests and docs only with facts from the Daye APK or redacted
    hardware captures.

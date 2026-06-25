@@ -6,7 +6,6 @@ from dataclasses import dataclass
 
 from homeassistant.components.binary_sensor import BinarySensorEntity, BinarySensorEntityDescription
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
@@ -29,30 +28,6 @@ BINARY_SENSORS: tuple[GrouwBinarySensorEntityDescription, ...] = (
         key="docked",
         translation_key="docked",
         value_fn=lambda state: state.station,
-    ),
-    GrouwBinarySensorEntityDescription(
-        key="rain_enabled",
-        translation_key="rain_enabled",
-        entity_category=EntityCategory.DIAGNOSTIC,
-        value_fn=lambda state: state.rain_enabled,
-    ),
-    GrouwBinarySensorEntityDescription(
-        key="led_enabled",
-        translation_key="led_enabled",
-        entity_category=EntityCategory.DIAGNOSTIC,
-        value_fn=lambda state: state.led_enabled,
-    ),
-    GrouwBinarySensorEntityDescription(
-        key="ultrasonic_enabled",
-        translation_key="ultrasonic_enabled",
-        entity_category=EntityCategory.DIAGNOSTIC,
-        value_fn=lambda state: state.ultrasonic_enabled,
-    ),
-    GrouwBinarySensorEntityDescription(
-        key="last_command_result",
-        translation_key="last_command_result",
-        entity_category=EntityCategory.DIAGNOSTIC,
-        value_fn=lambda state: state.last_command_result,
     ),
 )
 

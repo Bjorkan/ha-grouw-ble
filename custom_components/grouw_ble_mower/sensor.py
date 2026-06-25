@@ -7,7 +7,7 @@ from typing import Any
 
 from homeassistant.components.sensor import SensorDeviceClass, SensorEntity, SensorEntityDescription
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import EntityCategory, PERCENTAGE, UnitOfTime
+from homeassistant.const import EntityCategory, PERCENTAGE
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
@@ -31,69 +31,13 @@ SENSORS: tuple[GrouwSensorEntityDescription, ...] = (
         translation_key="battery",
         device_class=SensorDeviceClass.BATTERY,
         native_unit_of_measurement=PERCENTAGE,
-        value_fn=lambda state: state.power,
+        value_fn=lambda state: state.battery_level,
     ),
     GrouwSensorEntityDescription(
         key="mode",
         translation_key="mode",
+        entity_category=EntityCategory.DIAGNOSTIC,
         value_fn=lambda state: state.mode,
-    ),
-    GrouwSensorEntityDescription(
-        key="error_type",
-        translation_key="error_type",
-        entity_category=EntityCategory.DIAGNOSTIC,
-        value_fn=lambda state: state.error_type,
-    ),
-    GrouwSensorEntityDescription(
-        key="wifi_level",
-        translation_key="wifi_level",
-        entity_category=EntityCategory.DIAGNOSTIC,
-        value_fn=lambda state: state.wifi_level,
-    ),
-    GrouwSensorEntityDescription(
-        key="rain_delay_left",
-        translation_key="rain_delay_left",
-        native_unit_of_measurement=UnitOfTime.MINUTES,
-        value_fn=lambda state: state.rain_delay_left,
-    ),
-    GrouwSensorEntityDescription(
-        key="rain_delay_set",
-        translation_key="rain_delay_set",
-        native_unit_of_measurement=UnitOfTime.MINUTES,
-        entity_category=EntityCategory.DIAGNOSTIC,
-        value_fn=lambda state: state.rain_delay_set,
-    ),
-    GrouwSensorEntityDescription(
-        key="current_runtime",
-        translation_key="current_runtime",
-        native_unit_of_measurement=UnitOfTime.MINUTES,
-        value_fn=lambda state: state.cur_min,
-    ),
-    GrouwSensorEntityDescription(
-        key="last_runtime",
-        translation_key="last_runtime",
-        native_unit_of_measurement=UnitOfTime.MINUTES,
-        entity_category=EntityCategory.DIAGNOSTIC,
-        value_fn=lambda state: state.on_min,
-    ),
-    GrouwSensorEntityDescription(
-        key="total_runtime",
-        translation_key="total_runtime",
-        native_unit_of_measurement=UnitOfTime.MINUTES,
-        entity_category=EntityCategory.DIAGNOSTIC,
-        value_fn=lambda state: state.total_min,
-    ),
-    GrouwSensorEntityDescription(
-        key="current_area",
-        translation_key="current_area",
-        entity_category=EntityCategory.DIAGNOSTIC,
-        value_fn=lambda state: state.cur_area,
-    ),
-    GrouwSensorEntityDescription(
-        key="last_area",
-        translation_key="last_area",
-        entity_category=EntityCategory.DIAGNOSTIC,
-        value_fn=lambda state: state.on_area,
     ),
     GrouwSensorEntityDescription(
         key="last_response_cmd",

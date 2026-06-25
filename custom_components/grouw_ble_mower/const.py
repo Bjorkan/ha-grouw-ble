@@ -28,5 +28,6 @@ DAYE_MODE_RETURNING = 0x03
 DAYE_MODE_STOPPED = 0x14
 
 CONF_ADDRESS = "address"
+CONF_PIN = "pin"
 
 SERVICE_SEND_RAW_JSON = "send_raw_json"

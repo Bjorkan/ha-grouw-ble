@@ -11,11 +11,13 @@ from bleak_retry_connector import establish_connection
 from homeassistant.core import HomeAssistant
 
 from .ble_protocol import (
+    DAYE_RESPONSE_PIN_OR_AUTH,
     DAYE_RESPONSE_STATUS,
     encode_daye_command,
     encode_daye_session_start,
     encode_raw_payload,
     parse_daye_payload,
+    redact_daye_message,
 )
 from .const import (
     DEFAULT_BLE_TIMEOUT,
@@ -47,6 +49,10 @@ class GrouwBleGattError(GrouwBleError):
     """Raised on GATT write/notify failure."""
 
 
+class GrouwBleAuthenticationError(GrouwBleError):
+    """Raised when mower PIN authentication fails."""
+
+
 def _drain_queue(queue: asyncio.Queue) -> None:
     """Discard all items currently in the queue."""
     while not queue.empty():
@@ -64,10 +70,13 @@ class GrouwBleMowerClient:
     connectable Bluetooth proxies.
     """
 
-    def __init__(self, hass: HomeAssistant, address: str, name: str) -> None:
+    def __init__(
+        self, hass: HomeAssistant, address: str, name: str, pin: str = ""
+    ) -> None:
         self.hass = hass
         self.address = address.upper()
         self.name = name
+        self.pin = pin.strip()
         self._tx_counter = 0
 
     async def _write_with_log(
@@ -95,6 +104,61 @@ class GrouwBleMowerClient:
                 f"GATT write failed for {label} on {self.address}: {err}"
             ) from err
 
+    async def _wait_for_response(
+        self,
+        queue: asyncio.Queue[dict[str, Any]],
+        expected_cmd: int | None,
+        timeout: float,
+        phase: str,
+    ) -> dict[str, Any]:
+        """Wait for a parsed notification with the expected DYM command byte."""
+        while True:
+            try:
+                message = await asyncio.wait_for(queue.get(), timeout=timeout)
+            except asyncio.TimeoutError as err:
+                _LOGGER.error(
+                    "[%s tx=%s] notification timeout in %s (expected_cmd=%s)",
+                    self.address, self._tx_id, phase, expected_cmd
+                )
+                raise GrouwBleTimeout(
+                    f"Timeout waiting for notification from {self.address}"
+                ) from err
+
+            cmd = message.get("cmd")
+            if expected_cmd is None or cmd == expected_cmd:
+                _LOGGER.debug(
+                    "[%s tx=%s] selected %s response cmd=%s raw=%s",
+                    self.address, self._tx_id, phase, cmd,
+                    redact_daye_message(message).get("raw_hex", "?")
+                )
+                return message
+
+            _LOGGER.debug(
+                "[%s tx=%s] ignoring notification cmd=%s in %s (waiting for %s)",
+                self.address, self._tx_id, cmd, phase, expected_cmd
+            )
+
+    def _verify_auth_response(self, message: dict[str, Any]) -> None:
+        """Verify the configured PIN against the mower auth/PIN response."""
+        if not self.pin:
+            return
+
+        mower_pin = message.get("mower_pin")
+        if mower_pin is None:
+            raise GrouwBleAuthenticationError(
+                "Mower auth response did not include PIN data; cannot verify configured PIN"
+            )
+
+        if str(mower_pin) != self.pin:
+            raise GrouwBleAuthenticationError(
+                "Configured mower PIN does not match the mower auth response"
+            )
+
+        _LOGGER.debug(
+            "[%s tx=%s] configured PIN verified against mower auth response",
+            self.address, self._tx_id
+        )
+
     async def async_request_daye(
         self,
         payload: bytes,
@@ -102,14 +166,15 @@ class GrouwBleMowerClient:
         authenticate: bool = True,
         expected_cmd: int | None = DAYE_RESPONSE_STATUS,
         timeout: float = DEFAULT_BLE_TIMEOUT,
+        command_name: str = "raw",
     ) -> dict[str, Any]:
         """Send a Daye DYM payload and wait for the first parsed notification."""
         self._tx_counter += 1
         self._tx_id = self._tx_counter
 
         _LOGGER.debug(
-            "[%s tx=%s] request starting (follow_up=%s authenticate=%s)",
-            self.address, self._tx_id, follow_up_status, authenticate
+            "[%s tx=%s] request starting command=%s follow_up=%s authenticate=%s",
+            self.address, self._tx_id, command_name, follow_up_status, authenticate
         )
 
         from homeassistant.components import bluetooth
@@ -138,7 +203,8 @@ class GrouwBleMowerClient:
             if message is not None:
                 _LOGGER.debug(
                     "[%s tx=%s] notify raw=%s",
-                    self.address, self._tx_id, data.hex()
+                    self.address, self._tx_id,
+                    redact_daye_message(message).get("raw_hex", data.hex())
                 )
                 loop.call_soon_threadsafe(queue.put_nowait, message)
 
@@ -194,7 +260,13 @@ class GrouwBleMowerClient:
                 await self._write_with_log(
                     client, encode_daye_command("auth_query"), "auth_query"
                 )
-                await asyncio.sleep(DEFAULT_CHUNK_DELAY)
+                auth_message = await self._wait_for_response(
+                    queue,
+                    DAYE_RESPONSE_PIN_OR_AUTH,
+                    timeout,
+                    "auth",
+                )
+                self._verify_auth_response(auth_message)
 
                 _drain_queue(queue)
                 _LOGGER.debug(
@@ -209,33 +281,19 @@ class GrouwBleMowerClient:
                     client, encode_daye_command("status"), "follow_up_status"
                 )
 
-            while True:
-                try:
-                    message = await asyncio.wait_for(queue.get(), timeout=timeout)
-                except asyncio.TimeoutError as err:
-                    _LOGGER.error(
-                        "[%s tx=%s] notification timeout (expected_cmd=%s)",
-                        self.address, self._tx_id, expected_cmd
-                    )
-                    raise GrouwBleTimeout(
-                        f"Timeout waiting for notification from {self.address}"
-                    ) from err
+            return await self._wait_for_response(
+                queue,
+                expected_cmd,
+                timeout,
+                "command",
+            )
 
-                cmd = message.get("cmd")
-                if expected_cmd is None or cmd == expected_cmd:
-                    _LOGGER.debug(
-                        "[%s tx=%s] selected response cmd=%s raw=%s",
-                        self.address, self._tx_id, cmd,
-                        message.get("raw_hex", "?")
-                    )
-                    return message
-
-                _LOGGER.debug(
-                    "[%s tx=%s] ignoring notification cmd=%s (waiting for %s)",
-                    self.address, self._tx_id, cmd, expected_cmd
-                )
-
-        except (GrouwBleConnectionError, GrouwBleGattError, GrouwBleTimeout):
+        except (
+            GrouwBleAuthenticationError,
+            GrouwBleConnectionError,
+            GrouwBleGattError,
+            GrouwBleTimeout,
+        ):
             raise
         except BleakError as err:
             _LOGGER.error(
@@ -261,13 +319,17 @@ class GrouwBleMowerClient:
 
     async def async_get_all_info(self) -> dict[str, Any]:
         """Request the Daye status packet captured from the official app."""
-        return await self.async_request_daye(encode_daye_command("status"))
+        return await self.async_request_daye(
+            encode_daye_command("status"),
+            command_name="status",
+        )
 
     async def async_command(self, command: str) -> dict[str, Any]:
         """Send a Daye mower command and refresh status."""
         return await self.async_request_daye(
             encode_daye_command(command),
             follow_up_status=True,
+            command_name=command,
         )
 
     async def async_send_raw_json(self, payload: dict[str, Any]) -> dict[str, Any]:
@@ -283,4 +345,5 @@ class GrouwBleMowerClient:
             raw_payload,
             authenticate=authenticate,
             expected_cmd=expected_cmd,
+            command_name=str(payload.get("command", "raw")),
         )

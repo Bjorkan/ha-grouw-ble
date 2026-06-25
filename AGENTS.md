@@ -10,7 +10,7 @@ repo's durable memory because local reference folders are not committed.
 ```text
 DEVELOPMENT.md
 TESTING.md
-REVERSE_ENGINEERED.md
+reverse_engineered/
 README.md
 ```
 
@@ -23,24 +23,17 @@ Update them in the same change when you:
 - validate behavior on real mower hardware
 - discover that previous assumptions were wrong
 
-## Local-Only Reference Folders
+## Local-Only APK Folder
 
-These folders may exist on a developer machine but must not be relied on as
-committed project documentation:
-
-```text
-APK/
-/var/home/jesper/Projekt/grouw-mower-apk/
-```
+Store APK files and decompiler output in `APK/` (gitignored). These are
+local-only reverse-engineering inputs that must never be upstreamed.
 
 Official APK files, extracted APK contents, and decompiled app files must never
-be upstreamed. They may only be used locally as source material for reverse
-engineering. Commit durable findings as summaries in `REVERSE_ENGINEERED.md`
+be committed. Commit durable findings as summaries under `reverse_engineered/`
 instead of committing proprietary app artifacts or generated decompiler output.
 
-Do not add committed docs that only point into those folders. If an agent finds
-something useful there, summarize it in `DEVELOPMENT.md`, `TESTING.md`, or
-`REVERSE_ENGINEERED.md`.
+If an agent finds something useful in the decompiled APK, summarize it in
+`DEVELOPMENT.md`, `TESTING.md`, or under `reverse_engineered/`.
 
 Authoritative external references:
 
@@ -89,11 +82,11 @@ custom_components/grouw_ble_mower/
 
 ## Current BLE Protocol Facts
 
-The durable protocol summary is in `REVERSE_ENGINEERED.md`. Use only the
+The durable protocol summary is under `reverse_engineered/`. Use only the
 Daye app (`com.dayepower.dayeappleaf`) or redacted real-hardware captures as
 protocol facts. Do not reintroduce facts from the old `com.cj.lawnmower` app.
-Do not change BLE constants or parsers without updating that file and
-adding/updating tests.
+Do not change BLE constants or parsers without updating the relevant
+`reverse_engineered/` files and adding/updating tests.
 
 ## Service Actions
 
@@ -135,8 +128,7 @@ asks to remove CI.
   or byte handling is available.
 - Do not introduce network/cloud behavior; this integration is local BLE.
 - Use `rg` for searching.
-- Avoid touching local decompiled APK output under `APK/` or
-  `/var/home/jesper/Projekt/grouw-mower-apk/` unless needed for protocol
-  research, and summarize findings in `REVERSE_ENGINEERED.md`.
+- Avoid touching decompiled APK output under `APK/` unless needed for protocol
+  research, and summarize findings under `reverse_engineered/`.
 - Never commit or upstream APK files, extracted APK trees, decompiled Java,
   smali, native-library dumps, or generated decompiler output.

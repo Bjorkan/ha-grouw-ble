@@ -11,6 +11,8 @@ _LOGGER = logging.getLogger(__name__)
 DYM_PREFIX = b"DYM"
 DYM_TRAILER = bytes.fromhex("160601ff0a")
 DYM_NOTIFICATION_TRAILER = bytes.fromhex("160601")
+DYM_STATUS_NOTIFICATION_LENGTH = 22
+PIN_LENGTH = 4
 
 DAYE_STATUS_REQUEST = bytes.fromhex(
     "44594d00111111111111111100000000000000160601ff0a"
@@ -29,6 +31,23 @@ DAYE_AUTH_QUERY = bytes.fromhex("44594d0c000000000000000000000000000000160601ff0
 
 DAYE_RESPONSE_PIN_OR_AUTH = 0x8C
 DAYE_RESPONSE_STATUS = 0x80
+
+
+def _looks_like_pin_digits(payload: bytes) -> bool:
+    """Return true when payload bytes look like the app's numeric PIN digits."""
+    return len(payload) == PIN_LENGTH and all(0 <= byte <= 9 for byte in payload)
+
+
+def redact_daye_message(message: dict[str, Any]) -> dict[str, Any]:
+    """Return a copy of a parsed message with user-sensitive fields redacted."""
+    redacted = dict(message)
+    if "mower_pin" in redacted:
+        redacted["mower_pin"] = "****"
+    raw_hex = redacted.get("raw_hex")
+    if isinstance(raw_hex, str) and redacted.get("cmd") == DAYE_RESPONSE_PIN_OR_AUTH:
+        # Bytes 4..7 are the PIN digits when the auth response exposes them.
+        redacted["raw_hex"] = f"{raw_hex[:8]}********{raw_hex[16:]}"
+    return redacted
 
 
 def encode_daye_session_start(now: datetime | None = None) -> bytes:
@@ -102,14 +121,19 @@ def parse_daye_payload(payload: bytes) -> dict[str, Any] | None:
         message["trailer"] = payload[-3:].hex()
 
     # Status notifications captured from the official app are 22 bytes.
-    if len(payload) >= 16 and payload[3] == DAYE_RESPONSE_STATUS:
-        message.update(
-            {
-                "power": payload[4],
-                "mode": payload[12],
-                "station": payload[7] == 0x01,
-            }
-        )
+    if (
+        len(payload) == DYM_STATUS_NOTIFICATION_LENGTH
+        and payload[3] == DAYE_RESPONSE_STATUS
+        and payload.endswith(DYM_NOTIFICATION_TRAILER)
+    ):
+        message["battery_level"] = payload[4]
+        message["mode"] = payload[12]
+        if payload[7] in (0x00, 0x01):
+            message["station"] = payload[7] == 0x01
+    elif len(payload) >= 8 and payload[3] == DAYE_RESPONSE_PIN_OR_AUTH:
+        pin_bytes = payload[4:8]
+        if _looks_like_pin_digits(pin_bytes):
+            message["mower_pin"] = "".join(str(byte) for byte in pin_bytes)
     return message
 
 
@@ -132,24 +156,9 @@ class MowerState:
     model: str | None = None
     serial: str | None = None
     firmware_version: str | None = None
-    power: int | None = None
+    battery_level: int | None = None
     mode: int | None = None
-    error_type: int | None = None
     station: bool | None = None
-    wifi_level: int | None = None
-    rain_enabled: bool | None = None
-    rain_status: int | None = None
-    rain_delay_left: int | None = None
-    rain_delay_set: int | None = None
-    on_min: int | None = None
-    total_min: int | None = None
-    on_area: int | None = None
-    cur_min: int | None = None
-    cur_area: int | None = None
-    led_enabled: bool | None = None
-    ultrasonic_enabled: bool | None = None
-    last_command_result: bool | None = None
-    last_command: int | None = None
     last_response_cmd: int | None = None
     raw: dict[str, Any] | None = None
     last_seen: datetime | None = None
@@ -168,13 +177,13 @@ def state_from_message(
     base = previous or MowerState(address=address)
     cmd = _optional_int(message, "cmd")
     updates: dict[str, Any] = {
-        "raw": message,
+        "raw": redact_daye_message(message),
         "last_response_cmd": cmd,
         "last_seen": datetime.now(timezone.utc),
     }
 
     for src, dst in (
-        ("power", "power"),
+        ("battery_level", "battery_level"),
         ("mode", "mode"),
     ):
         value = _optional_int(message, src)

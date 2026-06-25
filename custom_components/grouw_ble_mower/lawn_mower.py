@@ -62,7 +62,7 @@ class GrouwBleLawnMower(GrouwMowerEntity, LawnMowerEntity):
     @property
     def battery_level(self) -> int | None:
         data = self.coordinator.data
-        return data.power if data else None
+        return data.battery_level if data else None
 
     async def async_start_mowing(self) -> None:
         """Start mowing."""
