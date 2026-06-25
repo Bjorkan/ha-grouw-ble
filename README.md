@@ -35,6 +35,10 @@ Confirmed from that APK so far:
   `49535343-1E4D-4BD9-BA61-23C647249616` is used for both write and notify.
 - The status poll, start, pause/stop and dock payloads are captured from the
   Daye app. More status field meanings still need validation.
+- Two captures show different start payloads: one for starting from station and
+  one for resuming after stop on the lawn.
+- The integration sends the captured Daye session/auth prelude after each BLE
+  reconnect, matching the app behavior after PIN entry.
 
 The raw BLE payload service is still experimental. Do not treat newly decoded
 fields as validated until they are confirmed against more Daye app captures or
@@ -88,7 +92,11 @@ action: grouw_ble_mower.send_raw_json
 data:
   payload:
     raw_hex: "44594d00111111111111111100000000000000160601ff0a"
+    expect_cmd: 128
 ```
+
+Set `authenticate: false` only when deliberately probing the connection prelude
+itself.
 
 Capture the raw Home Assistant logs and mower behavior, then update
 `REVERSE_ENGINEERED.md` with redacted durable findings.

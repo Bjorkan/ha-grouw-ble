@@ -9,7 +9,13 @@ from bleak_retry_connector import establish_connection
 
 from homeassistant.core import HomeAssistant
 
-from .ble_protocol import encode_daye_command, encode_raw_payload, parse_daye_payload
+from .ble_protocol import (
+    DAYE_RESPONSE_STATUS,
+    encode_daye_command,
+    encode_daye_session_start,
+    encode_raw_payload,
+    parse_daye_payload,
+)
 from .const import (
     DEFAULT_BLE_TIMEOUT,
     DEFAULT_CHUNK_DELAY,
@@ -47,6 +53,8 @@ class GrouwBleMowerClient:
         self,
         payload: bytes,
         follow_up_status: bool = False,
+        authenticate: bool = True,
+        expected_cmd: int | None = DAYE_RESPONSE_STATUS,
         timeout: float = DEFAULT_BLE_TIMEOUT,
     ) -> dict[str, Any]:
         """Send a Daye DYM payload and wait for the first parsed notification."""
@@ -79,6 +87,20 @@ class GrouwBleMowerClient:
             )
             await client.start_notify(READ_CHARACTERISTIC_UUID, _notification_handler)
 
+            if authenticate:
+                await client.write_gatt_char(
+                    WRITE_CHARACTERISTIC_UUID,
+                    encode_daye_session_start(),
+                    response=True,
+                )
+                await asyncio.sleep(DEFAULT_CHUNK_DELAY)
+                await client.write_gatt_char(
+                    WRITE_CHARACTERISTIC_UUID,
+                    encode_daye_command("auth_query"),
+                    response=True,
+                )
+                await asyncio.sleep(DEFAULT_CHUNK_DELAY)
+
             await client.write_gatt_char(
                 WRITE_CHARACTERISTIC_UUID, payload, response=True
             )
@@ -92,7 +114,8 @@ class GrouwBleMowerClient:
 
             while True:
                 message = await asyncio.wait_for(queue.get(), timeout=timeout)
-                return message
+                if expected_cmd is None or message.get("cmd") == expected_cmd:
+                    return message
         except asyncio.TimeoutError as err:
             raise GrouwBleTimeout(f"Timeout waiting for {self.address}") from err
         except BleakError as err:
@@ -125,4 +148,11 @@ class GrouwBleMowerClient:
             raw_payload = encode_raw_payload(payload)
         except ValueError as err:
             raise GrouwBleError(str(err)) from err
-        return await self.async_request_daye(raw_payload)
+        expected = payload.get("expect_cmd", DAYE_RESPONSE_STATUS)
+        expected_cmd = None if expected is None else int(expected)
+        authenticate = bool(payload.get("authenticate", True))
+        return await self.async_request_daye(
+            raw_payload,
+            authenticate=authenticate,
+            expected_cmd=expected_cmd,
+        )

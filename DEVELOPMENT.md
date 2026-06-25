@@ -66,6 +66,9 @@ AGENTS.md                            Instructions for AI agents
 - The coordinator polls with the captured Daye DYM status request. Before the
   first successful poll, it returns placeholder state so the discovered device
   and entities stay loaded with unknown values instead of staying unavailable.
+- Each BLE transaction sends the captured Daye session/auth prelude before the
+  requested status or command payload. Keep this unless hardware testing proves
+  the mower no longer needs PIN/session setup after reconnect.
 - BLE communication is serialized per mower with an `asyncio.Lock`; do not
   remove this without a real concurrency-safe replacement.
 - Config entry unloading must continue to work. Clean up services and callbacks

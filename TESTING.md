@@ -148,14 +148,18 @@ Use this checklist when testing against a real mower:
    `Robot Mower_DYM*` / `RobotMower_DYM*` / `Robot_Mower*` name.
 2. Confirm manual setup by BLE address works.
 3. Confirm Home Assistant can read status with the captured DYM status poll.
-4. Confirm battery and mode mapping during stopped, mowing and returning states.
-5. Confirm start mowing sends the captured start payload and the mower starts.
-6. Confirm pause/stop sends the captured stop payload and the mower stops.
-7. Confirm dock/home sends the captured dock payload and the mower returns.
-8. Capture additional charging, error, rain, lift and tilt status payloads.
-9. Confirm unavailable behavior after a successful poll when the mower sleeps or
+4. Confirm polling still works after the mower/app has disconnected and the
+   integration performs the captured session/auth prelude itself.
+5. Confirm battery, station and mode mapping during docked, stopped, mowing and
+   returning states.
+6. Confirm start mowing sends the station-start payload while docked and the
+   resume payload after pause/stop.
+7. Confirm pause/stop sends the captured stop payload and the mower stops.
+8. Confirm dock/home sends the captured dock payload and the mower returns.
+9. Capture additional charging, error, rain, lift and tilt status payloads.
+10. Confirm unavailable behavior after a successful poll when the mower sleeps or
    moves out of range.
-10. Update `README.md`, `DEVELOPMENT.md`, and `REVERSE_ENGINEERED.md` with
+11. Update `README.md`, `DEVELOPMENT.md`, and `REVERSE_ENGINEERED.md` with
     validated facts and any remaining uncertainty.
 
 ## Useful Debug Logging

@@ -61,7 +61,9 @@ class GrouwBleLawnMower(GrouwMowerEntity, LawnMowerEntity):
 
     async def async_start_mowing(self) -> None:
         """Start mowing."""
-        await self.coordinator.async_send_command("start")
+        data = self.coordinator.data
+        command = "start" if data and data.station is True else "resume"
+        await self.coordinator.async_send_command(command)
 
     async def async_pause(self) -> None:
         """Pause/stop mowing."""

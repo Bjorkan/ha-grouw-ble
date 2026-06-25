@@ -18,13 +18,40 @@ DAYE_STATUS_REQUEST = bytes.fromhex(
 DAYE_START_MOWING = bytes.fromhex(
     "44594d01020000000000000000000000000000160601ff0a"
 )
+DAYE_RESUME_MOWING = bytes.fromhex(
+    "44594d01000000000000000000000000000000160601ff0a"
+)
 DAYE_PAUSE_MOWING = bytes.fromhex(
     "44594d01010000000000000000000000000000160601ff0a"
 )
 DAYE_DOCK = bytes.fromhex("44594d01030000000000000000000000000000160601ff0a")
+DAYE_AUTH_QUERY = bytes.fromhex("44594d0c000000000000000000000000000000160601ff0a")
 
 DAYE_RESPONSE_PIN_OR_AUTH = 0x8C
 DAYE_RESPONSE_STATUS = 0x80
+
+
+def encode_daye_session_start(now: datetime | None = None) -> bytes:
+    """Return the Daye session/time payload sent after a fresh connection."""
+    current = now or datetime.now()
+    return b"".join(
+        (
+            DYM_PREFIX,
+            bytes(
+                (
+                    0x02,
+                    0x14,
+                    current.year % 100,
+                    current.month,
+                    current.day,
+                    current.hour,
+                    current.minute,
+                )
+            ),
+            b"\x00" * 9,
+            DYM_TRAILER,
+        )
+    )
 
 
 def encode_daye_command(command: str) -> bytes:
@@ -33,10 +60,16 @@ def encode_daye_command(command: str) -> bytes:
         return DAYE_STATUS_REQUEST
     if command == "start":
         return DAYE_START_MOWING
+    if command == "resume":
+        return DAYE_RESUME_MOWING
     if command == "pause":
         return DAYE_PAUSE_MOWING
     if command == "dock":
         return DAYE_DOCK
+    if command == "auth_query":
+        return DAYE_AUTH_QUERY
+    if command == "session_start":
+        return encode_daye_session_start()
     raise ValueError(f"Unsupported Daye command: {command}")
 
 
@@ -68,14 +101,13 @@ def parse_daye_payload(payload: bytes) -> dict[str, Any] | None:
     if payload.endswith(DYM_NOTIFICATION_TRAILER):
         message["trailer"] = payload[-3:].hex()
 
-    # Status notifications captured from the official app are 22 bytes:
-    # 44 59 4d 80 <battery> ... <mode> 44 41 ... 16 06 01.
+    # Status notifications captured from the official app are 22 bytes.
     if len(payload) >= 16 and payload[3] == DAYE_RESPONSE_STATUS:
         message.update(
             {
                 "power": payload[4],
                 "mode": payload[12],
-                "station": payload[12] == 0x14,
+                "station": payload[7] == 0x01,
             }
         )
     return message

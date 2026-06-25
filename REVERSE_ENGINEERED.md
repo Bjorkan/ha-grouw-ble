@@ -27,6 +27,12 @@ Only the Daye APK is authoritative for current protocol facts:
   - User action sequence: connect, enter PIN `1234`, start, stop, start, go
     to base station.
   - The file is not committed; durable findings are summarized below.
+- Second Android Bluetooth HCI snoop bugreport captured on 2026-06-25:
+  - Local zip used as source:
+    `/var/home/jesper/Hämtningar/bugreport-m3qxeea-BP4A(1).zip`
+  - User action sequence: start docked mower, stop, start again, go to base
+    station.
+  - The file is not committed; durable findings are summarized below.
 
 Do not use the previous `com.cj.lawnmower` app, old local reverse-engineering
 notes, or older APK-derived assumptions as protocol facts for this integration.
@@ -118,19 +124,26 @@ The Daye app enables notifications by writing `0100` to handle `0x001a`, then
 uses ATT Write Request, not Write Command, to write 24-byte DYM payloads to
 handle `0x0019`. Notifications arrive on the same handle.
 
+After each fresh BLE connection, the app sends a session/authentication prelude
+before status polling or commands. This matches the observed UI behavior where
+the app asks for the PIN again after disconnecting.
+
 Captured Daye write payloads:
 
 ```text
 Status poll:
 44594d00111111111111111100000000000000160601ff0a
 
-Initial/auth-related:
+Session/auth-related:
 44594d02141a0619121c000000000000000000160601ff0a
 44594d02141a06191220000000000000000000160601ff0a
 44594d0c000000000000000000000000000000160601ff0a
 
-Start mowing:
+Start mowing from dock/station:
 44594d01020000000000000000000000000000160601ff0a
+
+Resume/start after stop on lawn:
+44594d01000000000000000000000000000000160601ff0a
 
 Pause/stop:
 44594d01010000000000000000000000000000160601ff0a
@@ -139,9 +152,16 @@ Go to base station:
 44594d01030000000000000000000000000000160601ff0a
 ```
 
-The app also sent `44594d01000000000000000000000000000000160601ff0a`
-during the captured session. Its UI action is not yet confidently identified,
-so it is not used by the integration.
+The second capture clarified that `44594d0100...` is used when the mower is
+started again after stop, while `44594d0102...` is used when starting from the
+docked/station state.
+
+The `44594d0214...` payload embeds the phone date/time as
+`year, month, day, hour, minute`, e.g. `1a 06 19 12 1c` for
+2026-06-25 18:28. The integration regenerates this payload on every BLE
+transaction, then sends `44594d0c...` before the requested status/command
+payload. Auth responses use response type `0x8c` and are ignored while waiting
+for status response type `0x80`.
 
 Captured status notifications are 22-byte DYM payloads such as:
 
@@ -157,6 +177,9 @@ Observed status field mapping:
 byte 0..2  "DYM"
 byte 3     response type, 0x80 for status
 byte 4     battery percentage candidate, observed 0x64 and 0x32
+byte 7     station/docked candidate:
+            0x01 docked / at station
+            0x00 away from station
 byte 12    mode candidate:
             0x00 mowing / active after start
             0x03 returning after go-to-base
@@ -164,9 +187,9 @@ byte 12    mode candidate:
 byte 19..21 notification trailer: 16 06 01
 ```
 
-The field names above are based on the recorded action sequence and need more
-captures across charging, error, rain, lift and tilt states before being
-treated as complete.
+The second capture confirmed byte 7 changes from `0x01` while docked to `0x00`
+after starting, and later returns to `0x01` when back at the station. More
+captures across charging, error, rain, lift and tilt states are still needed.
 
 The app strings also include `BlueKey`, `ENCRYPTED_SIZE`,
 `_isBufferEncrypted`, `get:_checkSum`, `parseStringToBuffer`, `createBuffer`,
@@ -197,7 +220,7 @@ Daye APK or redacted real-hardware captures:
 Meaning of every status response byte
 Whether any checksum exists beyond the fixed ff0a write trailer
 Charging, error, rain, lift and tilt status values
-Meaning of the captured 44594d0100... command
+Whether byte 12 distinguishes all active, idle, stopped and returning states
 ```
 
 The integration still contains an experimental raw BLE payload validation
@@ -207,11 +230,10 @@ surface so hardware testing can probe additional captures.
 
 When validating against real hardware, capture and redact:
 
-1. Battery and mode mapping over more mower states.
+1. Battery, station and mode mapping over more mower states.
 2. Charging, error, rain, lift and tilt notification payloads.
-3. Whether `44594d0100...` has a distinct UI action.
-4. Exact notification bytes after each newly tested action.
-5. Mapping between UI actions in the Daye app and mower behavior.
+3. Exact notification bytes after each newly tested action.
+4. Mapping between UI actions in the Daye app and mower behavior.
 
 Record only summarized findings here. Do not commit proprietary APK output or
 raw logs containing BLE addresses, serial numbers, credentials, or other private
