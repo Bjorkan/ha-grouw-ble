@@ -1,24 +1,10 @@
-# TESTING.md
+# Testing Notes
 
-Testing notes for the Grouw Mower Home Assistant custom integration.
+Testing guide for the Grouw Mower Home Assistant custom integration.
 
-Last updated: 2026-06-26 (BLE stability tests)
+Last updated: 2026-06-26.
 
-## Current Local Test Environment
-
-The local Python environment used while creating this file had `pytest`
-available but did not have Home Assistant, `voluptuous`, `bleak`, or
-`bleak-retry-connector` installed.
-
-Because of that, the current unit tests use lightweight stubs in:
-
-```text
-tests/conftest.py
-```
-
-Those stubs are only for tests. Do not import them from production code.
-
-## Standard Verification Commands
+## Quick Verification
 
 Run these before handing off changes:
 
@@ -29,203 +15,161 @@ find custom_components tests -type d -name __pycache__ -prune -exec rm -rf {} +
 rm -rf .pytest_cache
 ```
 
-The `-p no:cacheprovider` flag keeps pytest from creating `.pytest_cache`.
+`-p no:cacheprovider` keeps pytest from creating `.pytest_cache`.
 
-When Docker and `act` are available, reproduce the GitHub Actions test workflow
-with:
+## Local Environment
 
-```bash
-act -j tests -P ubuntu-latest=catthehacker/ubuntu:act-latest
-act -j validate -P ubuntu-latest=catthehacker/ubuntu:act-latest
-```
+The lightweight local test environment may not include Home Assistant,
+`voluptuous`, `bleak`, or `bleak-retry-connector`. Tests that need those
+packages either use stubs from `tests/conftest.py` or skip when the full Home
+Assistant test environment is missing.
 
-That path installs the full `requirements-test.txt` environment, including
-Home Assistant's test helpers and Bluetooth import dependencies such as
-`aiousbwatcher` and `pyserial`. Tests mock Home Assistant's
-`bluetooth_adapters` dependency so CI never tries to open a real Bluetooth
-socket.
+The stubs are only for tests. Do not import them from production code.
 
-## GitHub Actions
+## CI And Hassfest
 
-This repository runs validation on both `push` and `pull_request`:
+Validation runs on both `push` and `pull_request`:
 
 ```text
 .github/workflows/tests.yaml
 .github/workflows/hassfest.yaml
 ```
 
-`tests.yaml` installs dependencies from `requirements-test.txt`, runs pytest,
-and compiles the integration and tests. The CI environment installs
-`pytest-homeassistant-custom-component`, so the Home Assistant setup/unload and
-config flow tests run there instead of being skipped.
+`tests.yaml` installs `requirements-test.txt`, runs pytest, and compiles the
+integration and tests. The CI environment includes
+`pytest-homeassistant-custom-component`, so HA setup/unload and config flow
+tests run there instead of being skipped.
 
-## Hassfest
+`hassfest.yaml` runs Home Assistant's custom-component metadata validation.
+Treat hassfest failures as blocking unless the issue is clearly temporary
+upstream tooling.
 
-Hassfest is Home Assistant's static validation tool for integration metadata and
-integration data. Home Assistant's developer blog documents custom-component
-hassfest validation with the GitHub Action
-`home-assistant/actions/hassfest@master`:
-
-```text
-https://developers.home-assistant.io/blog/2020/04/16/hassfest/
-```
-
-This repository includes:
-
-```text
-.github/workflows/hassfest.yaml
-```
-
-That workflow runs on pushes, pull requests, and nightly schedule. It is the
-preferred hassfest path for this repo because a standalone custom integration
-does not normally include Home Assistant Core's local `script.hassfest` module.
-
-If working inside a Home Assistant Core development checkout with this custom
-component available to hassfest, the equivalent local command is:
+When Docker and `act` are available, reproduce the workflows with:
 
 ```bash
-python -m script.hassfest
+act -j tests -P ubuntu-latest=catthehacker/ubuntu:act-latest
+act -j validate -P ubuntu-latest=catthehacker/ubuntu:act-latest
 ```
 
-Treat hassfest failures as blocking unless the failure is clearly caused by a
-temporary upstream tooling issue.
-
-## Home Assistant Fixture Tests
-
-This repo includes HA-style tests that use
-`pytest-homeassistant-custom-component` when it is installed:
+## Test Files
 
 ```text
-tests/test_init.py
-tests/test_config_flow.py
+tests/test_ble_client.py       BLE writes, notifications, auth, timeouts
+tests/test_ble_protocol.py     DYM and BlueKey payload/parsing helpers
+tests/test_config_flow.py      Manual setup, PIN validation, discovery forms
+tests/test_coordinator.py      Polling, commands, cooldowns, reauth mapping
+tests/test_init.py             Config entry setup/unload
+tests/test_lawn_mower.py       Activity mapping and mower commands
+tests/test_services.py         Raw debug service validation/routing
 ```
 
-They cover config entry setup/unload and the UI config flow form. In the
-lightweight local environment they are skipped, while the protocol and
-coordinator unit tests still run against stubs.
+## Current Coverage
 
-## Current Test Coverage
+Protocol coverage:
 
-Current tests cover:
+- captured DYM status, session/auth, start/resume, pause/stop, and dock
+  payloads
+- DYM `0x80` status notification parsing
+- DYM `0x8c` auth/PIN response parsing and redaction
+- BlueKey debug payload encoding for APK-shaped 48-byte probes
+- BlueKey notification parsing helpers for query PIN, mower settings,
+  multi-area, and working-time response context
+- APK `tenToHex` helper behavior
 
-- captured DYM command encoding
-- captured DYM session/auth prelude encoding
-- DYM notification parsing for the confirmed 22-byte status shape
-- parsing and redaction of PIN-looking DYM `0x8c` auth/PIN responses
-- required configured PIN verification against mower auth/PIN response data
-- coordinator mapping of confirmed PIN/auth mismatches to Home Assistant
-  reauthentication
-- auth responses without parseable PIN data remain update failures instead of
-  reauthentication triggers
-- best-effort MTU request behavior for Bleak clients with and without
-  `request_mtu`
-- draining queued notifications at auth/follow-up request boundaries
-- ignoring non-DYM notifications and avoiding state decoding from short packets
-- `MowerState` updates for confirmed DYM battery, mode, station and response
-  command fields
-- BLE client response filtering by DYM command byte
-- BLE notification waits use a single deadline even when unrelated
-  notifications arrive
-- BLE backend connect/write timeout classification
-- client-level serialization of direct BLE requests
-- raw debug service option coercion/validation for hex `expect_cmd` and string
-  booleans
-- coordinator first-poll failure raises UpdateFailed instead of returning placeholder
-- coordinator BLE failure backoff raises UpdateFailed even after a previous state
-- coordinator poll cooldown after manual command
-- normal status polling skips the DYM auth prelude to avoid mower beeps
-- normal commands skip the DYM auth prelude and use a follow-up status request
-- coordinator command cooldown starts after the BLE transaction completes
-- serialization of concurrent raw BLE payload requests
-- raw BLE payload action validation when no target mower can be resolved
-- BlueKey debug payload encoding for APK-shaped 48-byte probe commands
-- BlueKey notification parsing/redaction for queryPin, mower settings,
-  multi-area mowing and working-time response context
-- manual config flow address validation rejects blank addresses
-- config flow PIN validation requires exactly four ASCII digits
-- lawn mower activity mapping (mowing, returning, docked, paused, station
-  override, idle with unknown station)
-- lawn mower start command refreshes state when station is unknown
-- compile-time coverage for Home Assistant exception imports and platform
-  constants through `compileall`
+BLE/client coverage:
 
-Test files:
+- best-effort MTU request behavior
+- notification filtering by DYM command byte
+- notification wait deadlines
+- queue draining at auth and follow-up status boundaries
+- ignored non-DYM or short notifications
+- connect/write timeout classification
+- client-level request serialization
 
-```text
-tests/test_config_flow.py
-tests/test_ble_client.py
-tests/test_ble_protocol.py
-tests/test_coordinator.py
-tests/test_init.py
-tests/test_services.py
-tests/test_lawn_mower.py
-```
+Coordinator/service coverage:
 
-## Add Or Update Tests When Changing
+- first-poll failure behavior
+- failure backoff after previous state
+- poll cooldown after manual command
+- skipping background polls while a manual command is pending
+- normal polling and commands without the DYM auth prelude
+- follow-up status refresh after commands
+- concurrent raw request serialization
+- raw service option coercion and validation
+- raw service target resolution failures
+- confirmed PIN/auth mismatches mapped to reauth
 
-- DYM command constants, session/auth prelude, status notification parsing, or
-  response command handling
-- BlueKey debug command constants, APK `tenToHex` behavior, response parsing,
-  or raw-service payload options
-- PIN validation, auth response parsing, or PIN redaction
-- reauth flow behavior for updating an existing config entry PIN
+Entity/config coverage:
+
+- config entry setup and unload
+- manual config flow address validation
+- config flow PIN validation
+- `MowerState` battery, mode, station, and response-command mapping
+- lawn mower activity mapping for mowing `0x00`/`0x01`, returning, docked,
+  paused, station override, and unknown station
+- lawn mower start behavior when station state is unknown
+- compile-time import/platform coverage through `compileall`
+
+## Update Tests When Changing
+
+- DYM or BlueKey constants, payload encoders, parsers, or response-command
+  handling
+- PIN validation, auth response parsing, redaction, or reauth behavior
 - JSON parsing or `MowerState` field mapping
-- coordinator exception mapping
-- BLE serialization or connection behavior
+- coordinator polling, cooldowns, exception mapping, or serialization
+- BLE connection, write, notify, timeout, or MTU behavior
 - config flow discovery/manual setup/duplicate prevention
 - options flow behavior
 - service action routing and validation
 - entity availability, unique IDs, device info, or state mapping
-- lawn mower activity mapping from mode+station bytes, including station/docked
-  overriding a stale mowing mode
-- start command refresh-choosing logic
+- lawn mower activity mapping, especially station/docked override behavior
 
 ## Hardware Validation Checklist
 
-Use this checklist when testing against a real mower:
+Use this checklist against a real mower:
 
-1. Confirm Home Assistant discovers the mower by service UUID or by
-   `Robot Mower_DYM*` / `RobotMower_DYM*` / `Robot_Mower*` name.
-   Do not treat `Mower_XXXXXX` from the 18739/18740 CLEVR manuals as evidence
-   for this DYM integration without a separate hardware scan and capture.
-2. Confirm manual setup by BLE address works.
-3. Confirm Home Assistant can read status with the captured DYM status poll and
-   that normal coordinator polling does not make the mower beep.
-4. Confirm polling still works after the mower/app has disconnected without the
-   DYM session/auth prelude.
-5. Confirm setup requires a 4-digit PIN and opens Home Assistant reauth when
-   the stored PIN is missing or invalid. Normal polling and controls currently
-   use unauthenticated DYM status/command payloads, so PIN/auth validation is
-   limited to raw authenticated debug requests.
-6. Confirm battery, station and mode mapping during docked, stopped, mowing and
-   returning states. Known observations: mode `0x00` is mowing, `0x03` is
-   returning home, and decimal `20` / `0x14` is standing still.
-7. Confirm start mowing sends the station-start payload while docked and the
-   resume payload after pause/stop, both without the DYM session/auth prelude,
-   and that the follow-up status poll updates Home Assistant state.
-8. Confirm pause/stop sends the captured stop payload without the DYM
-   session/auth prelude, the mower stops, and the follow-up status poll updates
-   Home Assistant state.
-9. Confirm dock/home sends the captured dock payload without the DYM
-   session/auth prelude, the mower returns, and the follow-up status poll
-   updates Home Assistant state.
-10. Capture additional charging, error, lift and tilt status payloads. Treat rain
-   as a settings feature unless a BLE status byte is captured for it.
-11. If the mower beeps on every Home Assistant poll again, re-check the raw
-   validation matrix: authenticated `command: status` beeped, unauthenticated
-   `command: status` did not beep, direct unauthenticated `session_start`
-   beeped twice then timed out, and unauthenticated BlueKey `query_info` did
-   not beep but timed out on 2026-06-26. Unauthenticated `resume`, `dock`, and
-   `pause` executed but direct raw calls timed out without a follow-up status
-   request; `resume` made the mower's normal three-beep start warning.
-12. Confirm unavailable behavior after a successful poll when the mower sleeps or
-   moves out of range.
-13. Update `README.md`, `DEVELOPMENT.md`, and `reverse_engineered/` with
-    validated facts and any remaining uncertainty.
+1. Confirm discovery by service UUID or by `Robot Mower_DYM*`,
+   `RobotMower_DYM*`, or `Robot_Mower*`.
+2. Confirm manual setup by BLE address.
+3. Confirm setup requires a 4-digit PIN and starts reauth when the stored PIN
+   is missing or invalid.
+4. Confirm status polling uses the captured DYM status request and does not
+   make the mower beep.
+5. Confirm polling still works after the app/mower has disconnected, without
+   the DYM session/auth prelude.
+6. Confirm battery, station, and mode mapping while docked, stopped, mowing,
+   and returning.
+7. Confirm start/resume, pause/stop, and dock commands execute without the DYM
+   session/auth prelude and refresh state through the follow-up status poll.
+8. Capture charging, error, lift, and tilt payloads.
+9. Treat rain as a settings feature unless a BLE status byte is captured.
+10. Confirm unavailable behavior when the mower sleeps or moves out of range.
+11. Update `README.md`, `DEVELOPMENT.md`, `TESTING.md`, and
+    `reverse_engineered/` with validated facts and remaining uncertainty.
 
-## Useful Debug Logging
+Known mode observations from 2026-06-26:
 
-During manual validation, add this to Home Assistant:
+```text
+0x00 = mowing
+0x01 = mowing/active, exact distinction unknown
+0x03 = returning home
+0x14 = stopped / standing still
+```
+
+Known beep observations from 2026-06-26:
+
+```text
+authenticated command: status     -> beeped
+unauthenticated command: status   -> quiet
+unauthenticated session_start     -> two beeps, then notification timeout
+unauthenticated BlueKey queryInfo -> quiet, then notification timeout
+unauthenticated resume            -> executed, normal start-warning beeps
+unauthenticated dock/pause        -> executed, no extra beeps observed
+```
+
+## Debug Logging
+
+During manual validation:
 
 ```yaml
 logger:
@@ -235,5 +179,5 @@ logger:
     bleak_retry_connector: debug
 ```
 
-Do not commit logs containing serial numbers, BLE addresses, credentials, or
-other private data unless they are redacted.
+Do not commit logs containing serial numbers, BLE addresses, PINs, credentials,
+or other private data unless they are redacted.

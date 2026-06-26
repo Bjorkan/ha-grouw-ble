@@ -1,45 +1,40 @@
 # DYM Protocol
 
-Based on HCI snoop captures, the DYM protocol is:
+Last updated: 2026-06-26.
 
-## Outbound Packets (24 bytes)
+This file covers the HCI-confirmed 24-byte DYM protocol currently used by the
+Home Assistant integration.
 
-```text
-DYM prefix (3 bytes)
-Command byte
-Command-specific data (variable)
-Zero padding
-Trailer: 16 06 01 ff 0a
-```
+For APK-derived BlueKey payloads, see [bluekey_commands.md](bluekey_commands.md).
 
-## Inbound Notifications (22 bytes)
+## Packet Shapes
+
+Outbound writes are 24 bytes:
 
 ```text
-DYM prefix (3 bytes)
-Response type byte (0x80 = status, 0x8c = auth)
-Status data fields
-Trailer: 16 06 01
+byte 0..2   ASCII "DYM" prefix
+byte 3      command byte
+byte 4..18  command-specific data / zero padding
+byte 19..23 trailer: 16 06 01 ff 0a
 ```
 
-## Auth Flow
+Inbound notifications observed so far are 22 bytes:
 
-1. Session payload (type `0x02`, embeds date/time)
-2. Auth query (type `0x0c`)
-3. Auth response (type `0x8c`) — PIN/auth response
-4. After auth: status polling or commands
+```text
+byte 0..2   ASCII "DYM" prefix
+byte 3      response command
+byte 4..18  response data
+byte 19..21 trailer: 16 06 01
+```
 
-After each fresh BLE connection, the app sends a session/authentication prelude
-before status polling or commands. This matches the observed UI behavior where
-the app asks for the PIN again after disconnecting.
+Observed response commands:
 
-The captured auth query after entering PIN `1234` is all zeros after the
-command byte, so the typed PIN is not sent in that DYM write. The APK's BlueKey
-PIN flow instead sends a query and compares the returned digit bytes locally.
-For DYM auth responses, treat bytes 4-7 as a PIN only when they are four numeric
-digit bytes (`0x00` through `0x09`); exact DYM auth response field semantics are
-still not fully captured.
+```text
+0x80 / decimal 128 = status/query response
+0x8c / decimal 140 = auth/PIN response
+```
 
-## Captured Daye Write Payloads
+## Captured Writes
 
 ```text
 Status poll:
@@ -63,16 +58,37 @@ Go to base station:
 44594d01030000000000000000000000000000160601ff0a
 ```
 
-The `44594d0100...` is used when the mower is started again after stop,
-while `44594d0102...` is used when starting from the docked/station state.
-
-The `44594d0214...` payload embeds the phone date/time as
-`year, month, day, hour, minute`, e.g. `1a 06 19 12 1c` for
+The `0x02` session payload embeds phone date/time as
+`year, month, day, hour, minute`. Example: `1a 06 19 12 1c` means
 2026-06-25 18:28.
+
+The app produced two start-like writes in captures:
+
+- `44594d0102...` when starting from dock/station.
+- `44594d0100...` when resuming after a stop on the lawn.
+
+## Auth And PIN Notes
+
+Captured fresh app sessions send a session/authentication prelude before status
+polling or commands:
+
+1. Session payload, command `0x02`, with date/time data.
+2. Auth query, command `0x0c`.
+3. Auth/PIN response, response command `0x8c`.
+4. Status polling or controls.
+
+The captured DYM auth query after entering PIN `1234` contains zeros after the
+command byte; the typed PIN is not visible in that write. DYM auth responses
+should be treated as PIN-looking only when bytes 4-7 are four numeric digit
+bytes (`0x00` through `0x09`).
+
+The APK's BlueKey PIN flow queries the robot PIN and compares it locally in
+Dart. That supports the query/compare model, but DYM auth response semantics
+are not fully captured.
 
 ## Captured Status Notifications
 
-22-byte DYM payloads:
+22-byte examples:
 
 ```text
 44594d8064321b000004000114444100000000160601
@@ -80,78 +96,75 @@ The `44594d0214...` payload embeds the phone date/time as
 44594d8064321b000004000103444100000000160601
 ```
 
-## Observed Status Field Mapping (from HCI)
+Observed field mapping:
 
 ```text
-byte 0..2  "DYM"
-byte 3     response type, 0x80 for status
-byte 4     battery percentage candidate, observed 0x64 and 0x32
-byte 7     station/docked candidate:
-            0x01 docked / at station
-            0x00 away from station
-byte 12    mode candidate:
-            0x00 mowing / active after start
-            0x03 returning after go-to-base
-            0x14 stopped / standing still / docked / idle after stop
+byte 0..2   "DYM"
+byte 3      response command, 0x80 for status
+byte 4      battery percentage candidate, observed 0x64 and 0x32
+byte 7      station/docked candidate:
+              0x01 = docked / at station
+              0x00 = away from station
+byte 12     mode candidate:
+              0x00 = mowing / active
+              0x01 = mowing / active, exact distinction unknown
+              0x03 = returning home
+              0x14 = stopped / standing still / docked / idle
 byte 19..21 notification trailer: 16 06 01
 ```
 
-The second capture confirmed byte 7 changes from `0x01` while docked to `0x00`
-after starting, and later returns to `0x01` when back at the station.
-Real-hardware observation on 2026-06-26 while the mower was running confirmed:
-mode `0x00` = mowing, mode `0x03` = returning home, and decimal mode `20`
-(`0x14`) = standing still. The dock/station byte must take precedence when
-mapping Home Assistant lawn mower activity because the mower can still expose
-mode `0x00` while the station byte reports docked.
+The station byte must take precedence when mapping Home Assistant lawn mower
+activity. Real hardware can report a mowing-looking mode while the station byte
+reports docked.
 
-Home Assistant raw-service validation on 2026-06-26 showed that an
-authenticated `command: status` poll beeps, while `command: status` with
-`authenticate: false` does not beep. A direct `session_start` write with
-`authenticate: false` produced two beeps and then timed out waiting for a
-notification. A BlueKey `query_info` probe with `authenticate: false` did not
-beep but also timed out. This points to the DYM session/auth prelude,
-especially `session_start`, as the audible polling trigger rather than the DYM
-status request itself.
+## Home Assistant Behavior Decisions
 
-Normal Home Assistant status polling should therefore use the captured DYM
-status request without the session/auth prelude.
+Normal Home Assistant status polling sends the captured DYM status request
+without the session/auth prelude.
 
-Follow-up raw-service validation on 2026-06-26 showed that unauthenticated DYM
-`resume`, `dock`, and `pause` payloads execute successfully. Those command
-writes timed out when called directly because the mower did not send the
-expected `0x80` notification for the command write itself. `resume` produced
-three beeps, matching the mower's normal manual start warning; `dock` and
-`pause` produced no extra beep. Normal Home Assistant command handling should
-therefore skip the session/auth prelude, write the command, and send the quiet
-DYM status request as a follow-up before waiting for state.
-More captures across charging, error, rain, lift and tilt states are still needed.
+Hardware validation on 2026-06-26 showed:
 
-## Encryption
+```text
+authenticated command: status     -> beeped
+unauthenticated command: status   -> quiet
+unauthenticated session_start     -> two beeps, then notification timeout
+unauthenticated BlueKey queryInfo -> quiet, then notification timeout
+```
 
-- Uses Telink AES-ATT packet encryption
-- Keys derived during PIN/auth handshake
-- BlueKey system manages keys and encryption state
-- AES/ECB/NoPadding with byte-reversed keys
-- A static `Security` toggle can disable encryption
+Normal Home Assistant commands also skip the session/auth prelude. Validation
+showed unauthenticated `resume`, `dock`, and `pause` payloads execute. Direct
+raw calls timed out because the mower did not send the expected command
+notification, so normal command handling writes the command and then sends a
+quiet DYM status request as a follow-up before waiting for state.
 
-## Comparison: DYM vs BlueKey
+`resume` still produces the mower's normal three-beep manual start warning.
+`dock` and `pause` did not produce extra beeps in the observed run.
 
-These are two distinct protocols in the same APK:
+## Relationship To BlueKey
+
+DYM and BlueKey are distinct formats in the evidence we have:
 
 | Feature | DYM | BlueKey |
-|---------|-----|---------|
-| Packet size | 24 bytes | 48 bytes |
-| Prefix | `"DYM"` (ASCII 0x44 0x59 0x4d) | `[0x88, 0xb2, 0x9a]` (binary) |
-| Trailer | `[0x16, 0x06, 0x01, 0xff, 0x0a]` | `[44, 12, 2, 510, 20]` |
-| Control byte | cmd byte (0x00/0x01/0x02/0x0c) | sub_cmd at index 3 |
-| Observable in | HCI snoop captures | Dart blutter decompilation |
-| Source | Wire-level capture | APK `blue_key.dart` + `manageDevice` |
+| --- | --- | --- |
+| Packet size | 24 bytes | 48 values |
+| Prefix | ASCII `"DYM"` | `[0x88, 0xb2, 0x9a]` |
+| Trailer | `16 06 01 ff 0a` | `[44, 12, 2, 510, 20]` |
+| Current HA use | normal polling and controls | raw debug probes only |
+| Main evidence | HCI snoop captures | Dart AOT / blutter analysis |
 
-**Hypothesis:** DYM is the pre-auth or unencrypted command layer; BlueKey is the
-post-auth encrypted command layer. HCI captures only show DYM because the tested
-session never completed authentication (or the specific firmware uses DYM exclusively).
+APK inspection showed `DeviceLogic::initDeviceInfo` sends
+`BlueKey::queryInfo` with `notifyType: "0x80"`. `notifyType` is matched
+against received byte index 3, so this links app-side query/info handling to
+the same response-command position as DYM `0x80`.
 
-## Serialization
+This does not prove DYM byte 12 and BlueKey queryInfo byte13 have identical
+semantics. Keep the mappings separate until paired captures prove otherwise.
 
-- Status bytes are parsed using typed load functions
-- `_storeUint8/16/32/64` and `_loadUint8/16/32/64` handle multi-byte integer fields
+## Open Questions
+
+- Exact meaning of all DYM status bytes.
+- Exact distinction between DYM modes `0x00` and `0x01`.
+- Whether DYM has a checksum beyond the fixed write trailer.
+- Whether DYM and BlueKey are selected by firmware generation, auth state,
+  native wrapping, or device type.
+- Exact DYM auth response fields beyond PIN-looking bytes.

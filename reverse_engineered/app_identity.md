@@ -1,6 +1,8 @@
-# App Identity & BLE Discovery
+# App Identity And BLE Discovery
 
-## Confirmed From Daye APK
+Last updated: 2026-06-26.
+
+## Daye APK Identity
 
 ```text
 Package:      com.dayepower.dayeappleaf
@@ -8,17 +10,21 @@ Version:      2.0.1
 Version code: 117
 Flutter app:  romow_bluetooth
 BLE library:  flutter_blue_plus
-BLE names:    Robot Mower_DYM, RobotMower_DYM, Robot_Mower-
 ```
 
-The app contains UI strings and routes for Bluetooth connection, mower control,
-mower status, mower settings, firmware update, working-time settings,
-multi-area mowing, rain mowing, rain delay, ultrasound, and back-to-station /
-go-to-work flows.
+BLE names found in the APK:
 
-## BLE UUIDs
+```text
+Robot Mower_DYM
+RobotMower_DYM
+Robot_Mower-
+```
 
-The app strings include these UUID values:
+The app contains UI/routes for Bluetooth connection, mower control, mower
+status, mower settings, firmware update, working-time settings, multi-area
+mowing, rain mowing, rain delay, ultrasound, back-to-station, and go-to-work.
+
+## UUIDs Found In The App
 
 ```text
 49535343-1E4D-4BD9-BA61-23C647249616
@@ -29,36 +35,46 @@ The app strings include these UUID values:
 `00002902-0000-1000-8000-00805f9b34fb` is the standard Client
 Characteristic Configuration descriptor.
 
-## Flutter Blue Plus Integration
+## FlutterBluePlus Signals
 
-The app strings include:
-`service_uuid`, `characteristic_uuid`, `writeAndNotify`,
-`writeAll`, `writeFinalChunk`, `allow_long_write`,
-`blueWriteAndNotification`, `BmWriteCharacteristicRequest`,
-`BmSetNotifyValueRequest`, `OnDiscoveredServices`,
-`OnCharacteristicReceived`, and `OnCharacteristicWritten`.
+Strings found in the APK include:
 
-## Home Assistant Discovery
+```text
+service_uuid
+characteristic_uuid
+writeAndNotify
+writeAll
+writeFinalChunk
+allow_long_write
+blueWriteAndNotification
+BmWriteCharacteristicRequest
+BmSetNotifyValueRequest
+OnDiscoveredServices
+OnCharacteristicReceived
+OnCharacteristicWritten
+```
 
-Home Assistant discovery must match Daye APK local-name strings:
+## Home Assistant Discovery Impact
+
+The integration should match:
 
 ```text
 Service UUID: 49535343-fe7d-4ae5-8fa9-9fafd205e455
-Robot Mower_DYM*
-RobotMower_DYM*
-Robot_Mower*
+Local names:  Robot Mower_DYM*, RobotMower_DYM*, Robot_Mower*
 ```
 
-The integration uses `49535343-1E4D-4BD9-BA61-23C647249616` for both write and
-notify.
+The integration uses characteristic
+`49535343-1E4D-4BD9-BA61-23C647249616` for write and notify.
 
 ## Manual Corroboration
 
-The local Grouw 17941/17947 manual says the user should select
-`RobotMower_DYM` from the Bluetooth device list in the app and then enter the
-mower PIN. This supports the Daye APK string and the current discovery alias.
+The Grouw 17941/17947 manual says users should select `RobotMower_DYM` from the
+Bluetooth device list in the app and enter the mower PIN. This supports the
+current discovery aliases.
 
-The local Grouw 18739/18740 CLEVR manual describes a different IoT generation:
+The Grouw 18739/18740 CLEVR manual describes a different IoT generation:
 `robotic-mower connect`, 2.4 GHz Wi-Fi, Bluetooth 4.0, manual pairing as
-`Mower_XXXXXX`, and factory PIN `0000`. Do not mix those names or onboarding
-assumptions into the current DYM integration without separate hardware captures.
+`Mower_XXXXXX`, and factory PIN `0000`.
+
+Do not add `Mower_XXXXXX` discovery to this DYM integration without separate
+hardware captures for that generation.

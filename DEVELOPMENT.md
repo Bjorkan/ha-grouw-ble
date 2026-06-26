@@ -1,215 +1,171 @@
-# DEVELOPMENT.md
+# Development Notes
 
-Durable development notes for this repository. Keep this file up to date when
-implementation details, Home Assistant conventions, or architecture decisions
-change.
+Durable development notes for the Grouw Mower Home Assistant custom
+integration.
 
-Last updated: 2026-06-26 (BLE stability)
+Last updated: 2026-06-26.
 
-## Authoritative References
+## Read First
 
-- Home Assistant developer docs:
-  https://developers.home-assistant.io/docs/development_index/
-- Hassfest for custom components:
-  https://developers.home-assistant.io/blog/2020/04/16/hassfest/
-- Grouw mower app:
+- User setup and feature status: [README.md](README.md)
+- Test strategy and commands: [TESTING.md](TESTING.md)
+- Protocol map and detailed findings: [reverse_engineered/index.md](reverse_engineered/index.md)
+- Agent rules and documentation update policy: [AGENTS.md](AGENTS.md)
+
+## Authoritative Inputs
+
+Use only these sources for protocol facts:
+
+- Daye Power robotic mower app:
   https://play.google.com/store/apps/details?id=com.dayepower.dayeappleaf
+- Redacted real-hardware captures from the target mower generation.
+- Local manuals only for product behavior and model boundaries, not packet
+  semantics.
 
-Store APK files and decompiler output in `APK/` (gitignored). These local-only
-inputs are for reverse-engineering only. Summarize durable findings here
-instead of relying on those paths.
+Keep APKs, decompiler output, manuals, and raw captures under `APK/` or other
+local-only paths. Summarize durable findings in `reverse_engineered/` instead
+of committing proprietary or private artifacts.
 
-Official APK files, extracted APK trees, and decompiled files must never be
-upstreamed. They are local-only reverse-engineering inputs.
+Do not reintroduce protocol assumptions from the older `com.cj.lawnmower` app.
 
-Local Grouw manuals under `APK/Manuals/` are also local-only inputs. Summarize
-durable findings under `reverse_engineered/` rather than committing PDFs or
-generated text extracts.
-
-## Repository Layout
+## Repository Map
 
 ```text
 custom_components/grouw_ble_mower/   Home Assistant custom integration
-tests/                               Lightweight unit tests and HA stubs
+tests/                               Unit tests and HA-style tests
 .github/workflows/                   GitHub Actions for tests and hassfest
-requirements-test.txt                GitHub Actions test dependencies
-README.md                            User-facing setup and protocol notes
-DEVELOPMENT.md                       Development and HA integration notes
-TESTING.md                           Test strategy and commands
-reverse_engineered/                  BLE protocol findings (per-topic files)
+requirements-test.txt                Test and CI dependencies
+README.md                            User-facing setup and current status
+DEVELOPMENT.md                       Development and architecture notes
+TESTING.md                           Test commands, coverage, hardware checks
+reverse_engineered/                  Durable protocol findings by topic
 AGENTS.md                            Instructions for AI agents
 ```
 
 ## Integration Shape
 
-- Domain: `grouw_ble_mower`
-- Integration type: local polling BLE custom component
-- Platforms: `lawn_mower`, `sensor`, `binary_sensor`
-- Config flow: supports Bluetooth discovery and manual BLE address entry.
-  Discovery currently matches confirmed service UUID
-  `49535343-fe7d-4ae5-8fa9-9fafd205e455` and local-name strings
-  `Robot Mower_DYM*`, `RobotMower_DYM*`, and `Robot_Mower*`.
-  Manual setup rejects blank addresses before asking for the mower PIN.
-  The app writes and subscribes to characteristic
-  `49535343-1e4d-4bd9-ba61-23c647249616`.
+- Domain: `grouw_ble_mower`.
+- Integration type: local polling BLE custom component.
+- Platforms: `lawn_mower`, `sensor`, `binary_sensor`.
+- Config flow: Bluetooth discovery and manual BLE address entry.
 - Options flow: not exposed.
-- Coordinator: `GrouwMowerCoordinator`
-- BLE client: `GrouwBleMowerClient`
-- Protocol parser/framer: `ble_protocol.py`
-- Debug action: `grouw_ble_mower.send_raw_json`
+- Coordinator: `GrouwMowerCoordinator`.
+- BLE client: `GrouwBleMowerClient`.
+- Protocol module: `ble_protocol.py`.
+- Debug action: `grouw_ble_mower.send_raw_json`.
 
-## Home Assistant Development Notes
+Discovery matches:
 
-- Use Home Assistant's Bluetooth APIs. Do not start a separate BLE scanner.
-- Use `async_ble_device_from_address(..., connectable=True)` for outgoing BLE
-  connections so local adapters and connectable Bluetooth proxies work.
-- Use stable unique IDs. This integration normalizes the BLE address and uses it
-  for config entry uniqueness and entity unique IDs.
-- Keep `has_entity_name = True` on entities. The lawn mower entity uses
-  `_attr_name = None` so it becomes the main device entity.
+```text
+Service UUID: 49535343-fe7d-4ae5-8fa9-9fafd205e455
+Local names:  Robot Mower_DYM*, RobotMower_DYM*, Robot_Mower*
+```
+
+The app writes and subscribes to characteristic:
+
+```text
+49535343-1e4d-4bd9-ba61-23c647249616
+```
+
+## Home Assistant Rules
+
+- Use Home Assistant Bluetooth APIs. Do not start a standalone scanner.
+- Resolve outgoing connections with
+  `async_ble_device_from_address(..., connectable=True)`.
+- Use stable unique IDs based on normalized BLE address.
+- Keep `has_entity_name = True`; the lawn mower entity has `_attr_name = None`
+  so it becomes the main device entity.
 - Use `DataUpdateCoordinator` for shared polling state.
-- The coordinator polls with the captured DYM status request. Before the
-  first successful poll, coordinator.data is None and last_update_success
-  is False, so entities load as unavailable. On BLE failure the coordinator
-  raises UpdateFailed instead of returning placeholder data.
+- Temporary BLE failures after setup should become `UpdateFailed`, which makes
+  entities unavailable instead of healthy with stale data.
+- Preserve config entry unloading and clean up services, callbacks, and runtime
+  state.
+- Keep diagnostics and normal debug logs redacted.
+- Put user-facing text in `translations/`. This repo also has `strings.json`
+  for service metadata.
+
+## BLE Runtime Decisions
+
+- Normal polling and controls use HCI-confirmed DYM payloads.
+- APK-derived BlueKey commands are debug probes only until hardware captures
+  confirm when and how those 48-value payloads are written on the wire.
+- The integration reconnects for each BLE request. This keeps Bluetooth proxy
+  behavior simple, but makes serialization important.
+- BLE communication is serialized per mower with the coordinator `_ble_lock`
+  and the client `_request_lock`.
+- Manual commands and raw service calls increment a pending-command counter
+  before waiting for the BLE lock. Background polls skip while that counter is
+  non-zero, so a newly scheduled poll does not jump ahead of a queued user
+  command.
+- Manual-command cooldown starts after the BLE transaction completes.
+- The polling interval is currently 30 seconds. BLE failure backoff is also 30
+  seconds.
+- The APK requests MTU 512 before service discovery. The integration mirrors
+  this as a best-effort MTU request and continues if the Bleak backend does not
+  support it.
+
+## Protocol Decisions In Code
+
+- The config flow requires exactly four ASCII decimal PIN digits.
 - Normal status and control transactions skip the DYM session/auth prelude
-  because hardware testing showed `session_start` is the source of the
-  unwanted beep and the DYM status/start/resume/pause/dock payloads work
-  without it on the tested mower. Keep the auth path available for raw protocol
-  validation and future PIN-related research.
-- The APK's MainLogic connection-state callback awaits FlutterBluePlus
-  `requestMtu` before service discovery. FlutterBluePlus requests MTU 512 in
-  that path. The integration mirrors this with a best-effort MTU request after
-  connect; unsupported Bleak backends log and continue because the captured DYM
-  packets are short.
-- Configured PIN handling follows the APK-observed query/compare shape for raw
-  authenticated protocol validation: the config flow requires exactly four
-  ASCII decimal digits, and the BLE client compares the configured PIN with
-  `mower_pin` parsed from bytes 4-7 of a DYM `0x8c` response only when those
-  bytes look like numeric digit bytes. The BLE client treats a missing
-  configured PIN as an authentication error. The captured DYM auth query does
-  not include the typed PIN in its write payload.
-- Config entries with a missing/invalid stored PIN raise
-  `ConfigEntryAuthFailed` during setup. Confirmed PIN mismatches raised from
-  authenticated raw/debug requests are mapped to Home Assistant's linked reauth
-  flow for updating the existing entry's PIN. Confirmed PIN mismatches from
-  mower service actions call `entry.async_start_reauth(hass)` when available
-  before surfacing a `HomeAssistantError` for the action. An auth response
-  without parseable PIN data is treated as a BLE/protocol update failure, not
-  as a proven PIN failure.
-- The active integration uses the HCI-confirmed DYM payloads on the wire.
-  BlueKey commands are documented under `reverse_engineered/` from Dart AOT
-  analysis but are not used for normal polling or controls until a hardware
-  capture confirms when/how those 48-value payloads are written.
-- The APK also contains BlueKey page flows for change PIN, mower settings,
-  multi-area mowing, and weekly working-time settings. Current AOT findings map
-  those query responses under `reverse_engineered/`, but the integration should
-  not expose or write those settings until redacted HCI captures confirm the
-  exact on-wire payloads for the target mower firmware.
-- Local Grouw manuals reviewed on 2026-06-26 corroborate product UI concepts
-  such as rain mowing, boundary cut, weekly work time, multi-zone/start-point
-  setup, alert history, total runtime, and firmware update. These manuals also
-  confirm `RobotMower_DYM` for models 17941/17947, but they do not provide BLE
-  UUIDs or packet payloads. Keep protocol constants tied to the Daye APK and
-  redacted hardware captures.
-- The Grouw 18739/18740 CLEVR manual describes a separate IoT generation using
-  `robotic-mower connect`, 2.4 GHz Wi-Fi, Bluetooth 4.0, default PIN `0000`,
-  and BLE pairing name `Mower_XXXXXX`. Do not add those assumptions to this
-  local DYM BLE integration without separate captures and design work.
-- `grouw_ble_mower.send_raw_json` can build APK-shaped BlueKey probe payloads
-  with `bluekey` or `bluekey_sub_cmd`, and parses BlueKey notifications into
-  APK-style `byte1`, `byte2`, ... fields plus known settings/PIN helper maps.
-  This is debug/protocol-validation support only; normal polling and control
-  still use HCI-confirmed DYM packets.
-- The BlueKey debug encoder converts APK `List<int>` values to BLE bytes with
-  `value & 0xff`. That means the APK trailer value `510` is emitted as `0xfe`
-  for probe payloads. Keep this assumption documented until hardware captures
-  prove the exact native/platform conversion.
-- Expose only fields decoded from HCI-confirmed DYM status notifications as
-  entities. Current extra entities are: battery percentage, raw mode code, last
-  response command, and docked state. Do not re-add rain, Wi-Fi, runtime, LED,
-  ultrasonic, error-memory, or command-result entities until their response
-  bytes are confirmed from the APK plus redacted hardware captures.
-- Real-hardware observation on 2026-06-26 confirmed DYM mode code `0x00`
-  means mowing, `0x03` means returning home, and decimal `20` / `0x14` means
-  standing still. Home Assistant lawn mower activity must let the station byte
-  override mode, because the mower can report docked while the mode byte still
-  looks like mowing.
-- Raw-service validation on 2026-06-26 showed that authenticated `command:
-  status` beeps, unauthenticated `command: status` does not beep, direct
-  unauthenticated `session_start` beeps twice and times out, and
-  unauthenticated BlueKey `query_info` does not beep but times out. Normal
-  coordinator status polling therefore skips the DYM session/auth prelude and
-  sends the captured DYM status request with `authenticate=False`.
-- Follow-up raw-service validation on 2026-06-26 showed unauthenticated DYM
-  `resume`, `dock`, and `pause` commands execute successfully but time out when
-  no follow-up status request is sent. Normal Home Assistant commands therefore
-  skip the auth prelude, send the command, and then send the quiet DYM status
-  request as a follow-up. `resume` still produces the mower's own three-beep
-  start warning, matching manual start behavior; `dock` and `pause` did not
-  produce extra beeps.
-- BLE communication is serialized per mower with both the coordinator
-  `_ble_lock` and the BLE client's `_request_lock`; do not remove these without
-  a real concurrency-safe replacement. The client-level lock protects direct
-  debug/test call paths in addition to normal coordinator traffic.
-- Config entry unloading must continue to work. Clean up services and callbacks
-  when the last entry unloads.
-- Diagnostics must be redacted. Avoid exposing BLE address, serial number, raw
-  secrets, or personal/user-specific values unnecessarily.
-- User-facing text belongs in `translations/` directory. Custom integrations
-  must use `translations/en.json`, not `strings.json`, which is only for
-  Home Assistant core components processed by the build-time pipeline.
+  because real-hardware validation showed the prelude can make the mower beep,
+  while unauthenticated DYM status/start/resume/pause/dock payloads work on the
+  tested mower.
+- The auth/PIN path remains available for raw protocol validation and future
+  research.
+- DYM response command `0x80` is treated as status. DYM response command
+  `0x8c` is treated as auth/PIN.
+- DYM mode `0x00` and `0x01` are both mapped to mowing activity. The exact
+  distinction remains unknown.
+- DYM mode `0x03` maps to returning home. DYM mode `0x14` maps to stopped or
+  standing still.
+- The dock/station byte overrides mode when deriving Home Assistant lawn mower
+  activity because the mower can report docked while the mode byte still looks
+  active.
+- Exposed entities are limited to fields decoded from HCI-confirmed DYM status
+  notifications: battery, raw mode code, last response command, docked state,
+  and lawn mower activity.
 
-## Current Implementation Notes
+The detailed evidence behind these decisions is in:
 
-- Initial setup stores the coordinator before first refresh, then attempts an
-  initial BLE refresh. If the mower is asleep or temporarily unreachable before
-  any successful poll, setup continues with coordinator.data = None and
-  last_update_success = False so entities load as unavailable instead of
-  blocking the config entry or showing stale placeholder data.
-- The coordinator defers background polling after a manual command (cooldown)
-  and after a BLE failure (backoff) to avoid competing with user actions and
-  to let the mower/Bluetooth stack settle. Manual-command cooldown may return
-  the latest state, but BLE failure backoff raises `UpdateFailed` even after a
-  previous successful state so entities become unavailable instead of looking
-  healthy with stale data.
-- The debug action routes to a coordinator by `entry_id`, by normalized
-  `address`, or by the sole loaded coordinator.
-- The debug action raises `ServiceValidationError` when the target mower cannot
-  be determined, and `HomeAssistantError` for BLE communication failures.
-- The integration intentionally reconnects for each BLE request. This keeps the
-  code compatible with Home Assistant Bluetooth proxies, but makes request
-  serialization important.
-- The polling interval is currently 30 seconds with a 30-second BLE failure
-  backoff interval.
-- `sensor` and `binary_sensor` set `PARALLEL_UPDATES = 0` because coordinator
-  polling centralizes reads. `lawn_mower` sets `PARALLEL_UPDATES = 1` because it
-  exposes command actions.
-- Every BLE transaction is logged with a per-request transaction ID, phase
-  labels (connect, start_notify, optional session_start write, optional
-  auth_query write, command write, follow-up write), notification hex values,
-  and the selected response.
-- Notification waits use one overall deadline per phase. Unexpected
-  notifications are ignored, but they must not extend the auth/status timeout.
-- The notification queue is drained after the `0x8c` auth response to prevent
-  stale notifications from being returned as command responses. For command
-  transactions with a follow-up status poll, the queue is drained again
-  immediately before writing that status poll so the selected `0x80` response
-  belongs to the follow-up request boundary.
-- PIN/auth responses are redacted before being stored in coordinator state or
-  written to normal debug/service logs.
-- BLE errors are classified into GrouwBleConnectionError (connect timeout),
-  GrouwBleGattError (GATT write/notify failure), and GrouwBleTimeout
-  (notification timeout) for clearer logging and troubleshooting. Bleak,
-  timeout, and OS backend exceptions are mapped into these categories where the
+- [reverse_engineered/dym_protocol.md](reverse_engineered/dym_protocol.md)
+- [reverse_engineered/response_parsing.md](reverse_engineered/response_parsing.md)
+- [reverse_engineered/ble_write_flow.md](reverse_engineered/ble_write_flow.md)
+
+## Debug Service
+
+`grouw_ble_mower.send_raw_json` routes to a coordinator by `entry_id`,
+normalized `address`, or the sole loaded coordinator.
+
+It should raise:
+
+- `ServiceValidationError` when the target mower cannot be resolved.
+- `HomeAssistantError` when BLE communication fails.
+
+The service can send named DYM commands, raw hex payloads, and APK-shaped
+BlueKey probes. BlueKey probe payloads convert APK `List<int>` values to BLE
+bytes with `value & 0xff`; the APK trailer value `510` is therefore emitted as
+`0xfe` until captures prove the native/platform conversion.
+
+## Implementation Notes
+
+- Setup stores the coordinator before first refresh. If the first refresh
+  fails because the mower is asleep or unreachable, entities load unavailable
+  rather than blocking the config entry with placeholder data.
+- The debug action and coordinator redact PIN/auth response bytes before
+  storing or logging state.
+- Notification waits use one deadline per phase. Unexpected notifications are
+  ignored but do not extend the timeout.
+- The notification queue is drained after auth and before follow-up status
+  polls so selected responses belong to the intended request boundary.
+- BLE errors are classified as connection, GATT, or timeout errors where the
   failing phase is known.
-- Manual-command cooldown is timestamped after the BLE transaction finishes, so
-  a command that waited behind another transaction still suppresses immediate
-  follow-up polling for the intended interval.
+- `sensor` and `binary_sensor` set `PARALLEL_UPDATES = 0`. `lawn_mower` sets
+  `PARALLEL_UPDATES = 1` because it exposes command actions.
 
 ## When Adding Features
 
-Update all applicable files:
+Update every relevant durable file in the same change:
 
 ```text
 README.md
@@ -218,18 +174,23 @@ TESTING.md
 reverse_engineered/
 custom_components/grouw_ble_mower/services.yaml
 custom_components/grouw_ble_mower/strings.json
-custom_components/grouw_ble_mower/translations/sv.json
+custom_components/grouw_ble_mower/translations/
 tests/
 ```
 
-Add tests for new parsing, entity behavior, config flow behavior, service action
-routing, and error handling.
+Add or update tests for:
+
+- protocol constants and parsers
+- entity state mapping and availability
+- config flow and reauth behavior
+- service routing and validation
+- BLE serialization, timeouts, and error mapping
+- diagnostics and redaction
 
 ## Known Improvement Areas
 
-- Add Home Assistant based tests when a HA test environment is available.
-- Extend config flow tests for discovery/manual setup and duplicate prevention.
-- Consider moving runtime coordinator storage to typed `ConfigEntry.runtime_data`
-  when targeting a modern Home Assistant baseline consistently.
-- Consider more user-facing troubleshooting detail once real hardware logs are
-  available.
+- Add broader Home Assistant integration tests as dependency coverage improves.
+- Extend discovery/manual config flow tests for duplicate prevention.
+- Consider `ConfigEntry.runtime_data` when the supported Home Assistant
+  baseline is modern enough.
+- Add user-facing troubleshooting once more real-hardware logs are available.

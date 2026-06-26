@@ -11,7 +11,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .const import DAYE_MODE_IDLE, DAYE_MODE_MOWING, DAYE_MODE_RETURNING
+from .const import DAYE_MODE_IDLE, DAYE_MODE_RETURNING, DAYE_MOWING_MODE_CODES
 from .coordinator import GrouwMowerCoordinator
 from .entity import GrouwMowerEntity
 
@@ -49,7 +49,7 @@ class GrouwBleLawnMower(GrouwMowerEntity, LawnMowerEntity):
             return None
         if data.station is True:
             return LawnMowerActivity.DOCKED
-        if data.mode == DAYE_MODE_MOWING:
+        if data.mode in DAYE_MOWING_MODE_CODES:
             return LawnMowerActivity.MOWING
         if data.mode == DAYE_MODE_RETURNING:
             return LawnMowerActivity.RETURNING

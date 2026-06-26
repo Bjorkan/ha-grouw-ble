@@ -1,105 +1,144 @@
-# BLE Write/Notification Flow
+# BLE Write And Notification Flow
 
-Confirmed from `MainLogic::writeAndNotify` (0x461eb4),
-`blueWriteAndNotification` (0x461fa4), and the connection-state callback at
-0x4709c4.
+Last updated: 2026-06-26.
+
+Findings from `MainLogic::writeAndNotify` (`0x461eb4`),
+`MainLogic::blueWriteAndNotification` (`0x461fa4`), and related Daye app
+classes.
 
 ## Connection Sequence
 
-When `BluetoothDevice.connectionState` changes to connected, `MainLogic`
-awaits `BluetoothDevice::requestMtu` before showing the success toast and
-calling `MainLogic::discoverServices` (0x470c98). In the bundled
-`flutter_blue_plus` code, `requestMtu` creates `BmMtuChangeRequest` with
-`mtu = 512`, waits for the MTU response, and uses a 15-second timeout.
+When the Daye app sees `BluetoothDevice.connectionState == connected`,
+`MainLogic` awaits `BluetoothDevice::requestMtu` before showing the success
+toast and calling `discoverServices`.
 
-## Sequence
+The bundled FlutterBluePlus implementation requests MTU 512 with a 15-second
+timeout.
 
-1. `Helper::writeAndNotify` (0x461c44) resolves `MainLogic` via GetIt,
-   forwards all parameters.
-2. `MainLogic::writeAndNotify` checks `connectType` sentinel, calls
-   `blueWriteAndNotification`.
-3. `blueWriteAndNotification`:
-   - Cancels existing `resultListen` subscription
-   - Subscribes to `onValueReceived` on the `writeCharacteristic`
-   - Writes the command bytes to `BluetoothCharacteristic::write`
-   - On notification: calls `Helper::parseBlueResult` (0x46b01c) on the
-     received bytes
-   - Passes the parsed map to the callback closure
+## Write/Notify Sequence
+
+1. `Helper::writeAndNotify` resolves `MainLogic` through GetIt and forwards
+   the payload, callback, and optional flags.
+2. `MainLogic::writeAndNotify` checks the connection-type sentinel.
+3. `MainLogic::blueWriteAndNotification` cancels the existing `resultListen`
+   subscription.
+4. It subscribes to `onValueReceived` on the write characteristic.
+5. It writes the command bytes with `BluetoothCharacteristic::write`.
+6. On notification, it calls `Helper::parseBlueResult`.
+7. The parsed one-based byte map is passed to the callback closure.
+
+`Helper::writeAndNotify` signature:
+
+```text
+writeAndNotify(payload, callback, {
+  canBack,
+  errorTip,
+  noLimitNotify,
+  notifyType,
+  showTip,
+})
+```
+
+## `notifyType`
+
+When `notifyType` is supplied, `blueWriteAndNotification` formats received byte
+index 3, the fourth byte, as a padded hex string and compares it to
+`notifyType` before invoking the callback.
+
+This byte index is the same position as the DYM response command byte.
+
+Observed `BlueKey::queryInfo` call sites:
+
+```text
+MowerStatusLogic::changeWorkType
+  Helper.writeAndNotify(BlueKey.queryInfo, callback,
+                        canBack: true, showTip: false)
+  No notifyType filter. Callback reads byte13 for work-mode display.
+
+DeviceLogic::initDeviceInfo
+  Helper.writeAndNotify(BlueKey.queryInfo, callback,
+                        notifyType: "0x80", errorTip: "Get info error")
+  Callback reads byte5 battery and byte9-byte15 device/version fields.
+```
+
+This supports that app-side query/info handling can wait for response command
+`0x80`, but does not prove that all DYM and BlueKey response fields share the
+same semantics.
 
 ## State Classes
 
-### MainState (pages/main/state.dart, size 0x30)
+### MainState
 
 ```text
-0x08  connectType (int, late)     — BLE connection type (0=disconnected, 2=connected?)
-0x0c  area (String, late)         — Device area label
-0x10  robotPin (String, late)     — Stored PIN for verification
-0x14  type (int, late)            — Device type
-0x18  deviceName (String, late)   — Device display name
-0x1c  deviceAddress (String, late) — BLE MAC
-0x20  loading (bool)              — Loading indicator
-0x24  startTime (DateTime?)       — Mowing start time
-0x28  isOpenAuto (bool)           — Auto-open flag
-0x2c  haveBlueControll (bool)     — Has Bluetooth control
+0x08  connectType
+0x0c  area
+0x10  robotPin
+0x14  type
+0x18  deviceName
+0x1c  deviceAddress
+0x20  loading
+0x24  startTime
+0x28  isOpenAuto
+0x2c  haveBlueControll
 ```
 
-### MowerStatusState (pages/mower_status/state.dart, size 0x18)
+### MowerStatusState
 
 ```text
-0x08  disConnect (bool, late)      — Disconnection flag
-0x0c  workType (String, late)      — Display string for current work mode
-0x10  mowerControl (bool, late)    — Whether mower control buttons are shown
-0x14  timer (Timer?, late)         — Polling timer reference
+0x08  disConnect
+0x0c  workType
+0x10  mowerControl
+0x14  timer
 ```
 
-### DeviceState (pages/device/state.dart, size 0x20)
+### DeviceState
 
 ```text
-0x08  connectType (int, late)         — BLE connection type
-0x0c  currentIndex (int, late)        — Page tab index
-0x10  pageController (PageController) — Tab controller
-0x14  deviceInfo (Map<String,String>?) — Device info map
-0x18  batteryImage (String, late)     — Asset path for battery icon
-0x1c  timer (Timer?, late)            — Timer reference
+0x08  connectType
+0x0c  currentIndex
+0x10  pageController
+0x14  deviceInfo
+0x18  batteryImage
+0x1c  timer
 ```
 
-### ChangePinState (pages/change_pin/state.dart, size 0x14)
+### ChangePinState
 
 ```text
-0x08  oldPin (TextEditingController)
-0x0c  newPin (TextEditingController)
-0x10  reNewPin (TextEditingController)
+0x08  oldPin
+0x0c  newPin
+0x10  reNewPin
 ```
 
-### MowerSettingState (pages/mower_setting/state.dart, size 0x2c)
+### MowerSettingState
 
 ```text
-0x08  hour (String/Text controller value)
-0x0c  min (String/Text controller value)
-0x10  mowInTheRain (bool)
-0x14  boundaryCut (bool)
-0x18  ultrasound (bool)
-0x1c  helixSet (bool)
-0x20  led (bool)
-0x24  timer (Timer?)
-0x28  requestTimer (Timer?)
+0x08  hour
+0x0c  min
+0x10  mowInTheRain
+0x14  boundaryCut
+0x18  ultrasound
+0x1c  helixSet
+0x20  led
+0x24  timer
+0x28  requestTimer
 ```
 
-### MultiAreaMowingState (pages/multi_area_mowing/state.dart, size 0x20)
+### MultiAreaMowingState
 
 ```text
-0x08  area2Per (TextEditingController)
-0x0c  area2Dis (TextEditingController)
-0x10  area3Per (TextEditingController)
-0x14  area3Dis (TextEditingController)
-0x18  timer (Timer?)
-0x1c  requestTimer (Timer?)
+0x08  area2Per
+0x0c  area2Dis
+0x10  area3Per
+0x14  area3Dis
+0x18  timer
+0x1c  requestTimer
 ```
 
-### WorkingTimeSettingState (pages/working_time_setting/state.dart, size 0x44)
+### WorkingTimeSettingState
 
 ```text
-0x08  data (weekday schedule map)
+0x08  data
 0x0c  type
 0x10  day
 0x14  startHour
@@ -112,6 +151,6 @@ calling `MainLogic::discoverServices` (0x470c98). In the bundled
 0x30  workHourController
 0x34  workMinuteController
 0x38  dayController
-0x3c  timer (Timer?)
-0x40  requestTimer (Timer?)
+0x3c  timer
+0x40  requestTimer
 ```

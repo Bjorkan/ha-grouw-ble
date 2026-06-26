@@ -1,41 +1,89 @@
 # Sources
 
+Last updated: 2026-06-26.
+
 Only the Daye APK and redacted hardware captures are authoritative for current
 wire-protocol facts. Local manuals can corroborate product behavior and model
 boundaries, but they do not define BLE packet semantics.
 
-- Daye Power robotic mower app (`com.dayepower.dayeappleaf`):
-  https://play.google.com/store/apps/details?id=com.dayepower.dayeappleaf
-- Local APK tree under `APK/` (jadx-decompiled version, 2026-06-25):
-  - `manifest.json` reports package `com.dayepower.dayeappleaf`, version
-    `2.0.1`, version code `117`.
-  - `decoded/jadx/resources/lib/arm64-v8a/libapp.so` contains Flutter/Dart
-    strings for package `romow_bluetooth`, `flutter_blue_plus`, and user
-    guidance to choose BLE device name `RobotMower_DYM`.
-  - `blutter_out/asm/` was used on 2026-06-25 to inspect Dart AOT symbols for
-    `MainLogic`, `MowerStatusLogic`, `BlueKey`, FlutterBluePlus BLE flow,
-    `ChangePinLogic`, `MowerSettingLogic`, `MultiAreaMowingLogic`, and
-    `WorkingTimeSettingLogic`.
-- Hardware scan from an iPhone near the mower on 2026-06-25:
-  - Local JSON file (not committed) with the mower's GATT table.
-  - Durable findings are summarized in `gatt_table.md`.
-- Android Bluetooth HCI snoop bugreport captured near the mower on 2026-06-25:
-  - Source: extracted bugreport archive, path `FS/data/log/bt/btsnoop_hci.log`
-    (local file, not committed)
-  - User action sequence: connect, enter PIN `1234`, start, stop, start, go to base station.
-  - Durable findings are summarized in `dym_protocol.md`.
-- Second Android Bluetooth HCI snoop bugreport captured on 2026-06-25:
-  - Source: bugreport zip archive (local file, not committed)
-  - User action sequence: start docked mower, stop, start again, go to base station.
-  - Durable findings are summarized in `dym_protocol.md`.
-- Local Grouw manuals under `APK/Manuals/` reviewed on 2026-06-26:
-  - `libble-eu.pdf` for models 17935/17936/17937.
-  - `b74925.pdf` for models 17941/17947.
-  - `578ac6.pdf` for models 18739/18740 CLEVR.
-  - Durable findings are summarized in `manual_findings.md`.
+## Authoritative Sources
 
-Do not use the previous `com.cj.lawnmower` app, old local reverse-engineering
-notes, or older APK-derived assumptions as protocol facts for this integration.
-Official APK files, extracted APK contents, decompiled Java/smali, native
-library dumps, generated decompiler output, manuals, and generated manual text
-must never be upstreamed.
+### Daye Power APK
+
+```text
+Package:      com.dayepower.dayeappleaf
+Version:      2.0.1
+Version code: 117
+```
+
+Play Store:
+
+```text
+https://play.google.com/store/apps/details?id=com.dayepower.dayeappleaf
+```
+
+Local APK/decompiler artifacts are under `APK/` and are not committed.
+
+Relevant local findings:
+
+- `manifest.json` confirms package, version, and version code.
+- `decoded/jadx/resources/lib/arm64-v8a/libapp.so` contains Flutter/Dart
+  strings for `romow_bluetooth`, `flutter_blue_plus`, and DYM Bluetooth setup.
+- `blutter_out/asm/` was used to inspect Dart AOT symbols for `MainLogic`,
+  `MowerStatusLogic`, `DeviceLogic`, `BlueKey`, FlutterBluePlus BLE flow,
+  `ChangePinLogic`, `MowerSettingLogic`, `MultiAreaMowingLogic`, and
+  `WorkingTimeSettingLogic`.
+
+### Hardware Scan
+
+An iPhone BLE scan near the mower on 2026-06-25 captured the local name and
+GATT table. Durable findings are summarized in [gatt_table.md](gatt_table.md).
+
+### HCI Snoop Captures
+
+Android Bluetooth HCI snoop bugreports captured on 2026-06-25.
+
+Captured user actions included:
+
+- connect
+- enter PIN `1234`
+- start from dock
+- stop
+- start/resume after stop
+- go to base station
+
+Durable findings are summarized in [dym_protocol.md](dym_protocol.md).
+
+## Corroborating Sources
+
+Local Grouw manuals reviewed on 2026-06-26:
+
+```text
+APK/Manuals/libble-eu.pdf  Models 17935/17936/17937
+APK/Manuals/b74925.pdf     Models 17941/17947
+APK/Manuals/578ac6.pdf     Models 18739/18740 CLEVR
+```
+
+Durable findings are summarized in [manual_findings.md](manual_findings.md).
+
+## Excluded Sources
+
+Do not use these as protocol facts for this integration:
+
+- the previous `com.cj.lawnmower` app
+- old local reverse-engineering notes from unrelated app generations
+- CLEVR / `robotic-mower connect` manuals as DYM packet evidence
+- unredacted logs, raw captures, or screenshots with private data
+
+## Do Not Commit
+
+Never commit:
+
+- official APK files
+- extracted APK trees
+- decompiled Java/smali/Dart/native output
+- native library dumps
+- local manuals or generated manual text
+- raw HCI logs
+- logs containing BLE addresses, serial numbers, PINs, credentials, or other
+  private data

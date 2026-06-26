@@ -1,24 +1,24 @@
-# Dart AOT — Blutter Analysis
+# Dart AOT / Blutter Analysis
 
-Analyzed from `libapp.so` using blutter. Source files in `romow_bluetooth`
-package.
+Last updated: 2026-06-26.
+
+Findings from `libapp.so` after blutter analysis. Source paths point to the
+Daye app's `romow_bluetooth` Flutter package.
 
 ## Library Units
 
-### @14069316 — Standard Dart Runtime Library
+### `@14069316` - Standard Dart Runtime
 
-This library unit is **standard Dart runtime code** (`dart:io`, `dart:async`,
-`dart:collection`), NOT custom protocol code. Contains classes like:
-`_StreamSinkImpl`, `_Socket`, `_File`, `_RandomAccessFileOps`, etc.
+This unit is standard Dart runtime code (`dart:io`, `dart:async`,
+`dart:collection`), not custom protocol code.
 
-Functions found in this unit (`_sendData`, `_makeDatagram`, `_checkForErrorResponse`,
-`_checkSum`, `_isBufferEncrypted`, `_onData`, `_raw`) are standard Dart runtime
-internals, not custom BLE protocol framing helpers. **Do not use these as evidence
-of protocol structure.**
+Functions such as `_sendData`, `_makeDatagram`, `_checkForErrorResponse`,
+`_checkSum`, `_isBufferEncrypted`, `_onData`, and `_raw` appear here as Dart
+runtime internals. Do not use them as evidence for mower BLE framing.
 
-### @8050071 — Binary Data Serialization Library
+### `@8050071` - Binary Serialization
 
-Full set of typed store/load functions for data point parsing:
+Typed load/store helpers:
 
 ```text
 _storeUint8    _storeUint16   _storeUint32   _storeUint64
@@ -27,179 +27,179 @@ _loadUint8     _loadUint16    _loadUint32    _loadUint64
 _loadInt8      _loadInt16     _loadInt32     _loadInt64
 ```
 
-### @3220832 — Checksum Library
-
-Contains `_checkSum` function used for verifying data integrity.
-
-### @10003594 — Buffer Creation
-
-Contains `_createBuffer` function.
-
-## BlueKey — Command Definitions
-
-The `BlueKey` class at `package:romow_bluetooth/common/config/blue_key.dart`
-defines 48-byte authenticated command payloads. Commands are constructed as
-plain `List<int>` and sent through `writeAndNotify` → `blueWriteAndNotification`
-→ `BluetoothCharacteristic::write`.
-
-No Dart-side encryption, DYM framing, or checksum logic is visible for BlueKey
-commands. Encryption (AES-CTR via `libTelinkCrypto.so`) happens at the native
-layer or is transparent to the Dart write path.
-
-## MainLogic — BLE Write/Notification Controller
-
-`MainLogic` at `pages/main/logic.dart`, class size 0x20:
+### Other Runtime-Like Units
 
 ```text
-0x461eb4  writeAndNotify              — Entry point: forwards to blueWriteAndNotification
-0x461fa4  blueWriteAndNotification    — Core BLE write: subscribes to notifications, writes to char
-0x46ac3c  <anonymous closure> (onDone) — Toast "toast_secsecondary_true"
-0x46aca4  <anonymous closure> (onError) — Error toast, dialog close
-0x46ad84  <anonymous closure> (onData)  — Parse result, call back
-0x46b580  changePIN                   — Update robotPin in state
-0x46f4b4  resetPinInput               — Clear PIN text field
-0x46f720  openDevice                  — Validate PIN length (≥4), verify against robotPin
-0x47086c  setDevice                   — Set connected device, handle duplicate connection
-0x4709c4  connectionState callback    — On connected: await requestMtu, then discoverServices
+@3220832   checksum helper unit, includes _checkSum
+@10003594  buffer creation helper unit, includes _createBuffer
 ```
 
-The connection-state callback calls `BluetoothDevice::requestMtu` before
-`MainLogic::discoverServices`. The bundled FlutterBluePlus implementation
-builds `BmMtuChangeRequest` with `mtu = 512` and a 15-second timeout.
+## MainLogic
 
-## MowerStatusLogic — Status Display Controller
-
-`MowerStatusLogic` at `pages/mower_status/logic.dart`, class size 0x24:
+`pages/main/logic.dart`, class size `0x20`.
 
 ```text
-0x46db00  changeMoverControl        — Update state.mowerControl, notify
-0x46db6c  stateDisConnect           — Check disconnection and error state
-0x470510  <anonymous>               — Navigate back on disconnect dialog
-0x470584  <anonymous>               — Call disConnect on confirm
-0x4705e4  disConnect                — Full disconnect: disconnect BLE, navigate
-0x480bc0  changeConnectStatus       — Toggle connect/disconnect, cancel timer
-0x4dd444  addListen                 — Start periodic Timer for polling
-0x4dd534  <anonymous> (timer cb)    — Timer callback: calls changeWorkType
-0x4dd594  changeWorkType            — Sends BlueKey::queryInfo, parses work mode from byte13
-0x4dd66c  <anonymous> (response)    — Parses byte13 → work mode string, updates UI
-0x51b6a0  manageDevice              — Sends BlueKey cmd for start/stop/back/go-to-work
-0x51c39c  errorMemory               — Sends BlueKey cmd with sub-cmd 0x3c, parses error
-0x51c4f4  <anonymous> (error data)  — Parses byte5/byte12 for error code letter + ASCII
+0x461eb4  writeAndNotify
+0x461fa4  blueWriteAndNotification
+0x46ac3c  onDone closure
+0x46aca4  onError closure
+0x46ad84  onData closure
+0x46b580  changePIN
+0x46f4b4  resetPinInput
+0x46f720  openDevice
+0x47086c  setDevice
+0x4709c4  connectionState callback
 ```
 
-## DeviceLogic — Initial Device Info Query
+Connection flow: on BLE connected, the app awaits FlutterBluePlus
+`requestMtu` before service discovery. The bundled FlutterBluePlus path
+requests MTU 512 with a 15-second timeout.
 
-`DeviceLogic` at `pages/device/logic.dart`:
+## MowerStatusLogic
+
+`pages/mower_status/logic.dart`, class size `0x24`.
 
 ```text
-0x47ff9c  onReady                    — Calls initDeviceInfo
-0x47fff0  initDeviceInfo             — Sends BlueKey::queryInfo once at init
-0x480164  <anonymous> (response)     — Parses byte5 (battery), byte9-12 (version), byte14-15 (model)
+0x46db00  changeMoverControl
+0x46db6c  stateDisConnect
+0x470510  navigate back on disconnect dialog
+0x470584  call disConnect on confirm
+0x4705e4  disConnect
+0x480bc0  changeConnectStatus
+0x4dd444  addListen
+0x4dd534  timer callback -> changeWorkType
+0x4dd594  changeWorkType
+0x4dd66c  response callback, byte13 -> work type
+0x51b6a0  manageDevice
+0x51c39c  errorMemory
+0x51c4f4  error data callback
 ```
 
-## ChangePinLogic — PIN Change Controller
+`changeWorkType` sends `BlueKey::queryInfo` and reads `byte13` for the work
+mode display. `manageDevice` builds runtime BlueKey control commands for
+start/stop/back/go-to-work.
 
-`ChangePinLogic` at `pages/change_pin/logic.dart`:
+## DeviceLogic
+
+`pages/device/logic.dart`.
 
 ```text
-0x461584  changePin                  — Validate old/new/repeated PIN and send sub-cmd 0x0c
-0x46b25c  <anonymous> (response)     — Treat byte5 == "0" as success, update MainState.robotPin
-0x665ef0  getChangePIN               — Query current PIN with sub-cmd 0x18
+0x47ff9c  onReady
+0x47fff0  initDeviceInfo
+0x480164  response callback
 ```
 
-The page packs old and new PIN chunks through `Helper.tenToHex`. The substring
-boundaries in AOT are unusual enough that the exact write packing should be
-confirmed before implementing PIN-change writes.
+`initDeviceInfo` sends `BlueKey::queryInfo` once at init with
+`notifyType: "0x80"`. Its callback parses `byte5` battery, `byte9-byte12`
+device/version text, and `byte14-byte15` model/version values.
 
-## MowerSettingLogic — Mower Settings Controller
+## Settings And PIN Logic
 
-`MowerSettingLogic` at `pages/mower_setting/logic.dart`:
+### ChangePinLogic
 
 ```text
-0x48217c  saveSetting                — Write sub-cmd 0x12 settings payload
-0x6640fc  getMowerSetting            — Query sub-cmd 0x32
-0x664378  <anonymous> (response)     — Parse rain/boundary/ultrasound/helix/LED/hour/minute
+0x461584  changePin
+0x46b25c  response callback
+0x665ef0  getChangePIN
 ```
 
-The decoded state fields are `hour`, `min`, `mowInTheRain`, `boundaryCut`,
+The page packs old and new PIN chunks through `Helper.tenToHex`. Exact
+substring boundaries should be confirmed before implementing writes.
+
+### MowerSettingLogic
+
+```text
+0x48217c  saveSetting
+0x6640fc  getMowerSetting
+0x664378  response callback
+```
+
+Decoded state fields: `hour`, `min`, `mowInTheRain`, `boundaryCut`,
 `ultrasound`, `helixSet`, `led`, `timer`, and `requestTimer`.
 
-## MultiAreaMowingLogic — Multi-Area Settings Controller
-
-`MultiAreaMowingLogic` at `pages/multi_area_mowing/logic.dart`:
+### MultiAreaMowingLogic
 
 ```text
-0x48fff4  setInfo                    — Validate and write area2/area3 percentage/distance settings
-0x664e44  getInfo                    — Query sub-cmd 0x3a
-0x6650c4  <anonymous> (response)     — Parse area2Per/area2Dis/area3Per/area3Dis
+0x48fff4  setInfo
+0x664e44  getInfo
+0x6650c4  response callback
 ```
 
-Distance values are assembled from multiple response bytes with leading-zero
-handling. Units and exact outgoing packing still need capture validation.
+Distance values are assembled from multiple bytes with leading-zero handling.
+Units and exact outgoing packing remain unconfirmed.
 
-## WorkingTimeSettingLogic — Weekly Schedule Controller
-
-`WorkingTimeSettingLogic` at `pages/working_time_setting/logic.dart`:
+### WorkingTimeSettingLogic
 
 ```text
-0x498350  getSetList                 — Convert seven day maps into outgoing schedule values
-0x678288  initData                   — Query BlueKey.workTime with noLimitNotify=true
-0x6784bc  <anonymous> (response)     — Parse byte4 mode and byte5-byte18 weekday pairs
-0x6788f8  getResult                  — Map per-day response bytes into start/work fields
+0x498350  getSetList
+0x678288  initData
+0x6784bc  response callback
+0x6788f8  getResult
 ```
 
-The state constructor defaults each day to `start="09:00"` and `work="3.0"`.
-Response mode `0x85` uses `"."` for work-duration display; other modes use
-`":"`.
+Default daily values are `start="09:00"` and `work="3.0"`. Response mode
+`0x85` uses `"."` for work-duration display; other modes use `":"`.
 
-## Helper — Utility Functions
+## Helper
 
-`Helper` at `common/util/helper.dart`:
+`common/util/helper.dart`.
 
 ```text
-0x42f7f0  cloudCallback             — Cloud operation callback (async)
-0x461c44  writeAndNotify            — Static wrapper: resolves MainLogic, calls writeAndNotify
-0x46b01c  parseBlueResult           — Map byte list → {"byte1":..., "byte2":..., ...}
-0x46b1e8  tenToHex                  — decimal string -> int -> radix-16 text -> radix-32 int
-0x47830c  diyPicker                 — UI picker widget builder
+0x42f7f0  cloudCallback
+0x461c44  writeAndNotify
+0x46b01c  parseBlueResult
+0x46b1e8  tenToHex
+0x47830c  diyPicker
 ```
 
-## BlueKey — Command Definitions
+When `notifyType` is supplied, `blueWriteAndNotification` formats received
+byte index 3 as padded hex and compares it to `notifyType` before invoking the
+normal parsed-map callback.
 
-`BlueKey` at `common/config/blue_key.dart`:
+## BlueKey
+
+`common/config/blue_key.dart`.
 
 ```text
 Static fields:
-  0xfa4  queryPin   — PIN query command (late)
-  0xfa8  setTime    — Set clock command (late)
-  0xfac  queryInfo  — Status query command (late, used by both changeWorkType and initDeviceInfo)
-  0xfb0  workTime   — Working time query command (late)
+  0xfa4  queryPin
+  0xfa8  setTime
+  0xfac  queryInfo
+  0xfb0  workTime
 
 Static methods:
-  0x4719c0  setTime()     → List<int> of 48 bytes, sub-cmd 0x04
-  0x47e78c  queryPin()    → List<int> of 48 bytes, sub-cmd 0x18
-  0x4808e0  queryInfo()   → List<int> of 48 bytes, sub-cmd 0x00, fields=8×0x22
-  0x678ce4  workTime()    → List<int> of 48 bytes, sub-cmd 0x28
+  0x4719c0  setTime()    -> 48 values, sub-cmd 0x04
+  0x47e78c  queryPin()   -> 48 values, sub-cmd 0x18
+  0x4808e0  queryInfo()  -> 48 values, sub-cmd 0x00, data 8 x 0x22
+  0x678ce4  workTime()   -> 48 values, sub-cmd 0x28
 ```
 
-## Package Structure
+Commands are constructed as plain Dart `List<int>` values and sent through
+`writeAndNotify` -> `blueWriteAndNotification` ->
+`BluetoothCharacteristic::write`. No Dart-side encryption, DYM framing, or
+checksum logic is visible in this path.
 
-Dart source files identified from `libapp.so` strings (package paths):
+## Package Paths Found
+
+Representative package paths from `libapp.so` strings:
 
 ```text
-common/services/gizwits_service.dart
 common/config/blue_key.dart
-common/util/pop_scope_util.dart
+common/services/gizwits_service.dart
 common/util/dialog/dialog_util.dart
-pages/device/state.dart
-pages/main/view.dart
+common/util/pop_scope_util.dart
 pages/add_robot_model/{binding,logic,state,view}.dart
 pages/add_robot_model/widget/robot_type_{1,2,3,4}.dart
 pages/add_robot_finish/state.dart
-pages/mower_firmware_update/{binding,logic,state,view}.dart
-pages/multi_area_mowing/widget/input_card.dart
-pages/language_setting/state.dart
+pages/change_pin/logic.dart
+pages/device/state.dart
 pages/forgot_password/view.dart
+pages/language_setting/state.dart
+pages/main/view.dart
+pages/mower_firmware_update/{binding,logic,state,view}.dart
+pages/mower_setting/logic.dart
+pages/mower_status/logic.dart
+pages/multi_area_mowing/widget/input_card.dart
 pages/privacy_policy/view.dart
-multi_area_mowing
+pages/working_time_setting/logic.dart
 ```

@@ -119,6 +119,39 @@ def test_poll_is_deferred_when_ble_transaction_is_active() -> None:
     asyncio.run(run())
 
 
+def test_poll_is_deferred_when_command_is_pending() -> None:
+    """Background polling should not jump ahead of a waiting manual command."""
+    async def run() -> None:
+        coordinator = GrouwMowerCoordinator(
+            _Hass(), _Entry(), "AA:BB:CC:DD:EE:FF", "Test mower"
+        )
+        coordinator._pending_commands = 1
+
+        with pytest.raises(UpdateFailed, match="pending command"):
+            await coordinator._async_update_data()
+
+    asyncio.run(run())
+
+
+def test_poll_returns_last_state_when_command_is_pending() -> None:
+    """A skipped poll during command priority can keep the latest state visible."""
+    async def run() -> None:
+        coordinator = GrouwMowerCoordinator(
+            _Hass(), _Entry(), "AA:BB:CC:DD:EE:FF", "Test mower"
+        )
+        state = MowerState(
+            address="AA:BB:CC:DD:EE:FF",
+            battery_level=80,
+            last_seen=datetime.now(timezone.utc),
+        )
+        coordinator._last_state = state
+        coordinator._pending_commands = 1
+
+        assert await coordinator._async_update_data() is state
+
+    asyncio.run(run())
+
+
 def test_failure_backoff_after_state_raises_update_failed() -> None:
     """Backoff after a BLE failure should keep entities unavailable."""
     async def run() -> None:
@@ -201,6 +234,7 @@ def test_command_authentication_failure_starts_reauth() -> None:
             await coordinator.async_send_command("pause")
 
         assert entry.reauth_hass is hass
+        assert coordinator._pending_commands == 0
 
     asyncio.run(run())
 
@@ -228,5 +262,6 @@ def test_command_cooldown_starts_after_ble_transaction() -> None:
         assert client_finished_at is not None
         assert coordinator._last_command_time is not None
         assert coordinator._last_command_time >= client_finished_at
+        assert coordinator._pending_commands == 0
 
     asyncio.run(run())

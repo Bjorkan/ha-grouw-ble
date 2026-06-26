@@ -11,6 +11,7 @@ from custom_components.grouw_ble_mower.const import (
     CONF_ADDRESS,
     DAYE_MODE_IDLE,
     DAYE_MODE_MOWING,
+    DAYE_MODE_MOWING_ALTERNATE,
     DAYE_MODE_RETURNING,
 )
 
@@ -38,6 +39,17 @@ def test_activity_mowing() -> None:
     from custom_components.grouw_ble_mower.lawn_mower import GrouwBleLawnMower
 
     mower = GrouwBleLawnMower(_Coord(_make_state(DAYE_MODE_MOWING, False)))
+    assert mower.activity is LawnMowerActivity.MOWING
+
+
+def test_activity_mowing_alternate_mode_code() -> None:
+    """Observed alternate mowing mode code returns MOWING activity."""
+    from homeassistant.components.lawn_mower import LawnMowerActivity
+    from custom_components.grouw_ble_mower.lawn_mower import GrouwBleLawnMower
+
+    mower = GrouwBleLawnMower(
+        _Coord(_make_state(DAYE_MODE_MOWING_ALTERNATE, False))
+    )
     assert mower.activity is LawnMowerActivity.MOWING
 
 

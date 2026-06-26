@@ -4,83 +4,54 @@
 
 # Grouw Mower for Home Assistant
 
-Custom integration for Grouw lawn mowers.
+Custom Home Assistant integration for local Bluetooth control of Grouw robotic
+lawn mowers that use the Daye Power app (`com.dayepower.dayeappleaf`).
 
-This integration intentionally uses Home Assistant's Bluetooth manager to resolve the device by address. It does not create its own scanner. That means the same code path should work through a local Bluetooth adapter or a connectable Home Assistant Bluetooth proxy.
+The integration uses Home Assistant's Bluetooth manager to resolve devices by
+address. It does not run its own scanner, so the same code path can work with a
+local Bluetooth adapter or a connectable Home Assistant Bluetooth proxy.
 
-## What is implemented
+## Current Status
 
-- Bluetooth config flow discovery by confirmed service UUID
-  `49535343-fe7d-4ae5-8fa9-9fafd205e455` and local-name strings
-  `Robot Mower_DYM*`, `RobotMower_DYM*`, and `Robot_Mower*`.
-- Manual setup by non-empty BLE address.
-- BLE connect through Home Assistant Bluetooth's `async_ble_device_from_address(..., connectable=True)`.
-- Best-effort MTU request after connect, matching the app's
+This project currently targets the DYM-era mower generation seen in the Daye
+Power APK and in redacted hardware captures.
+
+Confirmed target signals:
+
+- APK version `2.0.1`, version code `117`.
+- BLE names: `Robot Mower_DYM*`, `RobotMower_DYM*`, and `Robot_Mower*`.
+- Service UUID: `49535343-fe7d-4ae5-8fa9-9fafd205e455`.
+- Control characteristic: `49535343-1e4d-4bd9-ba61-23c647249616`.
+- HCI-confirmed DYM payloads for status, start/resume, pause/stop, and dock.
+
+Not yet treated as supported:
+
+- Grouw 18739/18740 CLEVR / `robotic-mower connect` / `Mower_XXXXXX` devices.
+- Cloud or Wi-Fi control.
+- Settings writes for rain, boundary cut, ultrasound, helix, LED, multi-area,
+  schedules, PIN change, or firmware update.
+
+Detailed protocol notes live in [reverse_engineered/index.md](reverse_engineered/index.md).
+
+## Features
+
+- Bluetooth discovery and manual setup by BLE address.
+- Required 4-digit mower PIN during setup.
+- Best-effort MTU request after connect, matching the Daye app's
   FlutterBluePlus connection flow.
-- Required 4-digit PIN entry during setup.
 - Coordinator-based polling and entity availability.
-- Status polling over the captured DYM BLE payload.
-- Lawn mower controls for captured start, pause/stop and dock payloads.
-- Entities for currently decoded DYM status fields from hardware captures:
-  mower activity, battery, mode code, last response command, and docked state.
-- Debug service `grouw_ble_mower.send_raw_json` for raw BLE payload testing.
+- Lawn mower controls for start/resume, pause/stop, and dock.
+- Entities for decoded DYM status fields:
+  - mower activity
+  - battery
+  - raw mode code
+  - last response command
+  - docked state
+- Debug service `grouw_ble_mower.send_raw_json` for protocol validation.
 
-## Protocol status
-
-The current authoritative APK is version `2.0.1` / version code `117`.
-
-Confirmed from that APK so far:
-
-- The app is a Flutter app using `flutter_blue_plus`.
-- The Bluetooth setup text tells users to choose `RobotMower_DYM`; the same
-  APK also contains `Robot_Mower-`.
-- A local Grouw 17941/17947 manual also tells users to choose
-  `RobotMower_DYM` in the app, which supports the current discovery alias.
-- Local Grouw 18739/18740 CLEVR manuals describe `robotic-mower connect`,
-  Wi-Fi onboarding and `Mower_XXXXXX`; that appears to be a separate IoT
-  generation and is not treated as supported by this DYM BLE integration.
-- A hardware scan from the mower confirmed the BLE name `Robot Mower_DYM`.
-- The hardware scan confirmed service
-  `49535343-FE7D-4AE5-8FA9-9FAFD205E455` with characteristic
-  `49535343-1E4D-4BD9-BA61-23C647249616`.
-- A Bluetooth HCI snoop log confirmed that characteristic
-  `49535343-1E4D-4BD9-BA61-23C647249616` is used for both write and notify.
-- Dart AOT analysis shows the app requests MTU 512 before service discovery.
-  The integration attempts the same after connect and continues when the local
-  Bleak backend does not expose MTU negotiation.
-- The status poll, start, pause/stop and dock payloads are captured from the
-  app. More status field meanings still need validation.
-- Real-hardware observations confirm DYM mode `0x00` as mowing, `0x03` as
-  returning home, and decimal `20` / `0x14` as standing still. The dock/station
-  byte is treated as authoritative for docked Home Assistant activity.
-- Two captures show different start payloads: one for starting from station and
-  one for resuming after stop on the lawn.
-- Normal status polling sends the captured DYM status request without the
-  session/auth prelude. Hardware validation showed that the status request is
-  quiet without auth, while the session/auth prelude can make the mower beep.
-- Normal start/resume, pause and dock commands also skip the session/auth
-  prelude, then send a quiet status poll as a follow-up so Home Assistant gets
-  fresh state. Hardware validation showed unauthenticated `resume`, `dock` and
-  `pause` execute; `resume` still uses the mower's own start warning beeps.
-- The integration still requires a configured 4-digit PIN during setup and keeps
-  the auth/PIN path available for raw protocol validation. The PIN is redacted
-  from diagnostics and normal debug logs.
-- If a stored config entry has no valid 4-digit PIN, Home Assistant starts a
-  reauthentication flow so the user can update the PIN without removing and
-  re-adding the mower. Auth responses that lack parseable PIN data are treated
-  as BLE/protocol update failures instead of proven PIN failures.
-- The APK's BlueKey page logic documents change-PIN, rain delay, boundary cut,
-  ultrasound, helix, LED, multi-area mowing and weekly working-time settings.
-  These are recorded under `reverse_engineered/`, but the integration does not
-  expose or write them until hardware captures identify the exact DYM/BlueKey
-  on-wire behavior for the mower firmware.
-- The raw debug service can now build and parse APK-shaped BlueKey probe
-  payloads for protocol validation. These probes are not used by the normal
-  mower entities or controls.
-
-The raw BLE payload service is still experimental. Do not treat newly decoded
-fields as validated until they are confirmed against more captures or
-real hardware observations.
+Normal polling and controls use the HCI-confirmed DYM protocol. APK-derived
+BlueKey commands are available only as raw debug probes until hardware captures
+prove their exact on-wire behavior for this mower generation.
 
 ## Installation
 
@@ -90,19 +61,18 @@ Copy the custom component into Home Assistant:
 config/custom_components/grouw_ble_mower/
 ```
 
-Restart Home Assistant.
-
-Then go to:
+Restart Home Assistant, then add the integration:
 
 ```text
 Settings -> Devices & services -> Add integration -> Grouw Mower
 ```
 
-Keep the mower awake and close to a Bluetooth adapter or a connectable BLE proxy during first setup.
+Keep the mower awake and near a Bluetooth adapter or connectable BLE proxy
+during first setup.
 
-## Debug logging
+## Debug Logging
 
-Add this to `configuration.yaml` while testing:
+Add this while testing:
 
 ```yaml
 logger:
@@ -112,9 +82,12 @@ logger:
     bleak_retry_connector: debug
 ```
 
-## Raw BLE Payload Validation
+Do not share logs until BLE addresses, serial numbers, PINs, and other private
+values are redacted.
 
-Use this only while reverse-engineering the Grouw BLE protocol:
+## Raw BLE Validation
+
+Use the raw service only while validating the protocol:
 
 ```yaml
 action: grouw_ble_mower.send_raw_json
@@ -123,7 +96,7 @@ data:
     command: status
 ```
 
-You can also send a captured payload directly:
+Captured payloads can be sent directly:
 
 ```yaml
 action: grouw_ble_mower.send_raw_json
@@ -133,10 +106,10 @@ data:
     expect_cmd: "0x80"
 ```
 
-Set `authenticate: false` only when deliberately probing the connection prelude
-itself.
+Set `authenticate: false` only when deliberately testing the connection prelude
+or quiet command behavior.
 
-For APK-shaped BlueKey probes, use the `bluekey` field:
+APK-shaped BlueKey probes are available for research:
 
 ```yaml
 action: grouw_ble_mower.send_raw_json
@@ -146,24 +119,20 @@ data:
 ```
 
 Supported named BlueKey probes are `query_info`, `set_time`, `query_pin`,
-`work_time`, `mower_settings`, `multi_area`, and `error_memory`. Generic
-probes can use `bluekey_sub_cmd` plus optional `bluekey_data`, but settings
-writes should stay in raw validation until captures confirm the exact bytes.
+`work_time`, `mower_settings`, `multi_area`, and `error_memory`. Generic probes
+can use `bluekey_sub_cmd` plus optional `bluekey_data`.
 
-Capture the raw Home Assistant logs and mower behavior, then update
-`reverse_engineered/` with redacted durable findings.
+Record durable findings in `reverse_engineered/` as summaries only. Do not
+commit APKs, decompiled output, raw captures, or logs with private data.
 
-## Expected next validation
+## Validation Priorities
 
-1. Confirm Home Assistant discovers the mower by service UUID or as
-   `Robot Mower_DYM*` / `RobotMower_DYM*` / `Robot_Mower*`.
-2. Confirm battery and mode field meanings across more mower states, especially
-   cases where the station byte reports docked while the mode byte is stale.
-3. Confirm normal coordinator polling remains quiet with unauthenticated DYM
-   status requests, and that unauthenticated start/pause/dock commands execute
-   and refresh state through the follow-up status poll.
-4. Capture additional notification payloads for charging, mowing errors, lift
-   and tilt events. Treat rain as a settings feature unless a BLE status byte is
-   captured for it.
-5. Update code, tests and docs only with facts from the APK or redacted
-   hardware captures.
+1. Confirm discovery by service UUID or DYM local name.
+2. Confirm status polling remains quiet with unauthenticated DYM status
+   requests.
+3. Confirm start/resume, pause/stop, and dock execute without the DYM
+   session/auth prelude and refresh state through the follow-up status poll.
+4. Capture battery, docked, and mode fields across more mower states,
+   especially the distinction between DYM mode `0x00` and `0x01`.
+5. Capture charging, error, lift, and tilt payloads.
+6. Treat rain as a settings feature unless a BLE status byte is captured for it.

@@ -14,6 +14,9 @@ reverse_engineered/
 README.md
 ```
 
+Use `reverse_engineered/index.md` as the protocol map before editing detailed
+reverse-engineering notes.
+
 Update them in the same change when you:
 
 - confirm or change Home Assistant integration behavior
@@ -105,7 +108,7 @@ If adding new actions, update:
 ```text
 custom_components/grouw_ble_mower/services.yaml
 custom_components/grouw_ble_mower/strings.json
-custom_components/grouw_ble_mower/translations/sv.json
+custom_components/grouw_ble_mower/translations/
 README.md
 DEVELOPMENT.md
 TESTING.md

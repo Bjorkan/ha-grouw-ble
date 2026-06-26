@@ -1,10 +1,19 @@
 # GATT Table
 
-Confirmed from an iPhone BLE scan near the mower:
+Last updated: 2026-06-26.
+
+Confirmed from an iPhone BLE scan near the mower and HCI discovery from the
+Daye app.
+
+## Scanned Device
 
 ```text
 Device name: Robot Mower_DYM
+```
 
+## Services And Characteristics
+
+```text
 Service 180A
   Characteristic 2A29 Manufacturer Name String
   Characteristic 2A24 Model Number String
@@ -27,13 +36,9 @@ Service 49535343-FE7D-4AE5-8FA9-9FAFD205E455
   Characteristic 49535343-4C8A-39B3-2F49-511CFF073B7E
 ```
 
-This confirms that `49535343-FE7D-4AE5-8FA9-9FAFD205E455` is a Daye/Grouw
-mower GATT service, and that `49535343-1E4D-4BD9-BA61-23C647249616` is a
-characteristic under that service (used for both write and notify).
+## Control Characteristic
 
-## HCI-Confirmed Details
-
-The Daye app's ATT discovery confirmed the primary control characteristic:
+HCI discovery confirmed the primary control characteristic:
 
 ```text
 Service 49535343-FE7D-4AE5-8FA9-9FAFD205E455, handles 0x0017-0x0020
@@ -44,6 +49,15 @@ Service 49535343-FE7D-4AE5-8FA9-9FAFD205E455, handles 0x0017-0x0020
   CCCD handle        0x001a
 ```
 
-The Daye app enables notifications by writing `0100` to handle `0x001a`, then
-uses ATT Write Request, not Write Command, to write payloads to handle `0x0019`.
-Notifications arrive on the same handle.
+The Daye app enables notifications by writing `0100` to handle `0x001a`.
+It writes payloads to handle `0x0019` with ATT Write Request, not Write
+Command. Notifications arrive on the same handle.
+
+## Integration Impact
+
+- Discovery should key off service
+  `49535343-FE7D-4AE5-8FA9-9FAFD205E455` and DYM local-name aliases.
+- Normal write and notify should use characteristic
+  `49535343-1E4D-4BD9-BA61-23C647249616`.
+- Do not expose scanned serial-number/device-info values in diagnostics unless
+  redacted.

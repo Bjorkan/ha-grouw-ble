@@ -1,155 +1,160 @@
 # Response Parsing
 
-## parseBlueResult
+Last updated: 2026-06-26.
 
-`Helper::parseBlueResult` at address `0x46b01c` converts a byte list
-`[b0, b1, b2, ...]` into a `Map<String, String>` using one-based key names.
-The loop counter starts at 1 but reads `payload[counter - 1]`, so no payload
-byte is skipped:
+This file records how the Daye app and the Home Assistant integration interpret
+response bytes. DYM and BlueKey byte positions are not automatically
+interchangeable.
+
+## APK Helpers
+
+### `Helper::parseBlueResult`
+
+`Helper::parseBlueResult` at `0x46b01c` converts a byte list into a one-based
+string map:
 
 ```text
-result["byte1"] = string(b0)
-result["byte2"] = string(b1)
-result["byte3"] = string(b2)
+result["byte1"] = string(payload[0])
+result["byte2"] = string(payload[1])
+result["byte3"] = string(payload[2])
 ...
 ```
 
-This map is returned to the callback closure, where the receiver accesses
-specific keys.
+No payload byte is skipped. Callback code then reads named keys such as
+`byte5` or `byte13`.
 
-## Helper::tenToHex
+### `Helper::tenToHex`
 
-`Helper::tenToHex` at address `0x46b1e8` is an APK-specific conversion helper.
-It parses a decimal string to an integer, formats that integer as radix-16 text,
-then parses the resulting text with radix 32.
+`Helper::tenToHex` at `0x46b1e8` parses a decimal string to an integer, formats
+that integer as radix-16 text, then parses that text with radix 32.
 
-For single decimal digits this returns the same numeric value. For values above
-15 it is not the same as a normal byte conversion; for example decimal `"20"`
-becomes hex text `"14"`, which parses as radix-32 integer `36`.
+For single decimal digits the result matches the input value. For values above
+15 it is not a normal byte conversion. Example: decimal `"20"` becomes hex
+text `"14"`, then parses as radix-32 integer `36`.
 
-Treat this as a Daye UI/protocol packing helper, not as a generic
-decimal-to-hex conversion.
+The integration mirrors this as `daye_ten_to_hex()` only for debug parsing of
+APK-derived BlueKey responses.
 
-The Home Assistant integration mirrors this helper as `daye_ten_to_hex()` for
-debug parsing of APK-derived BlueKey responses.
+## BlueKey Query Responses
 
-## BlueKey::queryInfo Response (sub-cmd 0x00)
+### `queryInfo` (`sub_cmd 0x00`)
 
-Parsed by both `MowerStatusLogic::changeWorkType` and
-`DeviceLogic::initDeviceInfo`:
+Parsed by `MowerStatusLogic::changeWorkType` and
+`DeviceLogic::initDeviceInfo`.
 
 ```text
-byte5   = battery percentage (0-100, parsed as int for image selection)
-byte9   = device info string segment (ASCII)
-byte10  = model prefix (2→"DY", 3/4→"DM", else "")
-byte11  = device info string segment (ASCII)
-byte12  = device info string segment (ASCII)
-byte13  = work type hex string (see mapping below)
-byte14  = area code / firmware version prefix (parsed as int)
-byte15  = firmware version suffix (parsed as int)
+byte5   battery percentage for image selection
+byte9   device info string segment
+byte10  model prefix selector: 2 -> "DY", 3/4 -> "DM", else ""
+byte11  device info string segment
+byte12  device info string segment
+byte13  work type value, see mapping below
+byte14  area code / firmware version prefix
+byte15  firmware version suffix
 ```
 
-## BlueKey::queryPin Response (sub-cmd 0x18)
+`DeviceLogic::initDeviceInfo` sends `BlueKey::queryInfo` with
+`notifyType: "0x80"` and parses battery/device/version fields.
+
+`MowerStatusLogic::changeWorkType` sends the same query with `canBack: true`
+and `showTip: false`, but without `notifyType`, and parses `byte13` for the
+status display.
+
+### `queryPin` (`sub_cmd 0x18`)
 
 Parsed by `MainLogic::pinToDevice`:
 
 ```text
-byte5   = PIN digit 1
-byte6   = PIN digit 2
-byte7   = PIN digit 3
-byte8   = PIN digit 4
-byte9   = area code string, defaulting to "0" when absent
+byte5   PIN digit 1
+byte6   PIN digit 2
+byte7   PIN digit 3
+byte8   PIN digit 4
+byte9   area code string, default "0" when absent
 ```
 
-The app concatenates `byte5` through `byte8` as strings and stores the result
-as `MainState.robotPin`. `MainLogic::openDevice` then checks that the user's
-entered `pinCode` is at least 4 characters and equals `robotPin`. No separate
-Dart write containing the typed PIN was found in this flow.
+The app concatenates `byte5` through `byte8` into `MainState.robotPin`.
+`MainLogic::openDevice` then compares the entered PIN against that stored value.
 
-## BlueKey Change PIN Response (sub-cmd 0x0c)
+### Change PIN (`sub_cmd 0x0c`)
 
-Parsed by `ChangePinLogic::changePin` callback:
+Parsed by `ChangePinLogic::changePin`:
 
 ```text
 byte5 = "0" means PIN change success
 ```
 
-On success the app updates `MainState.robotPin` to the new PIN, clears the
-change-PIN input controllers, and shows a success toast.
+On success the app updates `MainState.robotPin`, clears the PIN controllers,
+and shows a success toast.
 
-## BlueKey Mower Settings Response (sub-cmd 0x32)
+### Mower Settings (`sub_cmd 0x32`)
 
-Parsed by `MowerSettingLogic::getMowerSetting` callback:
+Parsed by `MowerSettingLogic::getMowerSetting`:
 
 ```text
-byte5   = mowInTheRain boolean string ("1" = true)
-byte6   = boundaryCut boolean string ("1" = true)
-byte7   = ultrasound boolean string ("1" = true)
-byte8   = helixSet boolean string ("1" = true)
-byte9   = rain-delay hour text
-byte10  = rain-delay minute text, left-padded for display when < 10
-byte12  = led boolean string ("1" = true)
+byte5   mowInTheRain, "1" = true
+byte6   boundaryCut, "1" = true
+byte7   ultrasound, "1" = true
+byte8   helixSet, "1" = true
+byte9   rain-delay hour text
+byte10  rain-delay minute text
+byte12  led, "1" = true
 ```
 
 The app default string for missing boolean setting bytes is `"2003"` and the
-UI only treats exact string `"1"` as enabled. This reinforces that rain is a
-settings field in the Daye app, not a confirmed status byte.
+UI only treats exact string `"1"` as enabled. Rain is therefore a settings
+field in the Daye app, not a confirmed status byte.
 
-## BlueKey Multi-Area Response (sub-cmd 0x3a)
+### Multi-Area (`sub_cmd 0x3a`)
 
-Parsed by `MultiAreaMowingLogic::getInfo` callback:
+Parsed by `MultiAreaMowingLogic::getInfo`:
 
 ```text
-byte5       = area2Per text
-byte6-byte8 = area2Dis text, assembled as a variable-width decimal value
-byte9       = area3Per text
-byte10-12   = area3Dis text, assembled as a variable-width decimal value
+byte5        area2Per text
+byte6-byte8  area2Dis text, variable-width decimal assembly
+byte9        area3Per text
+byte10-12    area3Dis text, variable-width decimal assembly
 ```
 
-If leading distance bytes are zero, the page displays fewer chunks; otherwise
-it concatenates more chunks into the distance field. The distance unit and exact
-packing remain unconfirmed without hardware validation.
+Distance unit and exact packing remain unconfirmed.
 
-## BlueKey Working-Time Response (sub-cmd 0x28)
+### Working Time (`sub_cmd 0x28`)
 
-Parsed by `WorkingTimeSettingLogic::initData` callback:
+Parsed by `WorkingTimeSettingLogic::initData`:
 
 ```text
-byte4       = response mode, converted through Helper.tenToHex and formatted as 0xXX
-byte5-byte11  = one value per weekday, Monday through Sunday
-byte12-byte18 = paired value per weekday, Monday through Sunday
+byte4        response/display mode
+byte5-byte11 one value per weekday, Monday through Sunday
+byte12-18    paired value per weekday, Monday through Sunday
 ```
 
-The page iterates `byte5` through `byte11` and pairs each with the byte seven
-positions later. `byte4` controls display parsing: mode `0x85` uses `"."` as
-the work-duration delimiter, while other modes use `":"`.
+Mode `0x85` uses `"."` as the work-duration delimiter; other modes use `":"`.
+Because `byte4` is response context rather than a stable request sub-command,
+the integration uses raw-service request context when decoding debug responses.
 
-Because `byte4` is a response/display mode in this flow rather than a stable
-sub-command byte, Home Assistant's BlueKey debug parser uses the raw-service
-request context (`bluekey: work_time`) to decode these fields.
-
-## BlueKey::errorMemory Response (sub-cmd 0x3c)
+### Error Memory (`sub_cmd 0x3c`)
 
 ```text
-byte5   = error type letter code (B/N/L/T/R/X/C/S/P/A)
-byte6   = (unknown, part of error data)
-byte7   = error code hex prefix
-byte8   = error code hex separator
-byte9   = error code hex suffix
-byte10  = error data after colon
-byte11  = error data suffix
-byte12  = ASCII decoded → alert letter (AsciiDecoder.convert on 2 bytes)
+byte5   error type letter code: B/N/L/T/R/X/C/S/P/A
+byte6   unknown error data
+byte7   error code hex prefix
+byte8   error code hex separator
+byte9   error code hex suffix
+byte10  error data after colon
+byte11  error data suffix
+byte12  ASCII decoded alert letter
 ```
 
-Error letter codes map to translation keys: `alert_b`, `alert_n`, `alert_l`,
-`alert_t`, `alert_r`, `alert_x`, `alert_c`, `alert_s`, `alert_p`, `alert_a`.
+Letter codes map to translation keys `alert_b`, `alert_n`, `alert_l`,
+`alert_t`, `alert_r`, `alert_x`, `alert_c`, `alert_s`, `alert_p`, and
+`alert_a`.
 
-## Work Mode Mapping (byte13)
+## BlueKey Work Mode Mapping
 
-From `MowerStatusLogic::changeWorkType` callback at `0x4dd66c`, byte13
-(parsed as hex via `Helper::tenToHex`) maps to work mode strings:
+From `MowerStatusLogic::changeWorkType` callback at `0x4dd66c`, `byte13`
+maps to:
 
 ```text
+0x00 = not handled / fallthrough
 0x01 = "Mowing"
 0x02 = "Turn Forward"
 0x03 = "Along Boundary"
@@ -166,33 +171,50 @@ From `MowerStatusLogic::changeWorkType` callback at `0x4dd66c`, byte13
 0x0e = "Charging"
 0x0f = "Waiting"
 0x10 = "SPIRAL MOWING"
-0x14 = "label_stopped" (translated via Trans.tr())
+0x14 = translated "Stopped"
 0x19 = "Error"
-0x29 = "--" (disconnected, triggers changeConnectStatus(true))
+0x29 = "--" and triggers changeConnectStatus(true)
 ```
 
-## Battery Handling
+Lift, tilt, and charging are work-mode values here, not separate confirmed
+status flags.
 
-The app handles battery via image assets only — no numeric battery percentage
-sensor entity exists:
+## Battery Handling In The App
 
-- `byte5` (0-100) → selects image: ≤25=battery25.png, 26-50=battery50.png,
-  51-75=battery75.png, >75=battery100.png
-- Stored in `DeviceState.batteryImage` as asset path string
-- Displayed via `"label_battery_capacity"` translation key in the status view
+The app displays battery with image assets instead of a numeric sensor:
 
-## Status Polling Flow
+```text
+byte5 <= 25  -> battery25.png
+26..50       -> battery50.png
+51..75       -> battery75.png
+> 75         -> battery100.png
+```
 
-1. `MowerStatusLogic.addListen()` starts a periodic Timer
-2. Timer fires → calls `changeWorkType()`
-3. `changeWorkType` → `Helper.writeAndNotify(BlueKey::queryInfo, callback)`
-4. BLE response → `parseBlueResult` → `{"byte1":..., "byte5":..., "byte13":..., ...}`
-5. Callback looks at `"byte13"` → hex string → work type name → updates
-   `MowerStatusState.workType`
-6. On initial connection, `DeviceLogic.initDeviceInfo()` does the same query but
-   also parses byte5 (battery), byte9/10/11/12 (device version), byte14/15
-   (firmware version)
+Home Assistant exposes numeric battery only because DYM status byte 4 has been
+observed as a percentage-like value.
 
-Note: Lift (0x05), tilt (0x07), and charging (0x0e) are all work mode values
-from byte13 — not separate flag bytes. No rain status byte has been found;
-rain features appear only in the settings UI.
+## DYM Status Parsing In Home Assistant
+
+For HCI-observed DYM `0x80` status responses, the integration uses:
+
+```text
+byte 4   battery percentage candidate
+byte 7   station/docked candidate
+byte 12  raw mode candidate
+```
+
+Real-hardware observations on 2026-06-26:
+
+```text
+0x00 = mowing
+0x01 = mowing/active, exact distinction unknown
+0x03 = returning home
+0x14 = stopped / standing still
+```
+
+Home Assistant maps both DYM `0x00` and `0x01` to mowing activity. The
+station/docked byte overrides mode when deriving activity.
+
+Do not directly apply the BlueKey `byte13` work-mode table to DYM byte 12.
+BlueKey has no `0x00` mowing branch, while DYM `0x00` is confirmed as mowing
+on the tested mower.
