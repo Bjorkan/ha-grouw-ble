@@ -7,7 +7,12 @@ from typing import Any
 import pytest
 
 from custom_components.grouw_ble_mower.ble_protocol import MowerState
-from custom_components.grouw_ble_mower.const import CONF_ADDRESS, DAYE_MODE_MOWING, DAYE_MODE_RETURNING, DAYE_MODE_STOPPED
+from custom_components.grouw_ble_mower.const import (
+    CONF_ADDRESS,
+    DAYE_MODE_IDLE,
+    DAYE_MODE_MOWING,
+    DAYE_MODE_RETURNING,
+)
 
 
 def _make_state(mode: int | None, station: bool | None) -> MowerState:
@@ -36,6 +41,15 @@ def test_activity_mowing() -> None:
     assert mower.activity is LawnMowerActivity.MOWING
 
 
+def test_activity_docked_overrides_mowing_mode() -> None:
+    """Station flag wins when the mower reports docked while mode is mowing."""
+    from homeassistant.components.lawn_mower import LawnMowerActivity
+    from custom_components.grouw_ble_mower.lawn_mower import GrouwBleLawnMower
+
+    mower = GrouwBleLawnMower(_Coord(_make_state(DAYE_MODE_MOWING, True)))
+    assert mower.activity is LawnMowerActivity.DOCKED
+
+
 def test_activity_returning() -> None:
     """Returning mode returns RETURNING activity."""
     from homeassistant.components.lawn_mower import LawnMowerActivity
@@ -50,7 +64,7 @@ def test_activity_docked() -> None:
     from homeassistant.components.lawn_mower import LawnMowerActivity
     from custom_components.grouw_ble_mower.lawn_mower import GrouwBleLawnMower
 
-    mower = GrouwBleLawnMower(_Coord(_make_state(DAYE_MODE_STOPPED, True)))
+    mower = GrouwBleLawnMower(_Coord(_make_state(DAYE_MODE_IDLE, True)))
     assert mower.activity is LawnMowerActivity.DOCKED
 
 
@@ -59,16 +73,17 @@ def test_activity_paused() -> None:
     from homeassistant.components.lawn_mower import LawnMowerActivity
     from custom_components.grouw_ble_mower.lawn_mower import GrouwBleLawnMower
 
-    mower = GrouwBleLawnMower(_Coord(_make_state(DAYE_MODE_STOPPED, False)))
+    mower = GrouwBleLawnMower(_Coord(_make_state(DAYE_MODE_IDLE, False)))
     assert mower.activity is LawnMowerActivity.PAUSED
 
 
-def test_activity_stopped_unknown_station() -> None:
-    """Stopped + station=None returns None."""
+def test_activity_idle_unknown_station() -> None:
+    """Idle + station=None returns PAUSED."""
+    from homeassistant.components.lawn_mower import LawnMowerActivity
     from custom_components.grouw_ble_mower.lawn_mower import GrouwBleLawnMower
 
-    mower = GrouwBleLawnMower(_Coord(_make_state(DAYE_MODE_STOPPED, None)))
-    assert mower.activity is None
+    mower = GrouwBleLawnMower(_Coord(_make_state(DAYE_MODE_IDLE, None)))
+    assert mower.activity is LawnMowerActivity.PAUSED
 
 
 def test_activity_none_data() -> None:
@@ -87,14 +102,14 @@ def test_start_mowing_refreshes_when_station_unknown() -> None:
     send_command_called = False
 
     class _CoordWithRefresh:
-        data = _make_state(DAYE_MODE_STOPPED, None)
+        data = _make_state(DAYE_MODE_IDLE, None)
         last_update_success = True
         address = "AA:BB:CC:DD:EE:FF"
 
         async def async_request_refresh(self) -> None:
             nonlocal refresh_called
             refresh_called = True
-            self.data = _make_state(DAYE_MODE_STOPPED, False)
+            self.data = _make_state(DAYE_MODE_IDLE, False)
 
         async def async_send_command(self, command: str) -> None:
             nonlocal send_command_called

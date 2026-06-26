@@ -92,12 +92,38 @@ byte 7     station/docked candidate:
 byte 12    mode candidate:
             0x00 mowing / active after start
             0x03 returning after go-to-base
-            0x14 stopped / docked / idle after stop
+            0x14 stopped / standing still / docked / idle after stop
 byte 19..21 notification trailer: 16 06 01
 ```
 
 The second capture confirmed byte 7 changes from `0x01` while docked to `0x00`
 after starting, and later returns to `0x01` when back at the station.
+Real-hardware observation on 2026-06-26 while the mower was running confirmed:
+mode `0x00` = mowing, mode `0x03` = returning home, and decimal mode `20`
+(`0x14`) = standing still. The dock/station byte must take precedence when
+mapping Home Assistant lawn mower activity because the mower can still expose
+mode `0x00` while the station byte reports docked.
+
+Home Assistant raw-service validation on 2026-06-26 showed that an
+authenticated `command: status` poll beeps, while `command: status` with
+`authenticate: false` does not beep. A direct `session_start` write with
+`authenticate: false` produced two beeps and then timed out waiting for a
+notification. A BlueKey `query_info` probe with `authenticate: false` did not
+beep but also timed out. This points to the DYM session/auth prelude,
+especially `session_start`, as the audible polling trigger rather than the DYM
+status request itself.
+
+Normal Home Assistant status polling should therefore use the captured DYM
+status request without the session/auth prelude.
+
+Follow-up raw-service validation on 2026-06-26 showed that unauthenticated DYM
+`resume`, `dock`, and `pause` payloads execute successfully. Those command
+writes timed out when called directly because the mower did not send the
+expected `0x80` notification for the command write itself. `resume` produced
+three beeps, matching the mower's normal manual start warning; `dock` and
+`pause` produced no extra beep. Normal Home Assistant command handling should
+therefore skip the session/auth prelude, write the command, and send the quiet
+DYM status request as a follow-up before waiting for state.
 More captures across charging, error, rain, lift and tilt states are still needed.
 
 ## Encryption

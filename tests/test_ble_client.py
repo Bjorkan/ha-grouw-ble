@@ -18,6 +18,7 @@ from custom_components.grouw_ble_mower.ble_client import (
 )
 from custom_components.grouw_ble_mower.ble_protocol import (
     DAYE_RESPONSE_PIN_OR_AUTH,
+    encode_daye_command,
     encode_bluekey_command,
 )
 from custom_components.grouw_ble_mower.const import DEFAULT_REQUESTED_MTU
@@ -223,6 +224,77 @@ def test_verify_auth_response_accepts_matching_configured_pin() -> None:
     client._tx_id = 1
 
     client._verify_auth_response({"cmd": DAYE_RESPONSE_PIN_OR_AUTH, "mower_pin": "1234"})
+
+
+def test_status_poll_skips_auth_prelude_to_avoid_beep() -> None:
+    """Normal status polling uses the quiet unauthenticated DYM status request."""
+
+    async def run() -> None:
+        client = GrouwBleMowerClient(
+            _Hass(), "AA:BB:CC:DD:EE:FF", "Test mower", pin="1234"
+        )
+        seen: dict[str, object] = {}
+
+        async def fake_request(
+            payload: bytes,
+            *,
+            authenticate: bool = True,
+            command_name: str = "raw",
+            **kwargs: object,
+        ) -> dict[str, int]:
+            seen["payload"] = payload
+            seen["authenticate"] = authenticate
+            seen["command_name"] = command_name
+            return {"cmd": 0x80}
+
+        client.async_request_daye = fake_request  # type: ignore[method-assign]
+
+        await client.async_get_all_info()
+
+        assert seen == {
+            "payload": encode_daye_command("status"),
+            "authenticate": False,
+            "command_name": "status",
+        }
+
+    asyncio.run(run())
+
+
+def test_commands_skip_auth_prelude_and_follow_up_with_status() -> None:
+    """Control commands skip the audible auth prelude and then poll status."""
+
+    async def run() -> None:
+        client = GrouwBleMowerClient(
+            _Hass(), "AA:BB:CC:DD:EE:FF", "Test mower", pin="1234"
+        )
+        seen: dict[str, object] = {}
+
+        async def fake_request(
+            payload: bytes,
+            *,
+            authenticate: bool = True,
+            follow_up_status: bool = False,
+            command_name: str = "raw",
+            **kwargs: object,
+        ) -> dict[str, int]:
+            seen["payload"] = payload
+            seen["authenticate"] = authenticate
+            seen["follow_up_status"] = follow_up_status
+            seen["command_name"] = command_name
+            return {"cmd": 0x80}
+
+        client.async_request_daye = fake_request  # type: ignore[method-assign]
+
+        await client.async_command("dock")
+
+        assert seen == {
+            "payload": encode_daye_command("dock"),
+            "authenticate": False,
+            "follow_up_status": True,
+            "command_name": "dock",
+        }
+
+    asyncio.run(run())
 
 
 def test_verify_auth_response_requires_configured_pin() -> None:

@@ -72,29 +72,31 @@ AGENTS.md                            Instructions for AI agents
   first successful poll, coordinator.data is None and last_update_success
   is False, so entities load as unavailable. On BLE failure the coordinator
   raises UpdateFailed instead of returning placeholder data.
-- Each BLE transaction sends the captured session/auth prelude before the
-  requested status or command payload, then waits for the captured auth response
-  command byte `0x8c`. Keep this unless hardware testing proves the mower no
-  longer needs PIN/session setup after reconnect.
+- Normal status and control transactions skip the DYM session/auth prelude
+  because hardware testing showed `session_start` is the source of the
+  unwanted beep and the DYM status/start/resume/pause/dock payloads work
+  without it on the tested mower. Keep the auth path available for raw protocol
+  validation and future PIN-related research.
 - The APK's MainLogic connection-state callback awaits FlutterBluePlus
   `requestMtu` before service discovery. FlutterBluePlus requests MTU 512 in
   that path. The integration mirrors this with a best-effort MTU request after
   connect; unsupported Bleak backends log and continue because the captured DYM
   packets are short.
-- Configured PIN handling follows the APK-observed query/compare shape: the
-  config flow requires exactly four ASCII decimal digits, and the BLE client
-  compares the configured PIN with `mower_pin` parsed from bytes 4-7 of a DYM
-  `0x8c` response only when those bytes look like numeric digit bytes. The BLE
-  client treats a missing configured PIN as an authentication error. The
-  captured DYM auth query does not include the typed PIN in its write payload.
+- Configured PIN handling follows the APK-observed query/compare shape for raw
+  authenticated protocol validation: the config flow requires exactly four
+  ASCII decimal digits, and the BLE client compares the configured PIN with
+  `mower_pin` parsed from bytes 4-7 of a DYM `0x8c` response only when those
+  bytes look like numeric digit bytes. The BLE client treats a missing
+  configured PIN as an authentication error. The captured DYM auth query does
+  not include the typed PIN in its write payload.
 - Config entries with a missing/invalid stored PIN raise
   `ConfigEntryAuthFailed` during setup. Confirmed PIN mismatches raised from
-  coordinator polling are also mapped to `ConfigEntryAuthFailed`, which starts
-  Home Assistant's linked reauth flow for updating the existing entry's PIN.
-  Confirmed PIN mismatches from mower service actions call
-  `entry.async_start_reauth(hass)` when available before surfacing a
-  `HomeAssistantError` for the action. An auth response without parseable PIN
-  data is treated as a BLE/protocol update failure, not as a proven PIN failure.
+  authenticated raw/debug requests are mapped to Home Assistant's linked reauth
+  flow for updating the existing entry's PIN. Confirmed PIN mismatches from
+  mower service actions call `entry.async_start_reauth(hass)` when available
+  before surfacing a `HomeAssistantError` for the action. An auth response
+  without parseable PIN data is treated as a BLE/protocol update failure, not
+  as a proven PIN failure.
 - The active integration uses the HCI-confirmed DYM payloads on the wire.
   BlueKey commands are documented under `reverse_engineered/` from Dart AOT
   analysis but are not used for normal polling or controls until a hardware
@@ -128,6 +130,24 @@ AGENTS.md                            Instructions for AI agents
   response command, and docked state. Do not re-add rain, Wi-Fi, runtime, LED,
   ultrasonic, error-memory, or command-result entities until their response
   bytes are confirmed from the APK plus redacted hardware captures.
+- Real-hardware observation on 2026-06-26 confirmed DYM mode code `0x00`
+  means mowing, `0x03` means returning home, and decimal `20` / `0x14` means
+  standing still. Home Assistant lawn mower activity must let the station byte
+  override mode, because the mower can report docked while the mode byte still
+  looks like mowing.
+- Raw-service validation on 2026-06-26 showed that authenticated `command:
+  status` beeps, unauthenticated `command: status` does not beep, direct
+  unauthenticated `session_start` beeps twice and times out, and
+  unauthenticated BlueKey `query_info` does not beep but times out. Normal
+  coordinator status polling therefore skips the DYM session/auth prelude and
+  sends the captured DYM status request with `authenticate=False`.
+- Follow-up raw-service validation on 2026-06-26 showed unauthenticated DYM
+  `resume`, `dock`, and `pause` commands execute successfully but time out when
+  no follow-up status request is sent. Normal Home Assistant commands therefore
+  skip the auth prelude, send the command, and then send the quiet DYM status
+  request as a follow-up. `resume` still produces the mower's own three-beep
+  start warning, matching manual start behavior; `dock` and `pause` did not
+  produce extra beeps.
 - BLE communication is serialized per mower with both the coordinator
   `_ble_lock` and the BLE client's `_request_lock`; do not remove these without
   a real concurrency-safe replacement. The client-level lock protects direct
@@ -160,14 +180,15 @@ AGENTS.md                            Instructions for AI agents
 - The integration intentionally reconnects for each BLE request. This keeps the
   code compatible with Home Assistant Bluetooth proxies, but makes request
   serialization important.
-- The polling interval is currently 60 seconds with a 30-second BLE failure
+- The polling interval is currently 30 seconds with a 30-second BLE failure
   backoff interval.
 - `sensor` and `binary_sensor` set `PARALLEL_UPDATES = 0` because coordinator
   polling centralizes reads. `lawn_mower` sets `PARALLEL_UPDATES = 1` because it
   exposes command actions.
 - Every BLE transaction is logged with a per-request transaction ID, phase
-  labels (connect, start_notify, session_start write, auth_query write, command
-  write, follow-up write), notification hex values, and the selected response.
+  labels (connect, start_notify, optional session_start write, optional
+  auth_query write, command write, follow-up write), notification hex values,
+  and the selected response.
 - Notification waits use one overall deadline per phase. Unexpected
   notifications are ignored, but they must not extend the auth/status timeout.
 - The notification queue is drained after the `0x8c` auth response to prevent

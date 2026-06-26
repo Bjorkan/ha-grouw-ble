@@ -421,16 +421,18 @@ class GrouwBleMowerClient:
                 )
 
     async def async_get_all_info(self) -> dict[str, Any]:
-        """Request the Daye status packet captured from the official app."""
+        """Request the Daye status packet without the audible auth prelude."""
         return await self.async_request_daye(
             encode_daye_command("status"),
+            authenticate=False,
             command_name="status",
         )
 
     async def async_command(self, command: str) -> dict[str, Any]:
-        """Send a Daye mower command and refresh status."""
+        """Send a quiet Daye mower command and refresh status."""
         return await self.async_request_daye(
             encode_daye_command(command),
+            authenticate=False,
             follow_up_status=True,
             command_name=command,
         )

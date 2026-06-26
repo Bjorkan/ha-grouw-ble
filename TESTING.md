@@ -133,6 +133,8 @@ Current tests cover:
 - coordinator first-poll failure raises UpdateFailed instead of returning placeholder
 - coordinator BLE failure backoff raises UpdateFailed even after a previous state
 - coordinator poll cooldown after manual command
+- normal status polling skips the DYM auth prelude to avoid mower beeps
+- normal commands skip the DYM auth prelude and use a follow-up status request
 - coordinator command cooldown starts after the BLE transaction completes
 - serialization of concurrent raw BLE payload requests
 - raw BLE payload action validation when no target mower can be resolved
@@ -141,7 +143,8 @@ Current tests cover:
   multi-area mowing and working-time response context
 - manual config flow address validation rejects blank addresses
 - config flow PIN validation requires exactly four ASCII digits
-- lawn mower activity mapping (mowing, returning, docked, paused, unknown station)
+- lawn mower activity mapping (mowing, returning, docked, paused, station
+  override, idle with unknown station)
 - lawn mower start command refreshes state when station is unknown
 - compile-time coverage for Home Assistant exception imports and platform
   constants through `compileall`
@@ -173,7 +176,8 @@ tests/test_lawn_mower.py
 - options flow behavior
 - service action routing and validation
 - entity availability, unique IDs, device info, or state mapping
-- lawn mower activity mapping from mode+station bytes
+- lawn mower activity mapping from mode+station bytes, including station/docked
+  overriding a stale mowing mode
 - start command refresh-choosing logic
 
 ## Hardware Validation Checklist
@@ -185,24 +189,38 @@ Use this checklist when testing against a real mower:
    Do not treat `Mower_XXXXXX` from the 18739/18740 CLEVR manuals as evidence
    for this DYM integration without a separate hardware scan and capture.
 2. Confirm manual setup by BLE address works.
-3. Confirm Home Assistant can read status with the captured DYM status poll.
-4. Confirm polling still works after the mower/app has disconnected and the
-   integration performs the captured session/auth prelude itself.
-5. Confirm setup requires a 4-digit PIN, verifies it against the auth/PIN
-   response, and asks Home Assistant to reauthenticate when the stored PIN is
-   missing or deliberately wrong. Auth responses without parseable PIN data
-   should make the entry unavailable instead of opening reauth.
+3. Confirm Home Assistant can read status with the captured DYM status poll and
+   that normal coordinator polling does not make the mower beep.
+4. Confirm polling still works after the mower/app has disconnected without the
+   DYM session/auth prelude.
+5. Confirm setup requires a 4-digit PIN and opens Home Assistant reauth when
+   the stored PIN is missing or invalid. Normal polling and controls currently
+   use unauthenticated DYM status/command payloads, so PIN/auth validation is
+   limited to raw authenticated debug requests.
 6. Confirm battery, station and mode mapping during docked, stopped, mowing and
-   returning states.
+   returning states. Known observations: mode `0x00` is mowing, `0x03` is
+   returning home, and decimal `20` / `0x14` is standing still.
 7. Confirm start mowing sends the station-start payload while docked and the
-   resume payload after pause/stop.
-8. Confirm pause/stop sends the captured stop payload and the mower stops.
-9. Confirm dock/home sends the captured dock payload and the mower returns.
+   resume payload after pause/stop, both without the DYM session/auth prelude,
+   and that the follow-up status poll updates Home Assistant state.
+8. Confirm pause/stop sends the captured stop payload without the DYM
+   session/auth prelude, the mower stops, and the follow-up status poll updates
+   Home Assistant state.
+9. Confirm dock/home sends the captured dock payload without the DYM
+   session/auth prelude, the mower returns, and the follow-up status poll
+   updates Home Assistant state.
 10. Capture additional charging, error, lift and tilt status payloads. Treat rain
    as a settings feature unless a BLE status byte is captured for it.
-11. Confirm unavailable behavior after a successful poll when the mower sleeps or
+11. If the mower beeps on every Home Assistant poll again, re-check the raw
+   validation matrix: authenticated `command: status` beeped, unauthenticated
+   `command: status` did not beep, direct unauthenticated `session_start`
+   beeped twice then timed out, and unauthenticated BlueKey `query_info` did
+   not beep but timed out on 2026-06-26. Unauthenticated `resume`, `dock`, and
+   `pause` executed but direct raw calls timed out without a follow-up status
+   request; `resume` made the mower's normal three-beep start warning.
+12. Confirm unavailable behavior after a successful poll when the mower sleeps or
    moves out of range.
-12. Update `README.md`, `DEVELOPMENT.md`, and `reverse_engineered/` with
+13. Update `README.md`, `DEVELOPMENT.md`, and `reverse_engineered/` with
     validated facts and any remaining uncertainty.
 
 ## Useful Debug Logging

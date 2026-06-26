@@ -50,20 +50,25 @@ Confirmed from that APK so far:
   Bleak backend does not expose MTU negotiation.
 - The status poll, start, pause/stop and dock payloads are captured from the
   app. More status field meanings still need validation.
+- Real-hardware observations confirm DYM mode `0x00` as mowing, `0x03` as
+  returning home, and decimal `20` / `0x14` as standing still. The dock/station
+  byte is treated as authoritative for docked Home Assistant activity.
 - Two captures show different start payloads: one for starting from station and
   one for resuming after stop on the lawn.
-- The integration sends the captured session/auth prelude after each BLE
-  reconnect and waits for the captured auth response (`0x8c`) before polling or
-  sending a command.
-- The integration requires a configured 4-digit PIN. When the auth/PIN response
-  exposes four numeric PIN digits, the integration verifies the configured PIN
-  before sending status or command payloads. The PIN is redacted from
-  diagnostics and normal debug logs.
-- If a stored config entry has no valid 4-digit PIN, or polling confirms that
-  the stored PIN does not match the mower's returned PIN digits, Home Assistant
-  starts a reauthentication flow so the user can update the PIN without
-  removing and re-adding the mower. Auth responses that lack parseable PIN data
-  are treated as BLE/protocol update failures instead of proven PIN failures.
+- Normal status polling sends the captured DYM status request without the
+  session/auth prelude. Hardware validation showed that the status request is
+  quiet without auth, while the session/auth prelude can make the mower beep.
+- Normal start/resume, pause and dock commands also skip the session/auth
+  prelude, then send a quiet status poll as a follow-up so Home Assistant gets
+  fresh state. Hardware validation showed unauthenticated `resume`, `dock` and
+  `pause` execute; `resume` still uses the mower's own start warning beeps.
+- The integration still requires a configured 4-digit PIN during setup and keeps
+  the auth/PIN path available for raw protocol validation. The PIN is redacted
+  from diagnostics and normal debug logs.
+- If a stored config entry has no valid 4-digit PIN, Home Assistant starts a
+  reauthentication flow so the user can update the PIN without removing and
+  re-adding the mower. Auth responses that lack parseable PIN data are treated
+  as BLE/protocol update failures instead of proven PIN failures.
 - The APK's BlueKey page logic documents change-PIN, rain delay, boundary cut,
   ultrasound, helix, LED, multi-area mowing and weekly working-time settings.
   These are recorded under `reverse_engineered/`, but the integration does not
@@ -152,9 +157,13 @@ Capture the raw Home Assistant logs and mower behavior, then update
 
 1. Confirm Home Assistant discovers the mower by service UUID or as
    `Robot Mower_DYM*` / `RobotMower_DYM*` / `Robot_Mower*`.
-2. Confirm battery and mode field meanings across more mower states.
-3. Capture additional notification payloads for charging, mowing errors, lift
+2. Confirm battery and mode field meanings across more mower states, especially
+   cases where the station byte reports docked while the mode byte is stale.
+3. Confirm normal coordinator polling remains quiet with unauthenticated DYM
+   status requests, and that unauthenticated start/pause/dock commands execute
+   and refresh state through the follow-up status poll.
+4. Capture additional notification payloads for charging, mowing errors, lift
    and tilt events. Treat rain as a settings feature unless a BLE status byte is
    captured for it.
-4. Update code, tests and docs only with facts from the APK or redacted
+5. Update code, tests and docs only with facts from the APK or redacted
    hardware captures.
