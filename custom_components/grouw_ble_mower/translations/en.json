@@ -2,7 +2,7 @@
   "config": {
     "step": {
       "user": {
-        "title": "Grouw / Daye BLE Mower",
+        "title": "Grouw Mower",
         "description": "Add a mower by Bluetooth address. If it was discovered by Home Assistant, select it from the list.",
         "data": {
           "address": "Bluetooth address",

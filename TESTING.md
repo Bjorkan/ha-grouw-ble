@@ -1,6 +1,6 @@
 # TESTING.md
 
-Testing notes for the Grouw BLE Mower Home Assistant custom integration.
+Testing notes for the Grouw Mower Home Assistant custom integration.
 
 Last updated: 2026-06-26 (BLE stability tests)
 

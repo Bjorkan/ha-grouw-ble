@@ -1,13 +1,12 @@
-"""Constants for the Grouw/Daye BLE Mower integration."""
+"""Constants for the Grouw Mower integration."""
 from __future__ import annotations
 
 from datetime import timedelta
 
 DOMAIN = "grouw_ble_mower"
 
-DEFAULT_NAME = "Grouw / Daye BLE Mower"
+DEFAULT_NAME = "Grouw Mower"
 APP_PACKAGE = "com.dayepower.dayeappleaf"
-APP_NAME = "Daye Power robotic mower app"
 DAYE_PRIMARY_SERVICE_UUID = "49535343-fe7d-4ae5-8fa9-9fafd205e455"
 DAYE_PRIMARY_CHARACTERISTIC_UUID = "49535343-1e4d-4bd9-ba61-23c647249616"
 READ_CHARACTERISTIC_UUID = DAYE_PRIMARY_CHARACTERISTIC_UUID

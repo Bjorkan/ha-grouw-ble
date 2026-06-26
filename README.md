@@ -2,9 +2,9 @@
   <img src="custom_components/grouw_ble_mower/brand/logo.png" alt="Grouw logo" width="200"/>
 </p>
 
-# Grouw BLE Mower for Home Assistant
+# Grouw Mower for Home Assistant
 
-Custom integration for Grouw BLE lawn mowers.
+Custom integration for Grouw lawn mowers.
 
 This integration intentionally uses Home Assistant's Bluetooth manager to resolve the device by address. It does not create its own scanner. That means the same code path should work through a local Bluetooth adapter or a connectable Home Assistant Bluetooth proxy.
 
@@ -90,7 +90,7 @@ Restart Home Assistant.
 Then go to:
 
 ```text
-Settings -> Devices & services -> Add integration -> Grouw BLE Mower
+Settings -> Devices & services -> Add integration -> Grouw Mower
 ```
 
 Keep the mower awake and close to a Bluetooth adapter or a connectable BLE proxy during first setup.

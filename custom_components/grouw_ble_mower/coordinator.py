@@ -1,4 +1,4 @@
-"""DataUpdateCoordinator for Grouw / Daye BLE Mower."""
+"""DataUpdateCoordinator for Grouw Mower."""
 from __future__ import annotations
 
 import asyncio

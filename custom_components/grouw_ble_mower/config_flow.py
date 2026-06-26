@@ -1,4 +1,4 @@
-"""Config flow for Grouw/Daye BLE Mower."""
+"""Config flow for Grouw Mower."""
 from __future__ import annotations
 
 from collections.abc import Mapping
@@ -60,7 +60,7 @@ def _is_supported_bluetooth_service_info(
 
 
 class GrouwBleMowerConfigFlow(ConfigFlow, domain=DOMAIN):
-    """Handle a config flow for Grouw / Daye BLE Mower."""
+    """Handle a config flow for Grouw Mower."""
 
     VERSION = 1
 

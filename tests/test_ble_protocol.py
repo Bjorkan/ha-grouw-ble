@@ -1,4 +1,4 @@
-"""Tests for Grouw/Daye BLE framing."""
+"""Tests for Grouw BLE framing."""
 from __future__ import annotations
 
 from custom_components.grouw_ble_mower.ble_protocol import (

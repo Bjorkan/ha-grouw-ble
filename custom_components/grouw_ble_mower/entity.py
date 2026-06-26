@@ -1,4 +1,4 @@
-"""Base entities for Grouw/Daye BLE Mower."""
+"""Base entities for Grouw Mower."""
 from __future__ import annotations
 
 from homeassistant.const import CONF_NAME, Platform
@@ -27,7 +27,7 @@ class GrouwMowerEntity(CoordinatorEntity[GrouwMowerCoordinator]):
         return DeviceInfo(
             identifiers={(DOMAIN, self.coordinator.address)},
             connections={(CONNECTION_BLUETOOTH, self.coordinator.address)},
-            manufacturer="Grouw / Daye Power",
+            manufacturer="Grouw",
             model=data.model if data else None,
             name=(data.name if data and data.name else self.coordinator.config_entry.data.get(CONF_NAME, DEFAULT_NAME)),
             serial_number=data.serial if data else None,

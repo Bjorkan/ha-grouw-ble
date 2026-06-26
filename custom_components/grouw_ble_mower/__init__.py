@@ -1,4 +1,4 @@
-"""Grouw / Daye BLE Mower integration."""
+"""Grouw Mower integration."""
 from __future__ import annotations
 
 import logging
@@ -47,7 +47,7 @@ def _has_valid_configured_pin(pin: Any) -> bool:
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    """Set up Grouw / Daye BLE Mower from a config entry."""
+    """Set up Grouw Mower from a config entry."""
     if not _has_valid_configured_pin(entry.data.get(CONF_PIN)):
         raise ConfigEntryAuthFailed("A 4-digit mower PIN is required")
 

@@ -1,4 +1,4 @@
-"""BLE client for Grouw/Daye mower devices."""
+"""BLE client for Grouw mower devices."""
 from __future__ import annotations
 
 import asyncio

@@ -1,4 +1,4 @@
-"""Tests for Grouw/Daye BLE client helpers."""
+"""Tests for Grouw BLE client helpers."""
 from __future__ import annotations
 
 import asyncio

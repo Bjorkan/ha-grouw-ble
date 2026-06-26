@@ -1,4 +1,4 @@
-# Reverse Engineered — Grouw / Daye BLE Mower Protocol
+# Reverse Engineered — Grouw Mower BLE Protocol
 
 Last updated: 2026-06-26
 

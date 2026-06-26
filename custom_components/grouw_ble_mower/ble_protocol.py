@@ -1,4 +1,4 @@
-"""BLE framing and parsing for Grouw/Daye mower devices."""
+"""BLE framing and parsing for Grouw mower devices."""
 from __future__ import annotations
 
 from dataclasses import dataclass, replace

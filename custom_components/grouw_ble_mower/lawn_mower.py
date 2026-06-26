@@ -1,4 +1,4 @@
-"""Lawn mower platform for Grouw / Daye BLE Mower."""
+"""Lawn mower platform for Grouw Mower."""
 from __future__ import annotations
 
 from homeassistant.components.lawn_mower import (
