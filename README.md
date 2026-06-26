@@ -55,17 +55,33 @@ prove their exact on-wire behavior for this mower generation.
 
 ## Installation
 
+### HACS
+
+HACS must already be installed in Home Assistant.
+
+Open this repository in HACS:
+
+[![Open your Home Assistant instance and open this repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=Bjorkan&repository=ha-grouw-ble&category=integration)
+
+Install the integration in HACS, restart Home Assistant, then add the
+integration:
+
+[![Open your Home Assistant instance and start setting up this integration.](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start/?domain=grouw_ble_mower)
+
+```text
+Settings -> Devices & services -> Add integration -> Grouw Mower
+```
+
+### Manual
+
 Copy the custom component into Home Assistant:
 
 ```text
 config/custom_components/grouw_ble_mower/
 ```
 
-Restart Home Assistant, then add the integration:
-
-```text
-Settings -> Devices & services -> Add integration -> Grouw Mower
-```
+Restart Home Assistant, then add the integration from Home Assistant's
+Devices & services page.
 
 Keep the mower awake and near a Bluetooth adapter or connectable BLE proxy
 during first setup.
