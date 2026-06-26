@@ -7,8 +7,11 @@ import pytest
 
 from custom_components.grouw_ble_mower.ble_client import (
     GrouwBleAuthenticationError,
+    GrouwBleConnectionError,
     GrouwBleError,
+    GrouwBleGattError,
     GrouwBleMowerClient,
+    GrouwBleTimeout,
     _coerce_bool,
     _coerce_expected_cmd,
     _drain_queue,
@@ -85,6 +88,133 @@ def test_wait_for_response_skips_unexpected_notifications() -> None:
     asyncio.run(run())
 
 
+def test_wait_for_response_uses_single_deadline() -> None:
+    """Unexpected notifications must not extend the overall response timeout."""
+
+    async def run() -> None:
+        client = GrouwBleMowerClient(
+            _Hass(), "AA:BB:CC:DD:EE:FF", "Test mower"
+        )
+        client._tx_id = 1
+        queue: asyncio.Queue[dict[str, int]] = asyncio.Queue()
+
+        async def put_unexpected_notifications() -> None:
+            for _ in range(3):
+                await asyncio.sleep(0.04)
+                queue.put_nowait({"cmd": 0x80})
+
+        producer = asyncio.create_task(put_unexpected_notifications())
+        start = asyncio.get_running_loop().time()
+        with pytest.raises(GrouwBleTimeout):
+            await client._wait_for_response(
+                queue,
+                DAYE_RESPONSE_PIN_OR_AUTH,
+                0.08,
+                "auth",
+            )
+        elapsed = asyncio.get_running_loop().time() - start
+        producer.cancel()
+
+        assert elapsed < 0.13
+
+    asyncio.run(run())
+
+
+def test_write_with_log_maps_backend_timeout_to_gatt_error() -> None:
+    """Backend write timeouts are surfaced as GATT failures."""
+
+    class _Client:
+        async def write_gatt_char(
+            self, _uuid: str, _payload: bytes, *, response: bool
+        ) -> None:
+            raise TimeoutError("write timed out")
+
+    async def run() -> None:
+        client = GrouwBleMowerClient(
+            _Hass(), "AA:BB:CC:DD:EE:FF", "Test mower"
+        )
+        client._tx_id = 1
+
+        with pytest.raises(GrouwBleGattError, match="GATT write failed"):
+            await client._write_with_log(  # type: ignore[arg-type]
+                _Client(), b"DYM", "command"
+            )
+
+    asyncio.run(run())
+
+
+def test_connect_timeout_is_classified_as_connection_error(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Connection backend timeouts should not be reported as unknown BLE errors."""
+
+    async def run() -> None:
+        from homeassistant.components import bluetooth
+
+        import custom_components.grouw_ble_mower.ble_client as ble_client
+
+        monkeypatch.setattr(
+            bluetooth,
+            "async_ble_device_from_address",
+            lambda *args, **kwargs: object(),
+        )
+
+        async def fail_connect(*args: object, **kwargs: object) -> object:
+            raise TimeoutError("connect timed out")
+
+        monkeypatch.setattr(ble_client, "establish_connection", fail_connect)
+        client = GrouwBleMowerClient(
+            _Hass(), "AA:BB:CC:DD:EE:FF", "Test mower"
+        )
+
+        with pytest.raises(GrouwBleConnectionError, match="connect timed out"):
+            await client.async_get_all_info()
+
+    asyncio.run(run())
+
+
+def test_client_requests_are_serialized() -> None:
+    """Direct BLE client requests cannot overlap for the same client."""
+
+    async def run() -> None:
+        client = GrouwBleMowerClient(
+            _Hass(), "AA:BB:CC:DD:EE:FF", "Test mower"
+        )
+
+        class Tracker:
+            active = 0
+            max_active = 0
+
+        async def fake_locked_request(
+            payload: bytes,
+            *,
+            follow_up_status: bool = False,
+            authenticate: bool = True,
+            expected_cmd: int | None = None,
+            timeout: float = 0,
+            command_name: str = "raw",
+        ) -> dict[str, int]:
+            Tracker.active += 1
+            Tracker.max_active = max(Tracker.max_active, Tracker.active)
+            await asyncio.sleep(0)
+            Tracker.active -= 1
+            return {"cmd": payload[0]}
+
+        client._async_request_daye_locked = (  # type: ignore[method-assign]
+            fake_locked_request
+        )
+
+        results = await asyncio.gather(
+            client.async_request_daye(b"\x80"),
+            client.async_request_daye(b"\x8c"),
+        )
+
+        assert Tracker.max_active == 1
+        assert results == [{"cmd": 0x80}, {"cmd": 0x8C}]
+
+    asyncio.run(run())
+
+
 def test_verify_auth_response_accepts_matching_configured_pin() -> None:
     """A configured PIN is checked against the mower auth response."""
     client = GrouwBleMowerClient(
@@ -93,6 +223,19 @@ def test_verify_auth_response_accepts_matching_configured_pin() -> None:
     client._tx_id = 1
 
     client._verify_auth_response({"cmd": DAYE_RESPONSE_PIN_OR_AUTH, "mower_pin": "1234"})
+
+
+def test_verify_auth_response_requires_configured_pin() -> None:
+    """Authenticated requests require a configured mower PIN."""
+    client = GrouwBleMowerClient(
+        _Hass(), "AA:BB:CC:DD:EE:FF", "Test mower", pin=""
+    )
+    client._tx_id = 1
+
+    with pytest.raises(GrouwBleAuthenticationError, match="PIN is required"):
+        client._verify_auth_response(
+            {"cmd": DAYE_RESPONSE_PIN_OR_AUTH, "mower_pin": "1234"}
+        )
 
 
 def test_verify_auth_response_rejects_mismatched_configured_pin() -> None:
@@ -109,14 +252,16 @@ def test_verify_auth_response_rejects_mismatched_configured_pin() -> None:
 
 
 def test_verify_auth_response_requires_pin_data_when_pin_is_configured() -> None:
-    """A configured PIN cannot be verified when the auth response lacks PIN data."""
+    """Missing auth PIN data is a protocol/read issue, not a proven PIN mismatch."""
     client = GrouwBleMowerClient(
         _Hass(), "AA:BB:CC:DD:EE:FF", "Test mower", pin="1234"
     )
     client._tx_id = 1
 
-    with pytest.raises(GrouwBleAuthenticationError, match="did not include PIN"):
+    with pytest.raises(GrouwBleError, match="did not include PIN") as exc_info:
         client._verify_auth_response({"cmd": DAYE_RESPONSE_PIN_OR_AUTH})
+
+    assert not isinstance(exc_info.value, GrouwBleAuthenticationError)
 
 
 def test_request_mtu_with_log_calls_supported_client() -> None:

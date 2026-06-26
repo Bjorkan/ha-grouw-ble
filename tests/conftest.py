@@ -96,6 +96,9 @@ def _install_lightweight_stubs() -> None:
     class ConfigEntryNotReady(Exception):
         """Config entry setup should be retried."""
 
+    class ConfigEntryAuthFailed(Exception):
+        """Config entry needs reauthentication."""
+
     class HomeAssistantError(Exception):
         """Base Home Assistant user-facing error."""
 
@@ -103,6 +106,7 @@ def _install_lightweight_stubs() -> None:
         """Service call validation error."""
 
     exceptions.ConfigEntryNotReady = ConfigEntryNotReady
+    exceptions.ConfigEntryAuthFailed = ConfigEntryAuthFailed
     exceptions.HomeAssistantError = HomeAssistantError
     exceptions.ServiceValidationError = ServiceValidationError
 

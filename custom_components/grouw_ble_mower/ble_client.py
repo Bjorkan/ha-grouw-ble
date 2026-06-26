@@ -31,6 +31,8 @@ from .const import (
 
 _LOGGER = logging.getLogger(__name__)
 
+BLE_BACKEND_EXCEPTIONS = (BleakError, TimeoutError, OSError)
+
 
 class GrouwBleError(Exception):
     """Base BLE communication error."""
@@ -110,6 +112,7 @@ class GrouwBleMowerClient:
         self.name = name
         self.pin = pin.strip()
         self._tx_counter = 0
+        self._request_lock = asyncio.Lock()
 
     async def _write_with_log(
         self,
@@ -126,7 +129,7 @@ class GrouwBleMowerClient:
                 "[%s tx=%s] write %s ok payload=%s",
                 self.address, self._tx_id, label, payload.hex()
             )
-        except BleakError as err:
+        except BLE_BACKEND_EXCEPTIONS as err:
             _LOGGER.error(
                 "[%s tx=%s] write %s failed: %s (errno=%s)",
                 self.address, self._tx_id, label, err,
@@ -172,9 +175,19 @@ class GrouwBleMowerClient:
         phase: str,
     ) -> dict[str, Any]:
         """Wait for a parsed notification with the expected command byte."""
+        deadline = asyncio.get_running_loop().time() + timeout
         while True:
+            remaining = deadline - asyncio.get_running_loop().time()
+            if remaining <= 0:
+                _LOGGER.error(
+                    "[%s tx=%s] notification timeout in %s (expected_cmd=%s)",
+                    self.address, self._tx_id, phase, expected_cmd
+                )
+                raise GrouwBleTimeout(
+                    f"Timeout waiting for notification from {self.address}"
+                )
             try:
-                message = await asyncio.wait_for(queue.get(), timeout=timeout)
+                message = await asyncio.wait_for(queue.get(), timeout=remaining)
             except asyncio.TimeoutError as err:
                 _LOGGER.error(
                     "[%s tx=%s] notification timeout in %s (expected_cmd=%s)",
@@ -201,11 +214,11 @@ class GrouwBleMowerClient:
     def _verify_auth_response(self, message: dict[str, Any]) -> None:
         """Verify the configured PIN against the mower auth/PIN response."""
         if not self.pin:
-            return
+            raise GrouwBleAuthenticationError("A 4-digit mower PIN is required")
 
         mower_pin = message.get("mower_pin")
         if mower_pin is None:
-            raise GrouwBleAuthenticationError(
+            raise GrouwBleError(
                 "Mower auth response did not include PIN data; cannot verify configured PIN"
             )
 
@@ -220,6 +233,26 @@ class GrouwBleMowerClient:
         )
 
     async def async_request_daye(
+        self,
+        payload: bytes,
+        follow_up_status: bool = False,
+        authenticate: bool = True,
+        expected_cmd: int | None = DAYE_RESPONSE_STATUS,
+        timeout: float = DEFAULT_BLE_TIMEOUT,
+        command_name: str = "raw",
+    ) -> dict[str, Any]:
+        """Serialize and send a Daye DYM payload."""
+        async with self._request_lock:
+            return await self._async_request_daye_locked(
+                payload,
+                follow_up_status=follow_up_status,
+                authenticate=authenticate,
+                expected_cmd=expected_cmd,
+                timeout=timeout,
+                command_name=command_name,
+            )
+
+    async def _async_request_daye_locked(
         self,
         payload: bytes,
         follow_up_status: bool = False,
@@ -269,6 +302,7 @@ class GrouwBleMowerClient:
                 loop.call_soon_threadsafe(queue.put_nowait, message)
 
         client: BleakClient | None = None
+        notify_started = False
         try:
             _LOGGER.debug(
                 "[%s tx=%s] connecting (timeout=%s)",
@@ -282,7 +316,7 @@ class GrouwBleMowerClient:
                     max_attempts=3,
                     timeout=timeout,
                 )
-            except BleakError as err:
+            except BLE_BACKEND_EXCEPTIONS as err:
                 _LOGGER.error(
                     "[%s tx=%s] connect failed: %s",
                     self.address, self._tx_id, err
@@ -301,7 +335,7 @@ class GrouwBleMowerClient:
                 await client.start_notify(
                     READ_CHARACTERISTIC_UUID, _notification_handler
                 )
-            except BleakError as err:
+            except BLE_BACKEND_EXCEPTIONS as err:
                 _LOGGER.error(
                     "[%s tx=%s] start_notify failed: %s",
                     self.address, self._tx_id, err
@@ -309,6 +343,7 @@ class GrouwBleMowerClient:
                 raise GrouwBleGattError(
                     f"GATT start_notify failed on {self.address}: {err}"
                 ) from err
+            notify_started = True
 
             _LOGGER.debug(
                 "[%s tx=%s] notify started", self.address, self._tx_id
@@ -362,9 +397,9 @@ class GrouwBleMowerClient:
             GrouwBleTimeout,
         ):
             raise
-        except BleakError as err:
+        except BLE_BACKEND_EXCEPTIONS as err:
             _LOGGER.error(
-                "[%s tx=%s] unexpected BleakError: %s",
+                "[%s tx=%s] unexpected BLE backend error: %s",
                 self.address, self._tx_id, err
             )
             raise GrouwBleError(
@@ -372,10 +407,11 @@ class GrouwBleMowerClient:
             ) from err
         finally:
             if client is not None:
-                try:
-                    await client.stop_notify(READ_CHARACTERISTIC_UUID)
-                except Exception:  # noqa: BLE001 - disconnect cleanup must be best effort
-                    pass
+                if notify_started:
+                    try:
+                        await client.stop_notify(READ_CHARACTERISTIC_UUID)
+                    except Exception:  # noqa: BLE001 - cleanup must be best effort
+                        pass
                 try:
                     await client.disconnect()
                 except Exception:  # noqa: BLE001

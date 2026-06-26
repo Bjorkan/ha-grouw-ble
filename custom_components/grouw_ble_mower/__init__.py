@@ -10,6 +10,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_NAME, Platform
 from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.exceptions import (
+    ConfigEntryAuthFailed,
     ConfigEntryNotReady,
     ServiceValidationError,
 )
@@ -37,8 +38,19 @@ SERVICE_SEND_RAW_JSON_SCHEMA = vol.Schema(
 )
 
 
+def _has_valid_configured_pin(pin: Any) -> bool:
+    """Return true when the stored PIN matches the required 4-digit shape."""
+    if not isinstance(pin, str):
+        return False
+    pin = pin.strip()
+    return len(pin) == 4 and pin.isascii() and pin.isdecimal()
+
+
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Grouw / Daye BLE Mower from a config entry."""
+    if not _has_valid_configured_pin(entry.data.get(CONF_PIN)):
+        raise ConfigEntryAuthFailed("A 4-digit mower PIN is required")
+
     hass.data.setdefault(DOMAIN, {})
 
     coordinator = GrouwMowerCoordinator(

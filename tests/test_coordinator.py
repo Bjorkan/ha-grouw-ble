@@ -7,7 +7,12 @@ from typing import Any
 
 import pytest
 
-from custom_components.grouw_ble_mower.ble_client import GrouwBleError
+from homeassistant.exceptions import ConfigEntryAuthFailed, HomeAssistantError
+
+from custom_components.grouw_ble_mower.ble_client import (
+    GrouwBleAuthenticationError,
+    GrouwBleError,
+)
 from custom_components.grouw_ble_mower.ble_protocol import MowerState
 from custom_components.grouw_ble_mower.const import CONF_ADDRESS
 from custom_components.grouw_ble_mower.coordinator import (
@@ -55,6 +60,44 @@ def test_initial_poll_failure_raises_update_failed() -> None:
 
         coordinator.client = Client()
         with pytest.raises(UpdateFailed, match="not reachable"):
+            await coordinator._async_update_data()
+
+    asyncio.run(run())
+
+
+def test_poll_authentication_failure_raises_config_entry_auth_failed() -> None:
+    """PIN/auth failures should trigger Home Assistant reauthentication."""
+
+    async def run() -> None:
+        coordinator = GrouwMowerCoordinator(
+            _Hass(), _Entry(), "AA:BB:CC:DD:EE:FF", "Test mower"
+        )
+
+        class Client:
+            async def async_get_all_info(self) -> dict[str, Any]:
+                raise GrouwBleAuthenticationError("bad pin")
+
+        coordinator.client = Client()
+        with pytest.raises(ConfigEntryAuthFailed, match="bad pin"):
+            await coordinator._async_update_data()
+
+    asyncio.run(run())
+
+
+def test_poll_unverifiable_auth_response_raises_update_failed() -> None:
+    """An auth response without PIN data should not be treated as reauth."""
+
+    async def run() -> None:
+        coordinator = GrouwMowerCoordinator(
+            _Hass(), _Entry(), "AA:BB:CC:DD:EE:FF", "Test mower"
+        )
+
+        class Client:
+            async def async_get_all_info(self) -> dict[str, Any]:
+                raise GrouwBleError("auth response did not include PIN data")
+
+        coordinator.client = Client()
+        with pytest.raises(UpdateFailed, match="did not include PIN data"):
             await coordinator._async_update_data()
 
     asyncio.run(run())
@@ -128,5 +171,62 @@ def test_raw_payload_requests_are_serialized() -> None:
             {"cmd": 0x80, "battery_level": 42},
         )
         assert coordinator.data.battery_level in {41, 42}
+
+    asyncio.run(run())
+
+
+def test_command_authentication_failure_starts_reauth() -> None:
+    """Service-triggered auth failures should ask HA for reauthentication."""
+
+    async def run() -> None:
+        hass = _Hass()
+
+        class Entry(_Entry):
+            reauth_hass: Any = None
+
+            def async_start_reauth(self, reauth_hass: Any) -> None:
+                self.reauth_hass = reauth_hass
+
+        entry = Entry()
+        coordinator = GrouwMowerCoordinator(
+            hass, entry, "AA:BB:CC:DD:EE:FF", "Test mower"
+        )
+
+        class Client:
+            async def async_command(self, command: str) -> dict[str, Any]:
+                raise GrouwBleAuthenticationError("bad pin")
+
+        coordinator.client = Client()
+        with pytest.raises(HomeAssistantError, match="reauthentication"):
+            await coordinator.async_send_command("pause")
+
+        assert entry.reauth_hass is hass
+
+    asyncio.run(run())
+
+
+def test_command_cooldown_starts_after_ble_transaction() -> None:
+    """Manual-command cooldown should be measured after the BLE request."""
+
+    async def run() -> None:
+        coordinator = GrouwMowerCoordinator(
+            _Hass(), _Entry(), "AA:BB:CC:DD:EE:FF", "Test mower"
+        )
+        client_finished_at: datetime | None = None
+
+        class Client:
+            async def async_command(self, command: str) -> dict[str, Any]:
+                nonlocal client_finished_at
+                await asyncio.sleep(0)
+                client_finished_at = datetime.now(timezone.utc)
+                return {"cmd": 0x80, "battery_level": 70}
+
+        coordinator.client = Client()
+
+        await coordinator.async_send_command("pause")
+
+        assert client_finished_at is not None
+        assert coordinator._last_command_time is not None
+        assert coordinator._last_command_time >= client_finished_at
 
     asyncio.run(run())

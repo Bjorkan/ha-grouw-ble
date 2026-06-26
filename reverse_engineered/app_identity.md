@@ -51,3 +51,14 @@ Robot_Mower*
 
 The integration uses `49535343-1E4D-4BD9-BA61-23C647249616` for both write and
 notify.
+
+## Manual Corroboration
+
+The local Grouw 17941/17947 manual says the user should select
+`RobotMower_DYM` from the Bluetooth device list in the app and then enter the
+mower PIN. This supports the Daye APK string and the current discovery alias.
+
+The local Grouw 18739/18740 CLEVR manual describes a different IoT generation:
+`robotic-mower connect`, 2.4 GHz Wi-Fi, Bluetooth 4.0, manual pairing as
+`Mower_XXXXXX`, and factory PIN `0000`. Do not mix those names or onboarding
+assumptions into the current DYM integration without separate hardware captures.

@@ -2,7 +2,7 @@
 
 Testing notes for the Grouw BLE Mower Home Assistant custom integration.
 
-Last updated: 2026-06-25 (APK/DYM protocol alignment)
+Last updated: 2026-06-26 (BLE stability tests)
 
 ## Current Local Test Environment
 
@@ -112,7 +112,11 @@ Current tests cover:
 - captured DYM session/auth prelude encoding
 - DYM notification parsing for the confirmed 22-byte status shape
 - parsing and redaction of PIN-looking DYM `0x8c` auth/PIN responses
-- configured PIN verification against mower auth/PIN response data
+- required configured PIN verification against mower auth/PIN response data
+- coordinator mapping of confirmed PIN/auth mismatches to Home Assistant
+  reauthentication
+- auth responses without parseable PIN data remain update failures instead of
+  reauthentication triggers
 - best-effort MTU request behavior for Bleak clients with and without
   `request_mtu`
 - draining queued notifications at auth/follow-up request boundaries
@@ -120,17 +124,23 @@ Current tests cover:
 - `MowerState` updates for confirmed DYM battery, mode, station and response
   command fields
 - BLE client response filtering by DYM command byte
+- BLE notification waits use a single deadline even when unrelated
+  notifications arrive
+- BLE backend connect/write timeout classification
+- client-level serialization of direct BLE requests
 - raw debug service option coercion/validation for hex `expect_cmd` and string
   booleans
 - coordinator first-poll failure raises UpdateFailed instead of returning placeholder
 - coordinator BLE failure backoff raises UpdateFailed even after a previous state
 - coordinator poll cooldown after manual command
+- coordinator command cooldown starts after the BLE transaction completes
 - serialization of concurrent raw BLE payload requests
 - raw BLE payload action validation when no target mower can be resolved
 - BlueKey debug payload encoding for APK-shaped 48-byte probe commands
 - BlueKey notification parsing/redaction for queryPin, mower settings,
   multi-area mowing and working-time response context
 - manual config flow address validation rejects blank addresses
+- config flow PIN validation requires exactly four ASCII digits
 - lawn mower activity mapping (mowing, returning, docked, paused, unknown station)
 - lawn mower start command refreshes state when station is unknown
 - compile-time coverage for Home Assistant exception imports and platform
@@ -155,6 +165,7 @@ tests/test_lawn_mower.py
 - BlueKey debug command constants, APK `tenToHex` behavior, response parsing,
   or raw-service payload options
 - PIN validation, auth response parsing, or PIN redaction
+- reauth flow behavior for updating an existing config entry PIN
 - JSON parsing or `MowerState` field mapping
 - coordinator exception mapping
 - BLE serialization or connection behavior
@@ -171,12 +182,16 @@ Use this checklist when testing against a real mower:
 
 1. Confirm Home Assistant discovers the mower by service UUID or by
    `Robot Mower_DYM*` / `RobotMower_DYM*` / `Robot_Mower*` name.
+   Do not treat `Mower_XXXXXX` from the 18739/18740 CLEVR manuals as evidence
+   for this DYM integration without a separate hardware scan and capture.
 2. Confirm manual setup by BLE address works.
 3. Confirm Home Assistant can read status with the captured DYM status poll.
 4. Confirm polling still works after the mower/app has disconnected and the
    integration performs the captured session/auth prelude itself.
-5. With a configured PIN, confirm the integration verifies the PIN against the
-   auth/PIN response and refuses commands with a deliberately wrong PIN.
+5. Confirm setup requires a 4-digit PIN, verifies it against the auth/PIN
+   response, and asks Home Assistant to reauthenticate when the stored PIN is
+   missing or deliberately wrong. Auth responses without parseable PIN data
+   should make the entry unavailable instead of opening reauth.
 6. Confirm battery, station and mode mapping during docked, stopped, mowing and
    returning states.
 7. Confirm start mowing sends the station-start payload while docked and the

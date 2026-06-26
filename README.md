@@ -17,8 +17,7 @@ This integration intentionally uses Home Assistant's Bluetooth manager to resolv
 - BLE connect through Home Assistant Bluetooth's `async_ble_device_from_address(..., connectable=True)`.
 - Best-effort MTU request after connect, matching the app's
   FlutterBluePlus connection flow.
-- PIN entry during setup. A blank PIN is allowed for mowers without PIN; a
-  configured PIN must be exactly four digits.
+- Required 4-digit PIN entry during setup.
 - Coordinator-based polling and entity availability.
 - Status polling over the captured DYM BLE payload.
 - Lawn mower controls for captured start, pause/stop and dock payloads.
@@ -35,6 +34,11 @@ Confirmed from that APK so far:
 - The app is a Flutter app using `flutter_blue_plus`.
 - The Bluetooth setup text tells users to choose `RobotMower_DYM`; the same
   APK also contains `Robot_Mower-`.
+- A local Grouw 17941/17947 manual also tells users to choose
+  `RobotMower_DYM` in the app, which supports the current discovery alias.
+- Local Grouw 18739/18740 CLEVR manuals describe `robotic-mower connect`,
+  Wi-Fi onboarding and `Mower_XXXXXX`; that appears to be a separate IoT
+  generation and is not treated as supported by this DYM BLE integration.
 - A hardware scan from the mower confirmed the BLE name `Robot Mower_DYM`.
 - The hardware scan confirmed service
   `49535343-FE7D-4AE5-8FA9-9FAFD205E455` with characteristic
@@ -51,9 +55,15 @@ Confirmed from that APK so far:
 - The integration sends the captured session/auth prelude after each BLE
   reconnect and waits for the captured auth response (`0x8c`) before polling or
   sending a command.
-- When a PIN is configured and the auth/PIN response exposes four numeric PIN
-  digits, the integration verifies the configured PIN before sending status or
-  command payloads. The PIN is redacted from diagnostics and normal debug logs.
+- The integration requires a configured 4-digit PIN. When the auth/PIN response
+  exposes four numeric PIN digits, the integration verifies the configured PIN
+  before sending status or command payloads. The PIN is redacted from
+  diagnostics and normal debug logs.
+- If a stored config entry has no valid 4-digit PIN, or polling confirms that
+  the stored PIN does not match the mower's returned PIN digits, Home Assistant
+  starts a reauthentication flow so the user can update the PIN without
+  removing and re-adding the mower. Auth responses that lack parseable PIN data
+  are treated as BLE/protocol update failures instead of proven PIN failures.
 - The APK's BlueKey page logic documents change-PIN, rain delay, boundary cut,
   ultrasound, helix, LED, multi-area mowing and weekly working-time settings.
   These are recorded under `reverse_engineered/`, but the integration does not

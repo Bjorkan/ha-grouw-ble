@@ -1,6 +1,6 @@
 {
   "domain": "grouw_ble_mower",
-  "name": "Grouw / Daye BLE Mower",
+  "name": "Grouw BLE Mower",
   "after_dependencies": [
     "bluetooth"
   ],

@@ -2,7 +2,7 @@
   "config": {
     "step": {
       "user": {
-        "title": "Grouw / Daye BLE Mower",
+        "title": "Grouw BLE Mower",
         "description": "Add a mower by Bluetooth address. If it was discovered by Home Assistant, select it from the list.",
         "data": {
           "address": "Bluetooth address",
@@ -18,7 +18,14 @@
       },
       "pin": {
         "title": "Enter PIN code",
-        "description": "Enter the 4-digit PIN code shown on the mower's display. Leave blank if no PIN is set.",
+        "description": "Enter the mower's 4-digit PIN code.",
+        "data": {
+          "pin": "PIN code"
+        }
+      },
+      "reauth_confirm": {
+        "title": "Update PIN code",
+        "description": "Home Assistant could not authenticate with {name}. Enter the mower's current 4-digit PIN code.",
         "data": {
           "pin": "PIN code"
         }
@@ -26,11 +33,12 @@
     },
     "abort": {
       "already_configured": "This mower is already configured.",
-      "missing_data": "Missing configuration data."
+      "missing_data": "Missing configuration data.",
+      "reauth_successful": "Re-authentication was successful."
     },
     "error": {
       "invalid_address": "Enter a Bluetooth address, or select a discovered mower from the list.",
-      "invalid_pin": "Enter a 4-digit PIN code, or leave the field blank if no PIN is set."
+      "invalid_pin": "Enter the mower's 4-digit PIN code."
     }
   },
   "entity": {

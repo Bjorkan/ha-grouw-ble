@@ -18,7 +18,14 @@
       },
       "pin": {
         "title": "Ange PIN-kod",
-        "description": "Ange den 4-siffriga PIN-koden som visas på klipparens display. Lämna tomt om ingen PIN är inställd.",
+        "description": "Ange klipparens 4-siffriga PIN-kod.",
+        "data": {
+          "pin": "PIN-kod"
+        }
+      },
+      "reauth_confirm": {
+        "title": "Uppdatera PIN-kod",
+        "description": "Home Assistant kunde inte autentisera mot {name}. Ange klipparens aktuella 4-siffriga PIN-kod.",
         "data": {
           "pin": "PIN-kod"
         }
@@ -26,11 +33,12 @@
     },
     "abort": {
       "already_configured": "Den här klipparen är redan konfigurerad.",
-      "missing_data": "Konfigurationsdata saknas."
+      "missing_data": "Konfigurationsdata saknas.",
+      "reauth_successful": "Omautentiseringen lyckades."
     },
     "error": {
       "invalid_address": "Ange en Bluetooth-adress, eller välj en hittad klippare i listan.",
-      "invalid_pin": "Ange en 4-siffrig PIN-kod, eller lämna fältet tomt om ingen PIN är inställd."
+      "invalid_pin": "Ange klipparens 4-siffriga PIN-kod."
     }
   },
   "entity": {

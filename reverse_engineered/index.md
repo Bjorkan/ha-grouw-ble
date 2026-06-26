@@ -1,6 +1,6 @@
 # Reverse Engineered — Grouw / Daye BLE Mower Protocol
 
-Last updated: 2026-06-25
+Last updated: 2026-06-26
 
 This directory contains the reverse-engineered protocol notes split by topic
 for easier lookup.
@@ -16,6 +16,7 @@ for easier lookup.
 | `bluekey_commands.md` | BlueKey 48-byte command format, sub-commands, control commands |
 | `response_parsing.md` | Response byte parsing, work mode mapping, error memory, battery |
 | `ble_write_flow.md` | BLE write/notification flow, state classes |
+| `manual_findings.md` | Local Grouw manual findings and generation boundaries |
 | `java_kotlin_findings.md` | Decompiled Java/Kotlin (GizPlugin, GizWifiSDKProxy, FlutterBluePlus) |
 | `native_crypto.md` | libTelinkCrypto.so, AES.java, key derivation, packet encryption |
 | `dart_blutter_analysis.md` | Dart AOT class analysis from blutter |
@@ -71,6 +72,9 @@ MainLogic awaits FlutterBluePlus requestMtu before service discovery; the
   bundled requestMtu implementation requests MTU 512 with a 15-second timeout
 Lift, tilt, charging are work mode values (byte13), not separate flags
 No rain status byte found — rain features are in settings UI, not BLE parsing
+Grouw 17941/17947 manual says the app selects `RobotMower_DYM` over Bluetooth;
+  Grouw 18739/18740 CLEVR manual instead uses `robotic-mower connect`,
+  Wi-Fi, and `Mower_XXXXXX`, so treat that as a separate generation
 @14069316 library unit is standard Dart runtime (dart:io/async/collection), NOT custom protocol code
 writeAndNotify signature: writeAndNotify(payload, callback, {canBack, errorTip, noLimitNotify, notifyType, showTip})
 Seven state classes decoded: MainState, MowerStatusState, DeviceState,

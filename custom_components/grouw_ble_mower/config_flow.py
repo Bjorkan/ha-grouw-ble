@@ -1,6 +1,7 @@
 """Config flow for Grouw/Daye BLE Mower."""
 from __future__ import annotations
 
+from collections.abc import Mapping
 from typing import Any
 
 import voluptuous as vol
@@ -38,8 +39,8 @@ def _is_supported_bluetooth_name(name: str) -> bool:
 
 
 def _is_valid_pin(pin: str) -> bool:
-    """Return true for a blank PIN or the Daye app's 4-digit PIN shape."""
-    return pin == "" or (len(pin) == PIN_LENGTH and pin.isascii() and pin.isdecimal())
+    """Return true for the Daye app's required 4-digit PIN shape."""
+    return len(pin) == PIN_LENGTH and pin.isascii() and pin.isdecimal()
 
 
 def _has_supported_service_uuid(service_uuids: list[str] | tuple[str, ...]) -> bool:
@@ -65,6 +66,25 @@ class GrouwBleMowerConfigFlow(ConfigFlow, domain=DOMAIN):
 
     def __init__(self) -> None:
         self._discovery_info: bluetooth.BluetoothServiceInfoBleak | None = None
+
+    def _pin_form(
+        self,
+        step_id: str,
+        name: str,
+        default_pin: str = "",
+        errors: dict[str, str] | None = None,
+    ) -> FlowResult:
+        """Show a PIN entry form."""
+        return self.async_show_form(
+            step_id=step_id,
+            data_schema=vol.Schema(
+                {
+                    vol.Required(CONF_PIN, default=default_pin): str,
+                }
+            ),
+            errors=errors or {},
+            description_placeholders={"name": name},
+        )
 
     async def async_step_bluetooth(
         self, discovery_info: bluetooth.BluetoothServiceInfoBleak
@@ -122,16 +142,8 @@ class GrouwBleMowerConfigFlow(ConfigFlow, domain=DOMAIN):
                     CONF_ADDRESS: user_input[CONF_ADDRESS],
                     CONF_NAME: user_input.get(CONF_NAME, DEFAULT_NAME),
                 }
-                return self.async_show_form(
-                    step_id="pin",
-                    data_schema=vol.Schema(
-                        {
-                            vol.Required(CONF_PIN, default=""): str,
-                        }
-                    ),
-                    description_placeholders={
-                        "name": user_input.get(CONF_NAME, DEFAULT_NAME),
-                    },
+                return self._pin_form(
+                    "pin", user_input.get(CONF_NAME, DEFAULT_NAME)
                 )
 
             pin = user_input.get(CONF_PIN, "").strip()
@@ -139,17 +151,11 @@ class GrouwBleMowerConfigFlow(ConfigFlow, domain=DOMAIN):
             if not pin_data:
                 return self.async_abort(reason="missing_data")
             if not _is_valid_pin(pin):
-                return self.async_show_form(
-                    step_id="pin",
-                    data_schema=vol.Schema(
-                        {
-                            vol.Required(CONF_PIN, default=pin): str,
-                        }
-                    ),
+                return self._pin_form(
+                    "pin",
+                    pin_data.get(CONF_NAME, DEFAULT_NAME),
+                    default_pin=pin,
                     errors={CONF_PIN: "invalid_pin"},
-                    description_placeholders={
-                        "name": pin_data.get(CONF_NAME, DEFAULT_NAME),
-                    },
                 )
             return self.async_create_entry(
                 title=pin_data.get(CONF_NAME, DEFAULT_NAME),
@@ -161,6 +167,49 @@ class GrouwBleMowerConfigFlow(ConfigFlow, domain=DOMAIN):
             )
 
         return self.async_abort(reason="missing_data")
+
+    async def async_step_reauth(
+        self, entry_data: Mapping[str, Any]
+    ) -> FlowResult:
+        """Handle reauthentication after a mower PIN/auth failure."""
+        address = _normalize_address(entry_data[CONF_ADDRESS])
+        name = entry_data.get(CONF_NAME, DEFAULT_NAME)
+        self.context["pin_data"] = {
+            CONF_ADDRESS: address,
+            CONF_NAME: name,
+        }
+        self.context["title_placeholders"] = {"name": name}
+        return await self.async_step_reauth_confirm()
+
+    async def async_step_reauth_confirm(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Ask the user for the current mower PIN."""
+        reauth_entry = self._get_reauth_entry()
+        pin_data = self.context.get("pin_data") or {
+            CONF_ADDRESS: _normalize_address(reauth_entry.data[CONF_ADDRESS]),
+            CONF_NAME: reauth_entry.data.get(CONF_NAME, DEFAULT_NAME),
+        }
+        name = pin_data.get(CONF_NAME, DEFAULT_NAME)
+
+        if user_input is not None:
+            pin = user_input.get(CONF_PIN, "").strip()
+            if not _is_valid_pin(pin):
+                return self._pin_form(
+                    "reauth_confirm",
+                    name,
+                    default_pin=pin,
+                    errors={CONF_PIN: "invalid_pin"},
+                )
+
+            await self.async_set_unique_id(pin_data[CONF_ADDRESS])
+            self._abort_if_unique_id_mismatch()
+            return self.async_update_reload_and_abort(
+                reauth_entry,
+                data_updates={CONF_PIN: pin},
+            )
+
+        return self._pin_form("reauth_confirm", name)
 
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None

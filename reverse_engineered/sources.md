@@ -1,6 +1,8 @@
 # Sources
 
-Only the Daye APK is authoritative for current protocol facts:
+Only the Daye APK and redacted hardware captures are authoritative for current
+wire-protocol facts. Local manuals can corroborate product behavior and model
+boundaries, but they do not define BLE packet semantics.
 
 - Daye Power robotic mower app (`com.dayepower.dayeappleaf`):
   https://play.google.com/store/apps/details?id=com.dayepower.dayeappleaf
@@ -26,8 +28,14 @@ Only the Daye APK is authoritative for current protocol facts:
   - Source: bugreport zip archive (local file, not committed)
   - User action sequence: start docked mower, stop, start again, go to base station.
   - Durable findings are summarized in `dym_protocol.md`.
+- Local Grouw manuals under `APK/Manuals/` reviewed on 2026-06-26:
+  - `libble-eu.pdf` for models 17935/17936/17937.
+  - `b74925.pdf` for models 17941/17947.
+  - `578ac6.pdf` for models 18739/18740 CLEVR.
+  - Durable findings are summarized in `manual_findings.md`.
 
 Do not use the previous `com.cj.lawnmower` app, old local reverse-engineering
 notes, or older APK-derived assumptions as protocol facts for this integration.
 Official APK files, extracted APK contents, decompiled Java/smali, native
-library dumps, and generated decompiler output must never be upstreamed.
+library dumps, generated decompiler output, manuals, and generated manual text
+must never be upstreamed.
