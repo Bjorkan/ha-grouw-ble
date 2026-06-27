@@ -14,7 +14,9 @@ Integrationen bruger Home Assistants Bluetooth-manager til at finde enheder via
 adresse. Den kører ikke sin egen scanner, så samme kodevej kan fungere med en
 lokal Bluetooth-adapter eller en tilslutningsbar Home Assistant
 Bluetooth-proxy. BLE-kommunikation og Daye/Grouw-protokolhåndtering leveres af
-Python-biblioteket [`pygrouw`](https://pypi.org/project/pygrouw/).
+Python-biblioteket `pygrouw`:
+[GitHub](https://github.com/Bjorkan/pyGrouw) |
+[PyPI](https://pypi.org/project/pygrouw/).
 
 ## Nuværende status
 

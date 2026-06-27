@@ -13,7 +13,9 @@ The integration uses Home Assistant's Bluetooth manager to resolve devices by
 address. It does not run its own scanner, so the same code path can work with a
 local Bluetooth adapter or a connectable Home Assistant Bluetooth proxy. BLE
 communication and Daye/Grouw protocol handling are provided by the
-[`pygrouw`](https://pypi.org/project/pygrouw/) Python library.
+`pygrouw` Python library:
+[GitHub](https://github.com/Bjorkan/pyGrouw) |
+[PyPI](https://pypi.org/project/pygrouw/).
 
 ## Current Status
 

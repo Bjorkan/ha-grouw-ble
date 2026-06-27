@@ -14,7 +14,9 @@ Integrationen använder Home Assistants Bluetooth-hanterare för att slå upp
 enheter via adress. Den kör ingen egen scanner, så samma kodväg kan fungera
 med en lokal Bluetooth-adapter eller en anslutningsbar Home Assistant
 Bluetooth-proxy. BLE-kommunikation och Daye/Grouw-protokollhantering sköts av
-Python-biblioteket [`pygrouw`](https://pypi.org/project/pygrouw/).
+Python-biblioteket `pygrouw`:
+[GitHub](https://github.com/Bjorkan/pyGrouw) |
+[PyPI](https://pypi.org/project/pygrouw/).
 
 ## Nuvarande status
 
