@@ -41,7 +41,7 @@ Behandlas ännu inte som stödda:
   multizon, scheman, PIN-byte eller firmwareuppdatering.
 
 Detaljerade protokollanteckningar finns i companion-biblioteket:
-[../pyGrouw/reverse_engineered/index.md](../pyGrouw/reverse_engineered/index.md).
+[Bjorkan/pyGrouw reverse_engineered/index.md](https://github.com/Bjorkan/pyGrouw/blob/main/reverse_engineered/index.md).
 
 ## Funktioner
 

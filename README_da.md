@@ -40,7 +40,7 @@ Behandles endnu ikke som understøttet:
   multizone, tidsplaner, PIN-skift eller firmwareopdatering.
 
 Detaljerede protokolnoter findes i companion-biblioteket:
-[../pyGrouw/reverse_engineered/index.md](../pyGrouw/reverse_engineered/index.md).
+[Bjorkan/pyGrouw reverse_engineered/index.md](https://github.com/Bjorkan/pyGrouw/blob/main/reverse_engineered/index.md).
 
 ## Funktioner
 

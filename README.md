@@ -37,8 +37,8 @@ Not yet treated as supported:
 - Settings writes for rain, boundary cut, ultrasound, helix, LED, multi-area,
   schedules, PIN change, or firmware update.
 
-Detailed protocol notes live in the companion library at
-[../pyGrouw/reverse_engineered/index.md](../pyGrouw/reverse_engineered/index.md).
+Detailed protocol notes live in the companion library:
+[Bjorkan/pyGrouw reverse_engineered/index.md](https://github.com/Bjorkan/pyGrouw/blob/main/reverse_engineered/index.md).
 
 ## Features
 
