@@ -11,21 +11,23 @@ from homeassistant.config_entries import ConfigFlow
 from homeassistant.const import CONF_NAME
 from homeassistant.data_entry_flow import FlowResult
 from homeassistant.helpers import selector
+from pygrouw import (
+    has_supported_service_uuid,
+    is_supported_bluetooth_name,
+    is_valid_pin,
+    normalize_address,
+)
 
 from .const import (
     CONF_ADDRESS,
     CONF_PIN,
-    DAYE_SERVICE_UUIDS,
     DEFAULT_NAME,
     DOMAIN,
-    SUPPORTED_LOCAL_NAME_PREFIXES,
 )
-
-PIN_LENGTH = 4
 
 
 def _normalize_address(address: str) -> str:
-    return address.strip().upper()
+    return normalize_address(address)
 
 
 def _is_valid_address(address: str) -> bool:
@@ -35,18 +37,17 @@ def _is_valid_address(address: str) -> bool:
 
 def _is_supported_bluetooth_name(name: str) -> bool:
     """Return true for BLE local names used by supported mower apps/devices."""
-    return name.startswith(SUPPORTED_LOCAL_NAME_PREFIXES)
+    return is_supported_bluetooth_name(name)
 
 
 def _is_valid_pin(pin: str) -> bool:
     """Return true for the Daye app's required 4-digit PIN shape."""
-    return len(pin) == PIN_LENGTH and pin.isascii() and pin.isdecimal()
+    return is_valid_pin(pin)
 
 
 def _has_supported_service_uuid(service_uuids: list[str] | tuple[str, ...]) -> bool:
     """Return true if a discovery includes a confirmed Daye mower service UUID."""
-    supported = {uuid.lower() for uuid in DAYE_SERVICE_UUIDS}
-    return any(uuid.lower() in supported for uuid in service_uuids)
+    return has_supported_service_uuid(service_uuids)
 
 
 def _is_supported_bluetooth_service_info(

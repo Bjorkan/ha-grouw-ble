@@ -16,8 +16,8 @@ from homeassistant.exceptions import (
 )
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.update_coordinator import UpdateFailed
+from pygrouw import is_valid_pin, redact_daye_message
 
-from .ble_protocol import redact_daye_message
 from .const import CONF_ADDRESS, CONF_PIN, DEFAULT_NAME, DOMAIN, SERVICE_SEND_RAW_JSON
 from .coordinator import GrouwMowerCoordinator
 
@@ -40,10 +40,7 @@ SERVICE_SEND_RAW_JSON_SCHEMA = vol.Schema(
 
 def _has_valid_configured_pin(pin: Any) -> bool:
     """Return true when the stored PIN matches the required 4-digit shape."""
-    if not isinstance(pin, str):
-        return False
-    pin = pin.strip()
-    return len(pin) == 4 and pin.isascii() and pin.isdecimal()
+    return isinstance(pin, str) and is_valid_pin(pin.strip())
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:

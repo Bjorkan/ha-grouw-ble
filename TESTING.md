@@ -2,7 +2,7 @@
 
 Testing guide for the Grouw Mower Home Assistant custom integration.
 
-Last updated: 2026-06-26.
+Last updated: 2026-06-27.
 
 ## Quick Verification
 
@@ -20,9 +20,9 @@ rm -rf .pytest_cache
 ## Local Environment
 
 The lightweight local test environment may not include Home Assistant,
-`voluptuous`, `bleak`, or `bleak-retry-connector`. Tests that need those
-packages either use stubs from `tests/conftest.py` or skip when the full Home
-Assistant test environment is missing.
+`voluptuous`, `bleak`, or `pygrouw`. Tests that need those packages either use
+stubs from `tests/conftest.py`, load the sibling `../pyGrouw/src` checkout when
+present, or skip when the full Home Assistant test environment is missing.
 
 The stubs are only for tests. Do not import them from production code.
 
@@ -54,8 +54,6 @@ act -j validate -P ubuntu-latest=catthehacker/ubuntu:act-latest
 ## Test Files
 
 ```text
-tests/test_ble_client.py       BLE writes, notifications, auth, timeouts
-tests/test_ble_protocol.py     DYM and BlueKey payload/parsing helpers
 tests/test_config_flow.py      Manual setup, PIN validation, discovery forms
 tests/test_coordinator.py      Polling, commands, cooldowns, reauth mapping
 tests/test_init.py             Config entry setup/unload
@@ -65,26 +63,15 @@ tests/test_services.py         Raw debug service validation/routing
 
 ## Current Coverage
 
-Protocol coverage:
+Protocol and BLE/client coverage now lives in the companion `pyGrouw` library:
 
 - captured DYM status, session/auth, start/resume, pause/stop, and dock
   payloads
-- DYM `0x80` status notification parsing
-- DYM `0x8c` auth/PIN response parsing and redaction
-- BlueKey debug payload encoding for APK-shaped 48-byte probes
-- BlueKey notification parsing helpers for query PIN, mower settings,
-  multi-area, and working-time response context
-- APK `tenToHex` helper behavior
-
-BLE/client coverage:
-
+- DYM and BlueKey payload encoding/parsing
+- PIN/auth response parsing and redaction
 - best-effort MTU request behavior
-- notification filtering by DYM command byte
-- notification wait deadlines
-- queue draining at auth and follow-up status boundaries
-- ignored non-DYM or short notifications
-- connect/write timeout classification
-- client-level request serialization
+- notification filtering, timeout handling, and client-level request
+  serialization
 
 Coordinator/service coverage:
 
@@ -92,12 +79,11 @@ Coordinator/service coverage:
 - failure backoff after previous state
 - poll cooldown after manual command
 - skipping background polls while a manual command is pending
-- normal polling and commands without the DYM auth prelude
-- follow-up status refresh after commands
+- polling and commands delegated to `pygrouw.GrouwMower`
 - concurrent raw request serialization
-- raw service option coercion and validation
 - raw service target resolution failures
 - confirmed PIN/auth mismatches mapped to reauth
+- `pygrouw` BLE exceptions mapped to HA update/service errors
 
 Entity/config coverage:
 
@@ -113,11 +99,11 @@ Entity/config coverage:
 ## Update Tests When Changing
 
 - DYM or BlueKey constants, payload encoders, parsers, or response-command
-  handling
+  handling in `../pyGrouw`
 - PIN validation, auth response parsing, redaction, or reauth behavior
-- JSON parsing or `MowerState` field mapping
+- `MowerState` field mapping
 - coordinator polling, cooldowns, exception mapping, or serialization
-- BLE connection, write, notify, timeout, or MTU behavior
+- BLE connection, write, notify, timeout, or MTU behavior in `../pyGrouw`
 - config flow discovery/manual setup/duplicate prevention
 - options flow behavior
 - service action routing and validation
@@ -144,8 +130,9 @@ Use this checklist against a real mower:
 8. Capture charging, error, lift, and tilt payloads.
 9. Treat rain as a settings feature unless a BLE status byte is captured.
 10. Confirm unavailable behavior when the mower sleeps or moves out of range.
-11. Update `README.md`, `DEVELOPMENT.md`, `TESTING.md`, and
-    `reverse_engineered/` with validated facts and remaining uncertainty.
+11. Update `README.md`, `DEVELOPMENT.md`, `TESTING.md`, and the companion
+    library's `reverse_engineered/` folder with validated facts and remaining
+    uncertainty.
 
 Known mode observations from 2026-06-26:
 

@@ -6,7 +6,7 @@ from typing import Any
 
 import pytest
 
-from custom_components.grouw_ble_mower.ble_protocol import MowerState
+from pygrouw import MowerState
 from custom_components.grouw_ble_mower.const import (
     CONF_ADDRESS,
     DAYE_MODE_IDLE,

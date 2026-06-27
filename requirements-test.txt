@@ -1,5 +1,5 @@
 pytest
 pytest-homeassistant-custom-component
 aiousbwatcher
-bleak-retry-connector>=3.10.0
+pygrouw>=0.1.1
 pyserial

@@ -11,6 +11,9 @@ from typing import Any
 import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+local_pygrouw = Path(__file__).resolve().parents[2] / "pyGrouw" / "src"
+if local_pygrouw.exists():
+    sys.path.insert(0, str(local_pygrouw))
 
 
 def _install_module(name: str) -> types.ModuleType:
@@ -203,6 +206,10 @@ def _install_lightweight_stubs() -> None:
     update_coordinator.CoordinatorEntity = CoordinatorEntity
 
     bleak = _install_module("bleak")
+    bleak.__path__ = []
+    bleak_backends = _install_module("bleak.backends")
+    bleak_backends.__path__ = []
+    bleak_device = _install_module("bleak.backends.device")
 
     class BleakClient:
         """Minimal BleakClient stub."""
@@ -210,8 +217,21 @@ def _install_lightweight_stubs() -> None:
     class BleakError(Exception):
         """Minimal BleakError stub."""
 
+    class BleakScanner:
+        """Minimal BleakScanner stub."""
+
+        @classmethod
+        async def discover(cls, *args: Any, **kwargs: Any) -> list[Any]:
+            return []
+
+    class BLEDevice:
+        """Minimal BLEDevice stub."""
+
     bleak.BleakClient = BleakClient
     bleak.BleakError = BleakError
+    bleak.BleakScanner = BleakScanner
+    bleak_backends.device = bleak_device
+    bleak_device.BLEDevice = BLEDevice
 
     bleak_retry_connector = _install_module("bleak_retry_connector")
 

@@ -3,13 +3,14 @@
 Durable development notes for the Grouw Mower Home Assistant custom
 integration.
 
-Last updated: 2026-06-26.
+Last updated: 2026-06-27.
 
 ## Read First
 
 - User setup and feature status: [README.md](README.md)
 - Test strategy and commands: [TESTING.md](TESTING.md)
-- Protocol map and detailed findings: [reverse_engineered/index.md](reverse_engineered/index.md)
+- Protocol map and detailed findings:
+  [../pyGrouw/reverse_engineered/index.md](../pyGrouw/reverse_engineered/index.md)
 - Agent rules and documentation update policy: [AGENTS.md](AGENTS.md)
 
 ## Authoritative Inputs
@@ -23,8 +24,9 @@ Use only these sources for protocol facts:
   semantics.
 
 Keep APKs, decompiler output, manuals, and raw captures under `APK/` or other
-local-only paths. Summarize durable findings in `reverse_engineered/` instead
-of committing proprietary or private artifacts.
+local-only paths. Summarize durable findings in the companion library's
+`reverse_engineered/` folder instead of committing proprietary or private
+artifacts.
 
 Do not reintroduce protocol assumptions from the older `com.cj.lawnmower` app.
 
@@ -38,7 +40,7 @@ requirements-test.txt                Test and CI dependencies
 README.md                            User-facing setup and current status
 DEVELOPMENT.md                       Development and architecture notes
 TESTING.md                           Test commands, coverage, hardware checks
-reverse_engineered/                  Durable protocol findings by topic
+../pyGrouw/reverse_engineered/       Durable protocol findings by topic
 AGENTS.md                            Instructions for AI agents
 ```
 
@@ -50,8 +52,8 @@ AGENTS.md                            Instructions for AI agents
 - Config flow: Bluetooth discovery and manual BLE address entry.
 - Options flow: not exposed.
 - Coordinator: `GrouwMowerCoordinator`.
-- BLE client: `GrouwBleMowerClient`.
-- Protocol module: `ble_protocol.py`.
+- BLE/protocol library: `pygrouw` (`GrouwBleMowerClient`, `GrouwMower`,
+  `MowerState`, discovery helpers, payload encoding/parsing).
 - Debug action: `grouw_ble_mower.send_raw_json`.
 
 Discovery matches:
@@ -72,6 +74,9 @@ The app writes and subscribes to characteristic:
 - Use Home Assistant Bluetooth APIs. Do not start a standalone scanner.
 - Resolve outgoing connections with
   `async_ble_device_from_address(..., connectable=True)`.
+- Pass the HA-resolved connectable BLE device to `pygrouw` through a
+  `device_provider`; do not add direct BLE scanner/client logic back to the
+  integration.
 - Use stable unique IDs based on normalized BLE address.
 - Keep `has_entity_name = True`; the lawn mower entity has `_attr_name = None`
   so it becomes the main device entity.
@@ -86,13 +91,15 @@ The app writes and subscribes to characteristic:
 
 ## BLE Runtime Decisions
 
-- Normal polling and controls use HCI-confirmed DYM payloads.
+- Normal polling and controls use `pygrouw`, which owns the HCI-confirmed DYM
+  payloads, parsing, BLE writes, notifications, MTU request, and raw debug
+  payload encoding.
 - APK-derived BlueKey commands are debug probes only until hardware captures
   confirm when and how those 48-value payloads are written on the wire.
-- The integration reconnects for each BLE request. This keeps Bluetooth proxy
+- `pygrouw` reconnects for each BLE request. This keeps Bluetooth proxy
   behavior simple, but makes serialization important.
-- BLE communication is serialized per mower with the coordinator `_ble_lock`
-  and the client `_request_lock`.
+- BLE communication is serialized per mower with the coordinator `_ble_lock`;
+  `pygrouw` also serializes requests at client level.
 - Manual commands and raw service calls increment a pending-command counter
   before waiting for the BLE lock. Background polls skip while that counter is
   non-zero, so a newly scheduled poll does not jump ahead of a queued user
@@ -100,17 +107,18 @@ The app writes and subscribes to characteristic:
 - Manual-command cooldown starts after the BLE transaction completes.
 - The polling interval is currently 30 seconds. BLE failure backoff is also 30
   seconds.
-- The APK requests MTU 512 before service discovery. The integration mirrors
-  this as a best-effort MTU request and continues if the Bleak backend does not
-  support it.
+- The APK requests MTU 512 before service discovery. `pygrouw` mirrors this as
+  a best-effort MTU request and continues if the Bleak backend does not support
+  it.
 
 ## Protocol Decisions In Code
 
-- The config flow requires exactly four ASCII decimal PIN digits.
+- The config flow uses `pygrouw.is_valid_pin` and requires exactly four ASCII
+  decimal PIN digits.
 - Normal status and control transactions skip the DYM session/auth prelude
   because real-hardware validation showed the prelude can make the mower beep,
   while unauthenticated DYM status/start/resume/pause/dock payloads work on the
-  tested mower.
+  tested mower. `pygrouw` owns those command transactions.
 - The auth/PIN path remains available for raw protocol validation and future
   research.
 - DYM response command `0x80` is treated as status. DYM response command
@@ -128,9 +136,9 @@ The app writes and subscribes to characteristic:
 
 The detailed evidence behind these decisions is in:
 
-- [reverse_engineered/dym_protocol.md](reverse_engineered/dym_protocol.md)
-- [reverse_engineered/response_parsing.md](reverse_engineered/response_parsing.md)
-- [reverse_engineered/ble_write_flow.md](reverse_engineered/ble_write_flow.md)
+- [../pyGrouw/reverse_engineered/dym_protocol.md](../pyGrouw/reverse_engineered/dym_protocol.md)
+- [../pyGrouw/reverse_engineered/response_parsing.md](../pyGrouw/reverse_engineered/response_parsing.md)
+- [../pyGrouw/reverse_engineered/ble_write_flow.md](../pyGrouw/reverse_engineered/ble_write_flow.md)
 
 ## Debug Service
 
@@ -152,14 +160,15 @@ bytes with `value & 0xff`; the APK trailer value `510` is therefore emitted as
 - Setup stores the coordinator before first refresh. If the first refresh
   fails because the mower is asleep or unreachable, entities load unavailable
   rather than blocking the config entry with placeholder data.
+- The coordinator creates a `pygrouw.GrouwBleMowerClient` with a
+  Home Assistant Bluetooth `device_provider`, wraps it in `pygrouw.GrouwMower`,
+  and stores `pygrouw.MowerState` in coordinator data.
 - The debug action and coordinator redact PIN/auth response bytes before
-  storing or logging state.
-- Notification waits use one deadline per phase. Unexpected notifications are
-  ignored but do not extend the timeout.
-- The notification queue is drained after auth and before follow-up status
-  polls so selected responses belong to the intended request boundary.
-- BLE errors are classified as connection, GATT, or timeout errors where the
-  failing phase is known.
+  storing or logging state by using `pygrouw.redact_daye_message` and
+  redacted `MowerState.raw` values.
+- BLE errors are classified by `pygrouw` as connection, GATT, timeout, auth, or
+  generic BLE errors. The integration maps those exceptions to HA reauth,
+  `UpdateFailed`, or `HomeAssistantError`.
 - `sensor` and `binary_sensor` set `PARALLEL_UPDATES = 0`. `lawn_mower` sets
   `PARALLEL_UPDATES = 1` because it exposes command actions.
 
@@ -171,7 +180,7 @@ Update every relevant durable file in the same change:
 README.md
 DEVELOPMENT.md
 TESTING.md
-reverse_engineered/
+../pyGrouw/reverse_engineered/
 custom_components/grouw_ble_mower/services.yaml
 custom_components/grouw_ble_mower/strings.json
 custom_components/grouw_ble_mower/translations/
@@ -180,11 +189,11 @@ tests/
 
 Add or update tests for:
 
-- protocol constants and parsers
+- protocol constants and parsers in `../pyGrouw`
 - entity state mapping and availability
 - config flow and reauth behavior
 - service routing and validation
-- BLE serialization, timeouts, and error mapping
+- integration-level serialization, cooldowns, and pyGrouw exception mapping
 - diagnostics and redaction
 
 ## Known Improvement Areas

@@ -6,17 +6,18 @@ from datetime import datetime, timedelta, timezone
 import logging
 from typing import Any
 
+from homeassistant.components import bluetooth
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryAuthFailed, HomeAssistantError
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
-
-from .ble_client import (
+from pygrouw import (
     GrouwBleAuthenticationError,
     GrouwBleError,
     GrouwBleMowerClient,
+    GrouwMower,
+    MowerState,
 )
-from .ble_protocol import MowerState, state_from_message
 from .const import (
     DEFAULT_BLE_BACKOFF_INTERVAL,
     DEFAULT_NAME,
@@ -50,12 +51,26 @@ class GrouwMowerCoordinator(DataUpdateCoordinator[MowerState]):
         self.address = address.upper()
         self.device_name = name or DEFAULT_NAME
         self.pin = pin
-        self.client = GrouwBleMowerClient(hass, self.address, self.device_name, pin)
+        self.client = GrouwBleMowerClient(
+            self.address,
+            self.device_name,
+            pin,
+            device_provider=self._async_ble_device_from_address,
+        )
+        self.mower = GrouwMower(self.client)
         self._last_state: MowerState | None = None
         self._ble_lock = asyncio.Lock()
         self._pending_commands = 0
         self._last_command_time: datetime | None = None
         self._last_failure_time: datetime | None = None
+
+    def _async_ble_device_from_address(self) -> Any:
+        """Resolve the current connectable BLE device through Home Assistant."""
+        return bluetooth.async_ble_device_from_address(
+            self.hass,
+            self.address,
+            connectable=True,
+        )
 
     def _record_ble_failure(self) -> datetime:
         """Record a BLE failure timestamp and return it."""
@@ -110,7 +125,9 @@ class GrouwMowerCoordinator(DataUpdateCoordinator[MowerState]):
         try:
             async with self._ble_lock:
                 _LOGGER.debug("[%s] BLE lock acquired for poll", self.address)
-                message = await self.client.async_get_all_info()
+                if self._last_state is not None:
+                    self.mower.state = self._last_state
+                state = await self.mower.async_update()
         except GrouwBleAuthenticationError as err:
             self._record_ble_failure()
             raise ConfigEntryAuthFailed(str(err)) from err
@@ -119,7 +136,6 @@ class GrouwMowerCoordinator(DataUpdateCoordinator[MowerState]):
             raise UpdateFailed(str(err)) from err
 
         self._last_failure_time = None
-        state = state_from_message(self.address, message, self._last_state)
         self._last_state = state
         return state
 
@@ -138,7 +154,9 @@ class GrouwMowerCoordinator(DataUpdateCoordinator[MowerState]):
                         "[%s] BLE lock acquired for command %s",
                         self.address, command
                     )
-                    message = await self.client.async_command(command)
+                    if self._last_state is not None:
+                        self.mower.state = self._last_state
+                    state = await self.mower.async_command(command)
             except GrouwBleAuthenticationError as err:
                 now = datetime.now(timezone.utc)
                 self._last_command_time = now
@@ -155,7 +173,6 @@ class GrouwMowerCoordinator(DataUpdateCoordinator[MowerState]):
 
             self._last_command_time = datetime.now(timezone.utc)
             self._last_failure_time = None
-            state = state_from_message(self.address, message, self._last_state)
             self._last_state = state
             self.async_set_updated_data(state)
         finally:
@@ -173,7 +190,9 @@ class GrouwMowerCoordinator(DataUpdateCoordinator[MowerState]):
                     )
                 async with self._ble_lock:
                     _LOGGER.debug("[%s] BLE lock acquired for raw BLE payload", self.address)
-                    message = await self.client.async_send_raw_json(payload)
+                    if self._last_state is not None:
+                        self.mower.state = self._last_state
+                    message = await self.mower.async_send_raw_json(payload)
             except GrouwBleAuthenticationError as err:
                 now = datetime.now(timezone.utc)
                 self._last_command_time = now
@@ -190,7 +209,7 @@ class GrouwMowerCoordinator(DataUpdateCoordinator[MowerState]):
 
             self._last_command_time = datetime.now(timezone.utc)
             self._last_failure_time = None
-            state = state_from_message(self.address, message, self._last_state)
+            state = self.mower.state
             self._last_state = state
             self.async_set_updated_data(state)
             return message

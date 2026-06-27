@@ -4,12 +4,16 @@
 
 # Grouw Mower for Home Assistant
 
+[Svenska](README_sv.md) | [Dansk](README_da.md)
+
 Custom Home Assistant integration for local Bluetooth control of Grouw robotic
 lawn mowers that use the Daye Power app (`com.dayepower.dayeappleaf`).
 
 The integration uses Home Assistant's Bluetooth manager to resolve devices by
 address. It does not run its own scanner, so the same code path can work with a
-local Bluetooth adapter or a connectable Home Assistant Bluetooth proxy.
+local Bluetooth adapter or a connectable Home Assistant Bluetooth proxy. BLE
+communication and Daye/Grouw protocol handling are provided by the
+[`pygrouw`](https://pypi.org/project/pygrouw/) Python library.
 
 ## Current Status
 
@@ -31,14 +35,15 @@ Not yet treated as supported:
 - Settings writes for rain, boundary cut, ultrasound, helix, LED, multi-area,
   schedules, PIN change, or firmware update.
 
-Detailed protocol notes live in [reverse_engineered/index.md](reverse_engineered/index.md).
+Detailed protocol notes live in the companion library at
+[../pyGrouw/reverse_engineered/index.md](../pyGrouw/reverse_engineered/index.md).
 
 ## Features
 
 - Bluetooth discovery and manual setup by BLE address.
 - Required 4-digit mower PIN during setup.
-- Best-effort MTU request after connect, matching the Daye app's
-  FlutterBluePlus connection flow.
+- BLE communication through `pygrouw`, including best-effort MTU request after
+  connect, matching the Daye app's FlutterBluePlus connection flow.
 - Coordinator-based polling and entity availability.
 - Lawn mower controls for start/resume, pause/stop, and dock.
 - Entities for decoded DYM status fields:
@@ -95,6 +100,7 @@ logger:
   default: info
   logs:
     custom_components.grouw_ble_mower: debug
+    pygrouw: debug
     bleak_retry_connector: debug
 ```
 
@@ -138,8 +144,9 @@ Supported named BlueKey probes are `query_info`, `set_time`, `query_pin`,
 `work_time`, `mower_settings`, `multi_area`, and `error_memory`. Generic probes
 can use `bluekey_sub_cmd` plus optional `bluekey_data`.
 
-Record durable findings in `reverse_engineered/` as summaries only. Do not
-commit APKs, decompiled output, raw captures, or logs with private data.
+Record durable findings in the companion library's `reverse_engineered/` folder
+as summaries only. Do not commit APKs, decompiled output, raw captures, or logs
+with private data.
 
 ## Validation Priorities
 

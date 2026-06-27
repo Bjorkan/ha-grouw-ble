@@ -1,0 +1,54 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Grouw Mower",
+        "description": "Tilføj en plæneklipper via Bluetooth-adresse. Hvis Home Assistant har fundet den, kan du vælge den fra listen.",
+        "data": {
+          "address": "Bluetooth-adresse",
+          "name": "Navn"
+        }
+      },
+      "bluetooth_confirm": {
+        "title": "Tilføj {name}",
+        "description": "Fandt {name} på {address}.",
+        "data": {
+          "name": "Navn"
+        }
+      },
+      "pin": {
+        "title": "Indtast PIN-kode",
+        "description": "Indtast plæneklipperens 4-cifrede PIN-kode.",
+        "data": {
+          "pin": "PIN-kode"
+        }
+      },
+      "reauth_confirm": {
+        "title": "Opdater PIN-kode",
+        "description": "Home Assistant kunne ikke godkende sig mod {name}. Indtast plæneklipperens aktuelle 4-cifrede PIN-kode.",
+        "data": {
+          "pin": "PIN-kode"
+        }
+      }
+    },
+    "abort": {
+      "already_configured": "Denne plæneklipper er allerede konfigureret.",
+      "missing_data": "Konfigurationsdata mangler.",
+      "reauth_successful": "Genautentificeringen lykkedes."
+    },
+    "error": {
+      "invalid_address": "Indtast en Bluetooth-adresse, eller vælg en fundet plæneklipper fra listen.",
+      "invalid_pin": "Indtast plæneklipperens 4-cifrede PIN-kode."
+    }
+  },
+  "entity": {
+    "sensor": {
+      "battery": { "name": "Batteri" },
+      "mode": { "name": "Tilstandskode" },
+      "last_response_cmd": { "name": "Seneste svarkommando" }
+    },
+    "binary_sensor": {
+      "docked": { "name": "I ladestationen" }
+    }
+  }
+}

@@ -8,12 +8,11 @@ from typing import Any
 import pytest
 
 from homeassistant.exceptions import ConfigEntryAuthFailed, HomeAssistantError
-
-from custom_components.grouw_ble_mower.ble_client import (
+from pygrouw import (
     GrouwBleAuthenticationError,
     GrouwBleError,
+    MowerState,
 )
-from custom_components.grouw_ble_mower.ble_protocol import MowerState
 from custom_components.grouw_ble_mower.const import CONF_ADDRESS
 from custom_components.grouw_ble_mower.coordinator import (
     GrouwMowerCoordinator,
@@ -47,6 +46,32 @@ def test_initial_poll_cooldown_after_command() -> None:
     asyncio.run(run())
 
 
+def test_device_provider_uses_home_assistant_bluetooth_manager(monkeypatch: Any) -> None:
+    """pyGrouw should receive devices resolved through Home Assistant Bluetooth."""
+    from custom_components.grouw_ble_mower import coordinator as coordinator_module
+
+    hass = _Hass()
+    resolved_device = object()
+    calls: list[tuple[Any, str, bool]] = []
+
+    def async_ble_device_from_address(hass_arg: Any, address: str, *, connectable: bool) -> object:
+        calls.append((hass_arg, address, connectable))
+        return resolved_device
+
+    monkeypatch.setattr(
+        coordinator_module.bluetooth,
+        "async_ble_device_from_address",
+        async_ble_device_from_address,
+    )
+
+    coordinator = GrouwMowerCoordinator(
+        hass, _Entry(), "aa:bb:cc:dd:ee:ff", "Test mower"
+    )
+
+    assert coordinator._async_ble_device_from_address() is resolved_device
+    assert calls == [(hass, "AA:BB:CC:DD:EE:FF", True)]
+
+
 def test_initial_poll_failure_raises_update_failed() -> None:
     """Initial poll failure raises UpdateFailed and does not return placeholder state."""
     async def run() -> None:
@@ -54,11 +79,11 @@ def test_initial_poll_failure_raises_update_failed() -> None:
             _Hass(), _Entry(), "AA:BB:CC:DD:EE:FF", "Test mower"
         )
 
-        class Client:
-            async def async_get_all_info(self) -> dict[str, Any]:
+        class Mower:
+            async def async_update(self) -> MowerState:
                 raise GrouwBleError("not reachable")
 
-        coordinator.client = Client()
+        coordinator.mower = Mower()
         with pytest.raises(UpdateFailed, match="not reachable"):
             await coordinator._async_update_data()
 
@@ -73,11 +98,11 @@ def test_poll_authentication_failure_raises_config_entry_auth_failed() -> None:
             _Hass(), _Entry(), "AA:BB:CC:DD:EE:FF", "Test mower"
         )
 
-        class Client:
-            async def async_get_all_info(self) -> dict[str, Any]:
+        class Mower:
+            async def async_update(self) -> MowerState:
                 raise GrouwBleAuthenticationError("bad pin")
 
-        coordinator.client = Client()
+        coordinator.mower = Mower()
         with pytest.raises(ConfigEntryAuthFailed, match="bad pin"):
             await coordinator._async_update_data()
 
@@ -92,11 +117,11 @@ def test_poll_unverifiable_auth_response_raises_update_failed() -> None:
             _Hass(), _Entry(), "AA:BB:CC:DD:EE:FF", "Test mower"
         )
 
-        class Client:
-            async def async_get_all_info(self) -> dict[str, Any]:
+        class Mower:
+            async def async_update(self) -> MowerState:
                 raise GrouwBleError("auth response did not include PIN data")
 
-        coordinator.client = Client()
+        coordinator.mower = Mower()
         with pytest.raises(UpdateFailed, match="did not include PIN data"):
             await coordinator._async_update_data()
 
@@ -177,9 +202,10 @@ def test_raw_payload_requests_are_serialized() -> None:
             _Hass(), _Entry(), "AA:BB:CC:DD:EE:FF", "Test mower"
         )
 
-        class Client:
+        class Mower:
             active = 0
             max_active = 0
+            state = MowerState(address="AA:BB:CC:DD:EE:FF")
 
             async def async_send_raw_json(
                 self, payload: dict[str, Any]
@@ -188,17 +214,24 @@ def test_raw_payload_requests_are_serialized() -> None:
                 self.max_active = max(self.max_active, self.active)
                 await asyncio.sleep(0)
                 self.active -= 1
+                self.state = MowerState(
+                    address="AA:BB:CC:DD:EE:FF",
+                    battery_level=payload["battery_level"],
+                    raw={"cmd": 0x80, "battery_level": payload["battery_level"]},
+                    last_response_cmd=0x80,
+                    last_seen=datetime.now(timezone.utc),
+                )
                 return {"cmd": 0x80, "battery_level": payload["battery_level"]}
 
-        client = Client()
-        coordinator.client = client
+        mower = Mower()
+        coordinator.mower = mower
 
         await asyncio.gather(
             coordinator.async_send_raw_json({"battery_level": 41}),
             coordinator.async_send_raw_json({"battery_level": 42}),
         )
 
-        assert client.max_active == 1
+        assert mower.max_active == 1
         assert coordinator.data.raw in (
             {"cmd": 0x80, "battery_level": 41},
             {"cmd": 0x80, "battery_level": 42},
@@ -225,11 +258,11 @@ def test_command_authentication_failure_starts_reauth() -> None:
             hass, entry, "AA:BB:CC:DD:EE:FF", "Test mower"
         )
 
-        class Client:
-            async def async_command(self, command: str) -> dict[str, Any]:
+        class Mower:
+            async def async_command(self, command: str) -> MowerState:
                 raise GrouwBleAuthenticationError("bad pin")
 
-        coordinator.client = Client()
+        coordinator.mower = Mower()
         with pytest.raises(HomeAssistantError, match="reauthentication"):
             await coordinator.async_send_command("pause")
 
@@ -248,14 +281,18 @@ def test_command_cooldown_starts_after_ble_transaction() -> None:
         )
         client_finished_at: datetime | None = None
 
-        class Client:
-            async def async_command(self, command: str) -> dict[str, Any]:
+        class Mower:
+            async def async_command(self, command: str) -> MowerState:
                 nonlocal client_finished_at
                 await asyncio.sleep(0)
                 client_finished_at = datetime.now(timezone.utc)
-                return {"cmd": 0x80, "battery_level": 70}
+                return MowerState(
+                    address="AA:BB:CC:DD:EE:FF",
+                    battery_level=70,
+                    last_seen=datetime.now(timezone.utc),
+                )
 
-        coordinator.client = Client()
+        coordinator.mower = Mower()
 
         await coordinator.async_send_command("pause")
 

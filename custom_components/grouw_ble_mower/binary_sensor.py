@@ -8,8 +8,8 @@ from homeassistant.components.binary_sensor import BinarySensorEntity, BinarySen
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from pygrouw import MowerState
 
-from .ble_protocol import MowerState
 from .coordinator import GrouwMowerCoordinator
 from .entity import GrouwMowerEntity
 
