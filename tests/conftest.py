@@ -132,6 +132,10 @@ def _install_lightweight_stubs() -> None:
     config_validation.string = str
     config_validation.boolean = lambda v: v
     config_validation.ensure_list = lambda v: v if isinstance(v, list) else [v]
+    import re as _re
+    config_validation.matches_regex = lambda regex: (
+        (lambda v: v if _re.compile(regex).search(v) else (_ for _ in ()).throw(ValueError(f"does not match {regex}")))
+    )
 
     entity_platform = _install_module("homeassistant.helpers.entity_platform")
     helpers.entity_platform = entity_platform

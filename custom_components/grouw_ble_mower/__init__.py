@@ -42,6 +42,8 @@ PLATFORMS: list[Platform] = [
     Platform.BINARY_SENSOR,
 ]
 
+PIN_REGEX = r"^\d{4}$"
+
 SERVICE_SEND_RAW_JSON_SCHEMA = vol.Schema(
     {
         vol.Required("payload"): dict,
@@ -50,10 +52,31 @@ SERVICE_SEND_RAW_JSON_SCHEMA = vol.Schema(
     }
 )
 
+
+def _work_start_validator(value: list[int]) -> list[int]:
+    """Validate a (hour, minute) pair."""
+    hour, minute = value
+    if not 0 <= hour <= 23:
+        raise vol.Invalid(f"start hour must be between 0 and 23, got {hour}")
+    if not 0 <= minute <= 59:
+        raise vol.Invalid(f"start minute must be between 0 and 59, got {minute}")
+    return value
+
+
+def _work_duration_validator(value: list[int]) -> list[int]:
+    """Validate a (hours, tenths) pair."""
+    hours, tenths = value
+    if not 0 <= hours <= 23:
+        raise vol.Invalid(f"duration hours must be between 0 and 23, got {hours}")
+    if not 0 <= tenths <= 9:
+        raise vol.Invalid(f"duration tenths must be between 0 and 9, got {tenths}")
+    return value
+
+
 SERVICE_CHANGE_PIN_SCHEMA = vol.Schema(
     {
-        vol.Required("new_pin"): cv.string,
-        vol.Optional("old_pin"): cv.string,
+        vol.Required("new_pin"): vol.All(cv.string, cv.matches_regex(PIN_REGEX)),
+        vol.Optional("old_pin"): vol.All(cv.string, cv.matches_regex(PIN_REGEX)),
         vol.Optional("address"): cv.string,
         vol.Optional("entry_id"): cv.string,
     }
@@ -91,7 +114,12 @@ SERVICE_SET_WORK_TIMES_SCHEMA = vol.Schema(
             [vol.All(
                 cv.ensure_list,
                 vol.Length(min=2, max=2),
-                [vol.All(vol.Coerce(int), vol.Range(min=0))]
+                [vol.All(
+                    vol.Coerce(int),
+                    vol.Range(min=0),
+                )],
+                vol.Length(min=2, max=2),
+                _work_start_validator,
             )]
         ),
         vol.Required("durations"): vol.All(
@@ -100,7 +128,12 @@ SERVICE_SET_WORK_TIMES_SCHEMA = vol.Schema(
             [vol.All(
                 cv.ensure_list,
                 vol.Length(min=2, max=2),
-                [vol.All(vol.Coerce(int), vol.Range(min=0))]
+                [vol.All(
+                    vol.Coerce(int),
+                    vol.Range(min=0),
+                )],
+                vol.Length(min=2, max=2),
+                _work_duration_validator,
             )]
         ),
         vol.Optional("address"): cv.string,

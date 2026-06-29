@@ -19,6 +19,7 @@ from pygrouw import (
     MowerState,
 )
 from .const import (
+    CONF_PIN,
     DEFAULT_BLE_BACKOFF_INTERVAL,
     DEFAULT_NAME,
     DEFAULT_UPDATE_INTERVAL,
@@ -218,6 +219,11 @@ class GrouwMowerCoordinator(DataUpdateCoordinator[MowerState]):
 
             self._last_command_time = datetime.now(timezone.utc)
             self._last_failure_time = None
+            self.pin = new_pin
+            self.hass.config_entries.async_update_entry(
+                self.config_entry,
+                data={**self.config_entry.data, CONF_PIN: new_pin},
+            )
             return response
         finally:
             self._pending_commands -= 1
