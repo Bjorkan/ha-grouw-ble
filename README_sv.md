@@ -29,16 +29,15 @@ Bekräftade målsignaler:
 - BLE-namn: `Robot Mower_DYM*`, `RobotMower_DYM*` och `Robot_Mower*`.
 - Service UUID: `49535343-fe7d-4ae5-8fa9-9fafd205e455`.
 - Kontrollkaraktäristik: `49535343-1e4d-4bd9-ba61-23c647249616`.
-- HCI-bekräftade DYM-payloads för status, start/återuppta, paus/stopp och
-  dockning.
+- HCI-bekräftade DYM-payloads för status, start/återuppta, paus/stopp, dockning,
+  PIN-byte, multi-area, klipparinställningar och arbetstidsschema.
 
 Behandlas ännu inte som stödda:
 
 - Grouw 18739/18740 CLEVR / `robotic-mower connect` /
   `Mower_XXXXXX`-enheter.
 - Moln- eller Wi-Fi-styrning.
-- Inställningsskrivningar för regn, kantklippning, ultraljud, helix, LED,
-  multizon, scheman, PIN-byte eller firmwareuppdatering.
+- Firmwareuppdatering.
 
 Detaljerade protokollanteckningar finns i companion-biblioteket:
 [Bjorkan/pyGrouw reverse_engineered/index.md](https://github.com/Bjorkan/pyGrouw/blob/main/reverse_engineered/index.md).
@@ -57,12 +56,26 @@ Detaljerade protokollanteckningar finns i companion-biblioteket:
   - rå lägeskod
   - senaste svarskommando
   - dockad status
+- Entiteter för klipparinställningar (efter avläsning med get-tjänsterna):
+  - multi-area-procent och distanser (Area 2, Area 3)
+  - regnfördröjning timmar och minuter
+  - okänd inställningsbyte
+  - klipp i regn, kantklippning, helix, LED
 - Debugtjänsten `grouw_ble_mower.send_raw_json` för protokollvalidering.
+- Tjänsten `grouw_ble_mower.change_pin` för att ändra klipparens PIN-kod.
+- Tjänsten `grouw_ble_mower.set_multi_area` för att konfigurera multi-area-klippning.
+- Tjänsten `grouw_ble_mower.set_mower_settings` för att konfigurera regn, kantklippning, helix och regnfördröjning.
+- Tjänsten `grouw_ble_mower.set_work_times` för att konfigurera veckans arbetstidsschema.
+- Tjänsterna `grouw_ble_mower.get_multi_area`, `get_mower_settings` och `get_work_times`
+  för att läsa inställningar från klipparen och uppdatera motsvarande sensorer.
 
 Normal polling och styrning använder det HCI-bekräftade DYM-protokollet.
 APK-härledda BlueKey-kommandon finns endast som råa debugprober tills
 hårdvarucaptures visar deras exakta beteende på kabeln för denna
 klippargeneration.
+
+Inställningsläsning och -skrivning kräver autentisering och utförs på
+begäran via tjänster. De ingår inte i den normala pollingscykeln.
 
 ## Installation
 
@@ -113,7 +126,9 @@ logger:
 Dela inte loggar förrän BLE-adresser, serienummer, PIN-koder och andra privata
 värden har maskerats.
 
-## Rå BLE-validering
+## Tjänster
+
+### Rå BLE-validering
 
 Använd den råa tjänsten endast vid protokollvalidering:
 
@@ -146,9 +161,90 @@ data:
     bluekey: mower_settings
 ```
 
-Stödda namngivna BlueKey-prober är `query_info`, `set_time`, `query_pin`,
-`work_time`, `mower_settings`, `multi_area` och `error_memory`. Generiska
-prober kan använda `bluekey_sub_cmd` plus valfri `bluekey_data`.
+### Ändra PIN-kod
+
+```yaml
+action: grouw_ble_mower.change_pin
+data:
+  new_pin: "4321"
+  # old_pin är valfritt; standard är den konfigurerade PIN-koden
+```
+
+### Multi-area-inställningar
+
+Läs multi-area-inställningar:
+
+```yaml
+action: grouw_ble_mower.get_multi_area
+```
+
+Ställ in multi-area-inställningar:
+
+```yaml
+action: grouw_ble_mower.set_multi_area
+data:
+  area2_percentage: 5
+  area2_distance: 12
+  area3_percentage: 16
+  area3_distance: 74
+```
+
+### Klipparinställningar
+
+Läs klipparinställningar:
+
+```yaml
+action: grouw_ble_mower.get_mower_settings
+```
+
+Ställ in klipparinställningar:
+
+```yaml
+action: grouw_ble_mower.set_mower_settings
+data:
+  mow_in_rain: true
+  boundary_cut: false
+  helix: true
+  rain_delay_hours: 4
+  rain_delay_minutes: 13
+```
+
+### Arbetstidsschema
+
+Läs arbetstidsschema:
+
+```yaml
+action: grouw_ble_mower.get_work_times
+```
+
+Ställ in arbetstidsschema (7 dagar, måndag till söndag):
+
+```yaml
+action: grouw_ble_mower.set_work_times
+data:
+  starts:
+    - [18, 0]
+    - [11, 13]
+    - [11, 21]
+    - [4, 7]
+    - [18, 0]
+    - [10, 1]
+    - [17, 50]
+  durations:
+    - [1, 0]
+    - [11, 9]
+    - [10, 0]
+    - [3, 0]
+    - [4, 0]
+    - [2, 0]
+    - [6, 0]
+```
+
+### Rikta en klippare
+
+Alla tjänster accepterar valfria fält `address` eller `entry_id` för att rikta en
+specifik klippare när flera är konfigurerade. När endast en klippare är
+konfigurerad är fälten valfria.
 
 Spara hållbara fynd i companion-bibliotekets `reverse_engineered/`-mapp som
 sammanfattningar. Committa inte APK:er, dekompilerad output, råa captures eller

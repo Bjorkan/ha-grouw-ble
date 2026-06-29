@@ -45,10 +45,21 @@
     "sensor": {
       "battery": { "name": "Batteri" },
       "mode": { "name": "Lägeskod" },
-      "last_response_cmd": { "name": "Senaste svarskommando" }
+      "last_response_cmd": { "name": "Senaste svarskommando" },
+      "area2_percentage": { "name": "Område 2 procent" },
+      "area2_distance": { "name": "Område 2 avstånd" },
+      "area3_percentage": { "name": "Område 3 procent" },
+      "area3_distance": { "name": "Område 3 avstånd" },
+      "rain_delay_hour": { "name": "Regnfördröjning timmar" },
+      "rain_delay_minute": { "name": "Regnfördröjning minuter" },
+      "unknown_setting": { "name": "Okänd inställning" }
     },
     "binary_sensor": {
-      "docked": { "name": "Dockad" }
+      "docked": { "name": "Dockad" },
+      "mow_in_rain": { "name": "Klippa i regn" },
+      "boundary_cut": { "name": "Gränsklippning" },
+      "helix": { "name": "Helix" },
+      "led": { "name": "LED" }
     }
   }
 }

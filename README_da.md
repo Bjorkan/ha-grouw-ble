@@ -29,15 +29,15 @@ Bekræftede målsignaler:
 - BLE-navne: `Robot Mower_DYM*`, `RobotMower_DYM*` og `Robot_Mower*`.
 - Service UUID: `49535343-fe7d-4ae5-8fa9-9fafd205e455`.
 - Kontrolkarakteristik: `49535343-1e4d-4bd9-ba61-23c647249616`.
-- HCI-bekræftede DYM-payloads til status, start/genoptag, pause/stop og dock.
+- HCI-bekræftede DYM-payloads til status, start/genoptag, pause/stop, dock,
+  PIN-skift, multi-area, plæneklipperindstillinger og arbejdstidsplan.
 
 Behandles endnu ikke som understøttet:
 
 - Grouw 18739/18740 CLEVR / `robotic-mower connect` /
   `Mower_XXXXXX`-enheder.
 - Cloud- eller Wi-Fi-styring.
-- Indstillingsskrivninger for regn, kantklipning, ultralyd, helix, LED,
-  multizone, tidsplaner, PIN-skift eller firmwareopdatering.
+- Firmwareopdatering.
 
 Detaljerede protokolnoter findes i companion-biblioteket:
 [Bjorkan/pyGrouw reverse_engineered/index.md](https://github.com/Bjorkan/pyGrouw/blob/main/reverse_engineered/index.md).
@@ -56,12 +56,26 @@ Detaljerede protokolnoter findes i companion-biblioteket:
   - rå tilstandskode
   - seneste svarkommando
   - docked status
+- Entiteter for plæneklipperindstillinger (efter aflæsning med get-tjenesterne):
+  - multi-area-procenter og afstande (Area 2, Area 3)
+  - regnforsinkelse timer og minutter
+  - ukendt indstillingsbyte
+  - klip i regn, kantklipning, helix, LED
 - Debugtjenesten `grouw_ble_mower.send_raw_json` til protokolvalidering.
+- Tjenesten `grouw_ble_mower.change_pin` til at skifte plæneklipperens PIN-kode.
+- Tjenesten `grouw_ble_mower.set_multi_area` til at konfigurere multi-area-klipning.
+- Tjenesten `grouw_ble_mower.set_mower_settings` til at konfigurere regn, kantklipning, helix og regnforsinkelse.
+- Tjenesten `grouw_ble_mower.set_work_times` til at konfigurere den ugentlige arbejdstidsplan.
+- Tjenesterne `grouw_ble_mower.get_multi_area`, `get_mower_settings` og `get_work_times`
+  til at læse indstillinger fra plæneklipperen og opdatere de tilsvarende sensorer.
 
 Normal polling og styring bruger den HCI-bekræftede DYM-protokol. APK-afledte
 BlueKey-kommandoer er kun tilgængelige som rå debug-prober, indtil
 hardware-captures beviser deres præcise on-wire-adfærd for denne
 plæneklippergeneration.
+
+Indstillingslæsning og -skrivning kræver autentificering og udføres på
+anmodning via tjenester. De er ikke en del af den normale polling-cyklus.
 
 ## Installation
 
@@ -112,7 +126,9 @@ logger:
 Del ikke logs, før BLE-adresser, serienumre, PIN-koder og andre private
 værdier er maskeret.
 
-## Rå BLE-validering
+## Tjenester
+
+### Rå BLE-validering
 
 Brug kun den rå tjeneste, mens protokollen valideres:
 
@@ -145,9 +161,90 @@ data:
     bluekey: mower_settings
 ```
 
-Understøttede navngivne BlueKey-prober er `query_info`, `set_time`,
-`query_pin`, `work_time`, `mower_settings`, `multi_area` og `error_memory`.
-Generiske prober kan bruge `bluekey_sub_cmd` plus valgfri `bluekey_data`.
+### Skift PIN-kode
+
+```yaml
+action: grouw_ble_mower.change_pin
+data:
+  new_pin: "4321"
+  # old_pin er valgfrit; standard er den konfigurerede PIN-kode
+```
+
+### Multi-area-indstillinger
+
+Læs multi-area-indstillinger:
+
+```yaml
+action: grouw_ble_mower.get_multi_area
+```
+
+Indstil multi-area-indstillinger:
+
+```yaml
+action: grouw_ble_mower.set_multi_area
+data:
+  area2_percentage: 5
+  area2_distance: 12
+  area3_percentage: 16
+  area3_distance: 74
+```
+
+### Plæneklipperindstillinger
+
+Læs plæneklipperindstillinger:
+
+```yaml
+action: grouw_ble_mower.get_mower_settings
+```
+
+Indstil plæneklipperindstillinger:
+
+```yaml
+action: grouw_ble_mower.set_mower_settings
+data:
+  mow_in_rain: true
+  boundary_cut: false
+  helix: true
+  rain_delay_hours: 4
+  rain_delay_minutes: 13
+```
+
+### Arbejdstidsplan
+
+Læs arbejdstidsplan:
+
+```yaml
+action: grouw_ble_mower.get_work_times
+```
+
+Indstil arbejdstidsplan (7 dage, mandag til søndag):
+
+```yaml
+action: grouw_ble_mower.set_work_times
+data:
+  starts:
+    - [18, 0]
+    - [11, 13]
+    - [11, 21]
+    - [4, 7]
+    - [18, 0]
+    - [10, 1]
+    - [17, 50]
+  durations:
+    - [1, 0]
+    - [11, 9]
+    - [10, 0]
+    - [3, 0]
+    - [4, 0]
+    - [2, 0]
+    - [6, 0]
+```
+
+### Målret en plæneklipper
+
+Alle tjenester accepterer valgfrie felter `address` eller `entry_id` for at
+målrette en specifik plæneklipper, når flere er konfigureret. Når kun én
+plæneklipper er konfigureret, er felterne valgfrie.
 
 Gem holdbare fund i companion-bibliotekets `reverse_engineered/`-mappe som
 opsummeringer. Commit ikke APK'er, dekompileret output, rå captures eller logs

@@ -45,10 +45,21 @@
     "sensor": {
       "battery": { "name": "Batteri" },
       "mode": { "name": "Tilstandskode" },
-      "last_response_cmd": { "name": "Seneste svarkommando" }
+      "last_response_cmd": { "name": "Seneste svarkommando" },
+      "area2_percentage": { "name": "Område 2 procent" },
+      "area2_distance": { "name": "Område 2 afstand" },
+      "area3_percentage": { "name": "Område 3 procent" },
+      "area3_distance": { "name": "Område 3 afstand" },
+      "rain_delay_hour": { "name": "Regnforsinkelse timer" },
+      "rain_delay_minute": { "name": "Regnforsinkelse minutter" },
+      "unknown_setting": { "name": "Ukendt indstilling" }
     },
     "binary_sensor": {
-      "docked": { "name": "I ladestationen" }
+      "docked": { "name": "I ladestationen" },
+      "mow_in_rain": { "name": "Klip i regn" },
+      "boundary_cut": { "name": "Kantklipning" },
+      "helix": { "name": "Helix" },
+      "led": { "name": "LED" }
     }
   }
 }

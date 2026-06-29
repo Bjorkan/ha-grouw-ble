@@ -37,6 +37,19 @@ def _install_lightweight_stubs() -> None:
     voluptuous.Required = lambda key, *args, **kwargs: key
     voluptuous.Optional = lambda key, *args, **kwargs: key
 
+    class _Validator:
+        def __init__(self, *args: Any, **kwargs: Any) -> None:
+            self.args = args
+            self.kwargs = kwargs
+
+        def __call__(self, value: Any) -> Any:
+            return value
+
+    voluptuous.All = _Validator
+    voluptuous.Coerce = _Validator
+    voluptuous.Range = _Validator
+    voluptuous.Length = _Validator
+
     homeassistant = _install_module("homeassistant")
     homeassistant.__version__ = "test"
 
@@ -117,6 +130,8 @@ def _install_lightweight_stubs() -> None:
     config_validation = _install_module("homeassistant.helpers.config_validation")
     helpers.config_validation = config_validation
     config_validation.string = str
+    config_validation.boolean = lambda v: v
+    config_validation.ensure_list = lambda v: v if isinstance(v, list) else [v]
 
     entity_platform = _install_module("homeassistant.helpers.entity_platform")
     helpers.entity_platform = entity_platform

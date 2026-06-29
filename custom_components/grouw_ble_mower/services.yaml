@@ -16,3 +16,184 @@ send_raw_json:
       required: false
       selector:
         text:
+
+change_pin:
+  name: Change PIN
+  description: Change the mower's 4-digit PIN code.
+  fields:
+    new_pin:
+      required: true
+      example: "4321"
+      selector:
+        text:
+    old_pin:
+      required: false
+      example: "1234"
+      selector:
+        text:
+    address:
+      required: false
+      example: 'AA:BB:CC:DD:EE:FF'
+      selector:
+        text:
+    entry_id:
+      required: false
+      selector:
+        text:
+
+set_multi_area:
+  name: Set multi-area
+  description: Configure multi-area mowing percentages and distances.
+  fields:
+    area2_percentage:
+      required: true
+      example: 5
+      selector:
+        number:
+          min: 0
+          max: 100
+    area2_distance:
+      required: true
+      example: 12
+      selector:
+        number:
+          min: 0
+          max: 999
+          unit_of_measurement: "m"
+    area3_percentage:
+      required: true
+      example: 16
+      selector:
+        number:
+          min: 0
+          max: 100
+    area3_distance:
+      required: true
+      example: 74
+      selector:
+        number:
+          min: 0
+          max: 999
+          unit_of_measurement: "m"
+    address:
+      required: false
+      example: 'AA:BB:CC:DD:EE:FF'
+      selector:
+        text:
+    entry_id:
+      required: false
+      selector:
+        text:
+
+set_mower_settings:
+  name: Set mower settings
+  description: Configure mower settings (rain, boundary cut, helix, rain delay).
+  fields:
+    mow_in_rain:
+      required: true
+      selector:
+        boolean:
+    boundary_cut:
+      required: true
+      selector:
+        boolean:
+    helix:
+      required: true
+      selector:
+        boolean:
+    rain_delay_hours:
+      required: true
+      example: 4
+      selector:
+        number:
+          min: 0
+          max: 23
+    rain_delay_minutes:
+      required: true
+      example: 13
+      selector:
+        number:
+          min: 0
+          max: 59
+    unknown_setting:
+      required: false
+      default: false
+      selector:
+        boolean:
+    address:
+      required: false
+      example: 'AA:BB:CC:DD:EE:FF'
+      selector:
+        text:
+    entry_id:
+      required: false
+      selector:
+        text:
+
+set_work_times:
+  name: Set work times
+  description: Configure the weekly work time schedule (7 days, Monday through Sunday).
+  fields:
+    starts:
+      required: true
+      description: "List of 7 (hour, minute) pairs, one per day from Monday to Sunday."
+      example: '[[18,0],[11,13],[11,21],[4,7],[18,0],[10,1],[17,50]]'
+      selector:
+        object:
+    durations:
+      required: true
+      description: "List of 7 (hours, tenths) pairs, one per day from Monday to Sunday."
+      example: '[[1,0],[11,9],[10,0],[3,0],[4,0],[2,0],[6,0]]'
+      selector:
+        object:
+    address:
+      required: false
+      example: 'AA:BB:CC:DD:EE:FF'
+      selector:
+        text:
+    entry_id:
+      required: false
+      selector:
+        text:
+
+get_multi_area:
+  name: Get multi-area
+  description: Read multi-area settings from the mower and update the sensors.
+  fields:
+    address:
+      required: false
+      example: 'AA:BB:CC:DD:EE:FF'
+      selector:
+        text:
+    entry_id:
+      required: false
+      selector:
+        text:
+
+get_mower_settings:
+  name: Get mower settings
+  description: Read mower settings from the mower and update the sensors.
+  fields:
+    address:
+      required: false
+      example: 'AA:BB:CC:DD:EE:FF'
+      selector:
+        text:
+    entry_id:
+      required: false
+      selector:
+        text:
+
+get_work_times:
+  name: Get work times
+  description: Read the weekly work time schedule from the mower and update the sensors.
+  fields:
+    address:
+      required: false
+      example: 'AA:BB:CC:DD:EE:FF'
+      selector:
+        text:
+    entry_id:
+      required: false
+      selector:
+        text:

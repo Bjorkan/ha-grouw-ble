@@ -3,7 +3,7 @@
 Durable development notes for the Grouw Mower Home Assistant custom
 integration.
 
-Last updated: 2026-06-27.
+Last updated: 2026-06-28.
 
 ## Read First
 
@@ -55,6 +55,8 @@ AGENTS.md                            Instructions for AI agents
 - BLE/protocol library: `pygrouw` (`GrouwBleMowerClient`, `GrouwMower`,
   `MowerState`, discovery helpers, payload encoding/parsing).
 - Debug action: `grouw_ble_mower.send_raw_json`.
+- Settings actions: `change_pin`, `set_multi_area`, `set_mower_settings`,
+  `set_work_times`, `get_multi_area`, `get_mower_settings`, `get_work_times`.
 
 Discovery matches:
 
@@ -119,6 +121,9 @@ The app writes and subscribes to characteristic:
   because real-hardware validation showed the prelude can make the mower beep,
   while unauthenticated DYM status/start/resume/pause/dock payloads work on the
   tested mower. `pygrouw` owns those command transactions.
+- Settings read/write operations (multi-area, mower settings, work times, PIN
+  change) do require authentication. These are performed on demand through
+  services and are not part of the normal polling cycle.
 - The auth/PIN path remains available for raw protocol validation and future
   research.
 - DYM response command `0x80` is treated as status. DYM response command
@@ -130,9 +135,10 @@ The app writes and subscribes to characteristic:
 - The dock/station byte overrides mode when deriving Home Assistant lawn mower
   activity because the mower can report docked while the mode byte still looks
   active.
-- Exposed entities are limited to fields decoded from HCI-confirmed DYM status
-  notifications: battery, raw mode code, last response command, docked state,
-  and lawn mower activity.
+- Exposed entities include fields from DYM status notifications (battery, mode,
+  last response command, docked state, lawn mower activity) and cached values
+  from on-demand settings reads (multi-area percentages/distances, rain delay,
+  mow in rain, boundary cut, helix, LED, unknown setting).
 
 The detailed evidence behind these decisions is in:
 
@@ -155,6 +161,26 @@ BlueKey probes. BlueKey probe payloads convert APK `List<int>` values to BLE
 bytes with `value & 0xff`; the APK trailer value `510` is therefore emitted as
 `0xfe` until captures prove the native/platform conversion.
 
+## Settings Services
+
+The following services are registered for on-demand settings operations:
+
+- `change_pin` — delegates to `client.async_change_pin(new_pin, old_pin)`.
+- `set_multi_area` — delegates to `client.async_set_multi_area(...)`.
+- `set_mower_settings` — delegates to `client.async_set_mower_settings(...)`.
+- `set_work_times` — delegates to `client.async_set_work_times(...)`.
+- `get_multi_area` — reads settings and caches them in `coordinator.multi_area`.
+- `get_mower_settings` — reads settings and caches them in `coordinator.mower_settings`.
+- `get_work_times` — reads settings and caches them in `coordinator.work_time_starts`
+  and `coordinator.work_time_durations`.
+
+All settings services follow the same pattern as `async_send_command`:
+they acquire `_ble_lock`, increment `_pending_commands`, handle auth and BLE
+errors, and update coordinator state on success.
+
+Settings sensors and binary sensors display cached values from the coordinator.
+They show `None` until the corresponding get or set service is called.
+
 ## Implementation Notes
 
 - Setup stores the coordinator before first refresh. If the first refresh
@@ -171,6 +197,10 @@ bytes with `value & 0xff`; the APK trailer value `510` is therefore emitted as
   `UpdateFailed`, or `HomeAssistantError`.
 - `sensor` and `binary_sensor` set `PARALLEL_UPDATES = 0`. `lawn_mower` sets
   `PARALLEL_UPDATES = 1` because it exposes command actions.
+- Coordinator resolves the target mower for service calls using
+  `_resolve_coordinator()` helper which checks `entry_id`, `address`, or falls
+  back to the sole configured coordinator.
+- All services are unregistered when the last config entry is unloaded.
 
 ## When Adding Features
 

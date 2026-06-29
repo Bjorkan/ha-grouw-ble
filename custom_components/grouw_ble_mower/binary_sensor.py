@@ -20,14 +20,42 @@ PARALLEL_UPDATES = 0
 class GrouwBinarySensorEntityDescription(BinarySensorEntityDescription):
     """Describes a Grouw mower binary sensor."""
 
-    value_fn: Callable[[MowerState], bool | None]
+    value_fn: Callable[[GrouwMowerCoordinator], bool | None]
 
 
 BINARY_SENSORS: tuple[GrouwBinarySensorEntityDescription, ...] = (
     GrouwBinarySensorEntityDescription(
         key="docked",
         translation_key="docked",
-        value_fn=lambda state: state.station,
+        value_fn=lambda coord: coord.data.station if coord.data else None,
+    ),
+    GrouwBinarySensorEntityDescription(
+        key="mow_in_rain",
+        translation_key="mow_in_rain",
+        entity_category=None,
+        icon="mdi:weather-pouring",
+        value_fn=lambda coord: coord.mower_settings.get("mow_in_rain") if coord.mower_settings else None,
+    ),
+    GrouwBinarySensorEntityDescription(
+        key="boundary_cut",
+        translation_key="boundary_cut",
+        entity_category=None,
+        icon="mdi:border-all",
+        value_fn=lambda coord: coord.mower_settings.get("boundary_cut") if coord.mower_settings else None,
+    ),
+    GrouwBinarySensorEntityDescription(
+        key="helix",
+        translation_key="helix",
+        entity_category=None,
+        icon="mdi:spiral",
+        value_fn=lambda coord: coord.mower_settings.get("helix") if coord.mower_settings else None,
+    ),
+    GrouwBinarySensorEntityDescription(
+        key="led",
+        translation_key="led",
+        entity_category=None,
+        icon="mdi:led-on",
+        value_fn=lambda coord: coord.mower_settings.get("led") if coord.mower_settings else None,
     ),
 )
 
@@ -57,7 +85,13 @@ class GrouwMowerBinarySensor(GrouwMowerEntity, BinarySensorEntity):
 
     @property
     def is_on(self) -> bool | None:
+        return self.entity_description.value_fn(self.coordinator)
+
+    @property
+    def available(self) -> bool:
         data = self.coordinator.data
-        if data is None:
-            return None
-        return self.entity_description.value_fn(data)
+        return (
+            self.coordinator.last_update_success
+            and data is not None
+            and data.last_seen is not None
+        )
