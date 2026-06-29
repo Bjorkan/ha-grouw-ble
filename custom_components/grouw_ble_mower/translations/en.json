@@ -45,10 +45,21 @@
     "sensor": {
       "battery": { "name": "Battery" },
       "mode": { "name": "Mode code" },
-      "last_response_cmd": { "name": "Last response command" }
+      "last_response_cmd": { "name": "Last response command" },
+      "area2_percentage": { "name": "Area 2 percentage" },
+      "area2_distance": { "name": "Area 2 distance" },
+      "area3_percentage": { "name": "Area 3 percentage" },
+      "area3_distance": { "name": "Area 3 distance" },
+      "rain_delay_hour": { "name": "Rain delay hours" },
+      "rain_delay_minute": { "name": "Rain delay minutes" },
+      "unknown_setting": { "name": "Unknown setting" }
     },
     "binary_sensor": {
-      "docked": { "name": "Docked" }
+      "docked": { "name": "Docked" },
+      "mow_in_rain": { "name": "Mow in rain" },
+      "boundary_cut": { "name": "Boundary cut" },
+      "helix": { "name": "Helix" },
+      "led": { "name": "LED" }
     }
   }
 }

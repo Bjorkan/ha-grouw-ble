@@ -19,6 +19,7 @@ from pygrouw import (
     MowerState,
 )
 from .const import (
+    CONF_PIN,
     DEFAULT_BLE_BACKOFF_INTERVAL,
     DEFAULT_NAME,
     DEFAULT_UPDATE_INTERVAL,
@@ -63,6 +64,11 @@ class GrouwMowerCoordinator(DataUpdateCoordinator[MowerState]):
         self._pending_commands = 0
         self._last_command_time: datetime | None = None
         self._last_failure_time: datetime | None = None
+
+        self.multi_area: dict | None = None
+        self.mower_settings: dict | None = None
+        self.work_time_starts: list | None = None
+        self.work_time_durations: list | None = None
 
     def _async_ble_device_from_address(self) -> Any:
         """Resolve the current connectable BLE device through Home Assistant."""
@@ -175,6 +181,328 @@ class GrouwMowerCoordinator(DataUpdateCoordinator[MowerState]):
             self._last_failure_time = None
             self._last_state = state
             self.async_set_updated_data(state)
+        finally:
+            self._pending_commands -= 1
+
+    async def async_change_pin(
+        self, new_pin: str, old_pin: str | None = None
+    ) -> dict[str, Any]:
+        """Change the mower PIN."""
+        self._pending_commands += 1
+        try:
+            try:
+                if self._ble_lock.locked():
+                    _LOGGER.debug(
+                        "[%s] change_pin waiting for active BLE transaction",
+                        self.address
+                    )
+                async with self._ble_lock:
+                    _LOGGER.debug(
+                        "[%s] BLE lock acquired for change_pin", self.address
+                    )
+                    if self._last_state is not None:
+                        self.mower.state = self._last_state
+                    response = await self.client.async_change_pin(new_pin, old_pin)
+            except GrouwBleAuthenticationError as err:
+                now = datetime.now(timezone.utc)
+                self._last_command_time = now
+                self._last_failure_time = now
+                self._async_start_reauth()
+                raise HomeAssistantError(
+                    "Mower PIN authentication failed; reauthentication is required"
+                ) from err
+            except GrouwBleError as err:
+                now = datetime.now(timezone.utc)
+                self._last_command_time = now
+                self._last_failure_time = now
+                raise HomeAssistantError(str(err)) from err
+
+            self._last_command_time = datetime.now(timezone.utc)
+            self._last_failure_time = None
+            self.pin = new_pin
+            self.hass.config_entries.async_update_entry(
+                self.config_entry,
+                data={**self.config_entry.data, CONF_PIN: new_pin},
+            )
+            return response
+        finally:
+            self._pending_commands -= 1
+
+    async def async_get_multi_area(self) -> dict[str, Any]:
+        """Read multi-area settings."""
+        self._pending_commands += 1
+        try:
+            try:
+                if self._ble_lock.locked():
+                    _LOGGER.debug(
+                        "[%s] get_multi_area waiting for active BLE transaction",
+                        self.address
+                    )
+                async with self._ble_lock:
+                    _LOGGER.debug(
+                        "[%s] BLE lock acquired for get_multi_area", self.address
+                    )
+                    if self._last_state is not None:
+                        self.mower.state = self._last_state
+                    response = await self.client.async_get_multi_area()
+            except GrouwBleAuthenticationError as err:
+                now = datetime.now(timezone.utc)
+                self._last_command_time = now
+                self._last_failure_time = now
+                self._async_start_reauth()
+                raise HomeAssistantError(
+                    "Mower PIN authentication failed; reauthentication is required"
+                ) from err
+            except GrouwBleError as err:
+                now = datetime.now(timezone.utc)
+                self._last_command_time = now
+                self._last_failure_time = now
+                raise HomeAssistantError(str(err)) from err
+
+            self._last_command_time = datetime.now(timezone.utc)
+            self._last_failure_time = None
+            self.multi_area = response.get("multi_area")
+            state = self.mower.state
+            self._last_state = state
+            self.async_set_updated_data(state)
+            return response
+        finally:
+            self._pending_commands -= 1
+
+    async def async_set_multi_area(
+        self,
+        area2_percentage: int,
+        area2_distance: int,
+        area3_percentage: int,
+        area3_distance: int,
+    ) -> dict[str, Any]:
+        """Write multi-area settings and verify."""
+        self._pending_commands += 1
+        try:
+            try:
+                if self._ble_lock.locked():
+                    _LOGGER.debug(
+                        "[%s] set_multi_area waiting for active BLE transaction",
+                        self.address
+                    )
+                async with self._ble_lock:
+                    _LOGGER.debug(
+                        "[%s] BLE lock acquired for set_multi_area", self.address
+                    )
+                    if self._last_state is not None:
+                        self.mower.state = self._last_state
+                    response = await self.client.async_set_multi_area(
+                        area2_percentage=area2_percentage,
+                        area2_distance=area2_distance,
+                        area3_percentage=area3_percentage,
+                        area3_distance=area3_distance,
+                    )
+            except GrouwBleAuthenticationError as err:
+                now = datetime.now(timezone.utc)
+                self._last_command_time = now
+                self._last_failure_time = now
+                self._async_start_reauth()
+                raise HomeAssistantError(
+                    "Mower PIN authentication failed; reauthentication is required"
+                ) from err
+            except GrouwBleError as err:
+                now = datetime.now(timezone.utc)
+                self._last_command_time = now
+                self._last_failure_time = now
+                raise HomeAssistantError(str(err)) from err
+
+            self._last_command_time = datetime.now(timezone.utc)
+            self._last_failure_time = None
+            self.multi_area = response.get("multi_area")
+            state = self.mower.state
+            self._last_state = state
+            self.async_set_updated_data(state)
+            return response
+        finally:
+            self._pending_commands -= 1
+
+    async def async_get_mower_settings(self) -> dict[str, Any]:
+        """Read mower settings."""
+        self._pending_commands += 1
+        try:
+            try:
+                if self._ble_lock.locked():
+                    _LOGGER.debug(
+                        "[%s] get_mower_settings waiting for active BLE transaction",
+                        self.address
+                    )
+                async with self._ble_lock:
+                    _LOGGER.debug(
+                        "[%s] BLE lock acquired for get_mower_settings", self.address
+                    )
+                    if self._last_state is not None:
+                        self.mower.state = self._last_state
+                    response = await self.client.async_get_mower_settings()
+            except GrouwBleAuthenticationError as err:
+                now = datetime.now(timezone.utc)
+                self._last_command_time = now
+                self._last_failure_time = now
+                self._async_start_reauth()
+                raise HomeAssistantError(
+                    "Mower PIN authentication failed; reauthentication is required"
+                ) from err
+            except GrouwBleError as err:
+                now = datetime.now(timezone.utc)
+                self._last_command_time = now
+                self._last_failure_time = now
+                raise HomeAssistantError(str(err)) from err
+
+            self._last_command_time = datetime.now(timezone.utc)
+            self._last_failure_time = None
+            self.mower_settings = response.get("mower_settings")
+            state = self.mower.state
+            self._last_state = state
+            self.async_set_updated_data(state)
+            return response
+        finally:
+            self._pending_commands -= 1
+
+    async def async_set_mower_settings(
+        self,
+        mow_in_rain: bool,
+        boundary_cut: bool,
+        helix: bool,
+        rain_delay_hours: int,
+        rain_delay_minutes: int,
+        unknown_setting: bool = False,
+    ) -> dict[str, Any]:
+        """Write mower settings and verify."""
+        self._pending_commands += 1
+        try:
+            try:
+                if self._ble_lock.locked():
+                    _LOGGER.debug(
+                        "[%s] set_mower_settings waiting for active BLE transaction",
+                        self.address
+                    )
+                async with self._ble_lock:
+                    _LOGGER.debug(
+                        "[%s] BLE lock acquired for set_mower_settings", self.address
+                    )
+                    if self._last_state is not None:
+                        self.mower.state = self._last_state
+                    response = await self.client.async_set_mower_settings(
+                        mow_in_rain=mow_in_rain,
+                        boundary_cut=boundary_cut,
+                        helix=helix,
+                        rain_delay_hours=rain_delay_hours,
+                        rain_delay_minutes=rain_delay_minutes,
+                        unknown_setting=unknown_setting,
+                    )
+            except GrouwBleAuthenticationError as err:
+                now = datetime.now(timezone.utc)
+                self._last_command_time = now
+                self._last_failure_time = now
+                self._async_start_reauth()
+                raise HomeAssistantError(
+                    "Mower PIN authentication failed; reauthentication is required"
+                ) from err
+            except GrouwBleError as err:
+                now = datetime.now(timezone.utc)
+                self._last_command_time = now
+                self._last_failure_time = now
+                raise HomeAssistantError(str(err)) from err
+
+            self._last_command_time = datetime.now(timezone.utc)
+            self._last_failure_time = None
+            self.mower_settings = response.get("mower_settings")
+            state = self.mower.state
+            self._last_state = state
+            self.async_set_updated_data(state)
+            return response
+        finally:
+            self._pending_commands -= 1
+
+    async def async_get_work_times(self) -> dict[str, Any]:
+        """Read work time schedule."""
+        self._pending_commands += 1
+        try:
+            try:
+                if self._ble_lock.locked():
+                    _LOGGER.debug(
+                        "[%s] get_work_times waiting for active BLE transaction",
+                        self.address
+                    )
+                async with self._ble_lock:
+                    _LOGGER.debug(
+                        "[%s] BLE lock acquired for get_work_times", self.address
+                    )
+                    if self._last_state is not None:
+                        self.mower.state = self._last_state
+                    response = await self.client.async_get_work_times()
+            except GrouwBleAuthenticationError as err:
+                now = datetime.now(timezone.utc)
+                self._last_command_time = now
+                self._last_failure_time = now
+                self._async_start_reauth()
+                raise HomeAssistantError(
+                    "Mower PIN authentication failed; reauthentication is required"
+                ) from err
+            except GrouwBleError as err:
+                now = datetime.now(timezone.utc)
+                self._last_command_time = now
+                self._last_failure_time = now
+                raise HomeAssistantError(str(err)) from err
+
+            self._last_command_time = datetime.now(timezone.utc)
+            self._last_failure_time = None
+            self.work_time_starts = response.get("work_time_starts")
+            self.work_time_durations = response.get("work_time_durations")
+            state = self.mower.state
+            self._last_state = state
+            self.async_set_updated_data(state)
+            return response
+        finally:
+            self._pending_commands -= 1
+
+    async def async_set_work_times(
+        self,
+        starts: list[tuple[int, int]],
+        durations: list[tuple[int, int]],
+    ) -> dict[str, Any]:
+        """Write work time schedule and verify."""
+        self._pending_commands += 1
+        try:
+            try:
+                if self._ble_lock.locked():
+                    _LOGGER.debug(
+                        "[%s] set_work_times waiting for active BLE transaction",
+                        self.address
+                    )
+                async with self._ble_lock:
+                    _LOGGER.debug(
+                        "[%s] BLE lock acquired for set_work_times", self.address
+                    )
+                    if self._last_state is not None:
+                        self.mower.state = self._last_state
+                    response = await self.client.async_set_work_times(starts, durations)
+            except GrouwBleAuthenticationError as err:
+                now = datetime.now(timezone.utc)
+                self._last_command_time = now
+                self._last_failure_time = now
+                self._async_start_reauth()
+                raise HomeAssistantError(
+                    "Mower PIN authentication failed; reauthentication is required"
+                ) from err
+            except GrouwBleError as err:
+                now = datetime.now(timezone.utc)
+                self._last_command_time = now
+                self._last_failure_time = now
+                raise HomeAssistantError(str(err)) from err
+
+            self._last_command_time = datetime.now(timezone.utc)
+            self._last_failure_time = None
+            self.work_time_starts = response.get("work_time_starts")
+            self.work_time_durations = response.get("work_time_durations")
+            state = self.mower.state
+            self._last_state = state
+            self.async_set_updated_data(state)
+            return response
         finally:
             self._pending_commands -= 1
 

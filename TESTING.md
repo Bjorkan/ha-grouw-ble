@@ -2,7 +2,7 @@
 
 Testing guide for the Grouw Mower Home Assistant custom integration.
 
-Last updated: 2026-06-27.
+Last updated: 2026-06-28.
 
 ## Quick Verification
 
@@ -84,6 +84,8 @@ Coordinator/service coverage:
 - raw service target resolution failures
 - confirmed PIN/auth mismatches mapped to reauth
 - `pygrouw` BLE exceptions mapped to HA update/service errors
+- settings service handlers delegated to new coordinator methods
+- sensor and binary sensor `available` property overrides for settings entities
 
 Entity/config coverage:
 
@@ -130,7 +132,14 @@ Use this checklist against a real mower:
 8. Capture charging, error, lift, and tilt payloads.
 9. Treat rain as a settings feature unless a BLE status byte is captured.
 10. Confirm unavailable behavior when the mower sleeps or moves out of range.
-11. Update `README.md`, `DEVELOPMENT.md`, `TESTING.md`, and the companion
+11. Confirm PIN change via `change_pin` service and that the new PIN is used for
+    subsequent authenticated requests.
+12. Confirm multi-area read/write via `get_multi_area` / `set_multi_area` services
+    and that sensor entities update after reading.
+13. Confirm mower settings read/write via `get_mower_settings` / `set_mower_settings`
+    services and that binary sensor entities update after reading.
+14. Confirm work time read/write via `get_work_times` / `set_work_times` services.
+15. Update `README.md`, `DEVELOPMENT.md`, `TESTING.md`, and the companion
     library's `reverse_engineered/` folder with validated facts and remaining
     uncertainty.
 

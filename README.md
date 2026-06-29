@@ -28,14 +28,14 @@ Confirmed target signals:
 - BLE names: `Robot Mower_DYM*`, `RobotMower_DYM*`, and `Robot_Mower*`.
 - Service UUID: `49535343-fe7d-4ae5-8fa9-9fafd205e455`.
 - Control characteristic: `49535343-1e4d-4bd9-ba61-23c647249616`.
-- HCI-confirmed DYM payloads for status, start/resume, pause/stop, and dock.
+- HCI-confirmed DYM payloads for status, start/resume, pause/stop, dock, PIN change, multi-area,
+  mower settings, and work time schedule.
 
 Not yet treated as supported:
 
 - Grouw 18739/18740 CLEVR / `robotic-mower connect` / `Mower_XXXXXX` devices.
 - Cloud or Wi-Fi control.
-- Settings writes for rain, boundary cut, ultrasound, helix, LED, multi-area,
-  schedules, PIN change, or firmware update.
+- Firmware update.
 
 Detailed protocol notes live in the companion library:
 [Bjorkan/pyGrouw reverse_engineered/index.md](https://github.com/Bjorkan/pyGrouw/blob/main/reverse_engineered/index.md).
@@ -54,11 +54,25 @@ Detailed protocol notes live in the companion library:
   - raw mode code
   - last response command
   - docked state
+- Entities for mower settings (after reading with the get services):
+  - multi-area percentages and distances (Area 2, Area 3)
+  - rain delay hours and minutes
+  - unknown setting byte
+  - mow in rain, boundary cut, helix, LED
 - Debug service `grouw_ble_mower.send_raw_json` for protocol validation.
+- Service `grouw_ble_mower.change_pin` to change the mower PIN.
+- Service `grouw_ble_mower.set_multi_area` to configure multi-area mowing.
+- Service `grouw_ble_mower.set_mower_settings` to configure rain, boundary cut, helix, and rain delay.
+- Service `grouw_ble_mower.set_work_times` to configure the weekly work time schedule.
+- Services `grouw_ble_mower.get_multi_area`, `get_mower_settings`, and `get_work_times`
+  to read settings from the mower and update the corresponding sensors.
 
 Normal polling and controls use the HCI-confirmed DYM protocol. APK-derived
 BlueKey commands are available only as raw debug probes until hardware captures
 prove their exact on-wire behavior for this mower generation.
+
+Settings read/write operations require authentication and are performed on
+demand through services. They are not part of the normal polling cycle.
 
 ## Installation
 
@@ -73,7 +87,7 @@ Open this repository in HACS:
 Install the integration in HACS, restart Home Assistant, then add the
 integration:
 
-[![Open your Home Assistant instance and start setting up this integration.](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start/?domain=grouw_ble_mower)
+[![Open your Home Assistant instance and start setting up this integration.](https://my.home-assistant.io/redirect/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start/?domain=grouw_ble_mower)
 
 ```text
 Settings -> Devices & services -> Add integration -> Grouw Mower
@@ -109,7 +123,9 @@ logger:
 Do not share logs until BLE addresses, serial numbers, PINs, and other private
 values are redacted.
 
-## Raw BLE Validation
+## Services
+
+### Raw BLE Validation
 
 Use the raw service only while validating the protocol:
 
@@ -142,9 +158,90 @@ data:
     bluekey: mower_settings
 ```
 
-Supported named BlueKey probes are `query_info`, `set_time`, `query_pin`,
-`work_time`, `mower_settings`, `multi_area`, and `error_memory`. Generic probes
-can use `bluekey_sub_cmd` plus optional `bluekey_data`.
+### Change PIN
+
+```yaml
+action: grouw_ble_mower.change_pin
+data:
+  new_pin: "4321"
+  # old_pin is optional; defaults to the configured PIN
+```
+
+### Multi-area settings
+
+Read multi-area settings:
+
+```yaml
+action: grouw_ble_mower.get_multi_area
+```
+
+Set multi-area settings:
+
+```yaml
+action: grouw_ble_mower.set_multi_area
+data:
+  area2_percentage: 5
+  area2_distance: 12
+  area3_percentage: 16
+  area3_distance: 74
+```
+
+### Mower settings
+
+Read mower settings:
+
+```yaml
+action: grouw_ble_mower.get_mower_settings
+```
+
+Set mower settings:
+
+```yaml
+action: grouw_ble_mower.set_mower_settings
+data:
+  mow_in_rain: true
+  boundary_cut: false
+  helix: true
+  rain_delay_hours: 4
+  rain_delay_minutes: 13
+```
+
+### Work time schedule
+
+Read work time schedule:
+
+```yaml
+action: grouw_ble_mower.get_work_times
+```
+
+Set work time schedule (7 days, Monday through Sunday):
+
+```yaml
+action: grouw_ble_mower.set_work_times
+data:
+  starts:
+    - [18, 0]
+    - [11, 13]
+    - [11, 21]
+    - [4, 7]
+    - [18, 0]
+    - [10, 1]
+    - [17, 50]
+  durations:
+    - [1, 0]
+    - [11, 9]
+    - [10, 0]
+    - [3, 0]
+    - [4, 0]
+    - [2, 0]
+    - [6, 0]
+```
+
+### Targeting a mower
+
+All services accept optional `address` or `entry_id` fields to target a specific
+mower when multiple are configured. When only one mower is configured, the
+fields are optional.
 
 Record durable findings in the companion library's `reverse_engineered/` folder
 as summaries only. Do not commit APKs, decompiled output, raw captures, or logs
