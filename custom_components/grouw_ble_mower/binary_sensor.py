@@ -8,7 +8,6 @@ from homeassistant.components.binary_sensor import BinarySensorEntity, BinarySen
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from pygrouw import MowerState
 
 from .coordinator import GrouwMowerCoordinator
 from .entity import GrouwMowerEntity
@@ -21,6 +20,18 @@ class GrouwBinarySensorEntityDescription(BinarySensorEntityDescription):
     """Describes a Grouw mower binary sensor."""
 
     value_fn: Callable[[GrouwMowerCoordinator], bool | None]
+    available_fn: Callable[[GrouwMowerCoordinator], bool]
+
+
+def _has_status_state(coord: GrouwMowerCoordinator) -> bool:
+    """Return true when normal status polling has produced a usable state."""
+    data = coord.data
+    return coord.last_update_success and data is not None and data.last_seen is not None
+
+
+def _has_mower_settings(coord: GrouwMowerCoordinator) -> bool:
+    """Return true when mower settings have been read or written."""
+    return coord.last_update_success and coord.mower_settings is not None
 
 
 BINARY_SENSORS: tuple[GrouwBinarySensorEntityDescription, ...] = (
@@ -28,6 +39,7 @@ BINARY_SENSORS: tuple[GrouwBinarySensorEntityDescription, ...] = (
         key="docked",
         translation_key="docked",
         value_fn=lambda coord: coord.data.station if coord.data else None,
+        available_fn=_has_status_state,
     ),
     GrouwBinarySensorEntityDescription(
         key="mow_in_rain",
@@ -35,6 +47,7 @@ BINARY_SENSORS: tuple[GrouwBinarySensorEntityDescription, ...] = (
         entity_category=None,
         icon="mdi:weather-pouring",
         value_fn=lambda coord: coord.mower_settings.get("mow_in_rain") if coord.mower_settings else None,
+        available_fn=_has_mower_settings,
     ),
     GrouwBinarySensorEntityDescription(
         key="boundary_cut",
@@ -42,6 +55,7 @@ BINARY_SENSORS: tuple[GrouwBinarySensorEntityDescription, ...] = (
         entity_category=None,
         icon="mdi:border-all",
         value_fn=lambda coord: coord.mower_settings.get("boundary_cut") if coord.mower_settings else None,
+        available_fn=_has_mower_settings,
     ),
     GrouwBinarySensorEntityDescription(
         key="helix",
@@ -49,6 +63,7 @@ BINARY_SENSORS: tuple[GrouwBinarySensorEntityDescription, ...] = (
         entity_category=None,
         icon="mdi:spiral",
         value_fn=lambda coord: coord.mower_settings.get("helix") if coord.mower_settings else None,
+        available_fn=_has_mower_settings,
     ),
     GrouwBinarySensorEntityDescription(
         key="led",
@@ -56,6 +71,7 @@ BINARY_SENSORS: tuple[GrouwBinarySensorEntityDescription, ...] = (
         entity_category=None,
         icon="mdi:led-on",
         value_fn=lambda coord: coord.mower_settings.get("led") if coord.mower_settings else None,
+        available_fn=_has_mower_settings,
     ),
 )
 
@@ -89,9 +105,4 @@ class GrouwMowerBinarySensor(GrouwMowerEntity, BinarySensorEntity):
 
     @property
     def available(self) -> bool:
-        data = self.coordinator.data
-        return (
-            self.coordinator.last_update_success
-            and data is not None
-            and data.last_seen is not None
-        )
+        return self.entity_description.available_fn(self.coordinator)

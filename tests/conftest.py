@@ -104,8 +104,14 @@ def _install_lightweight_stubs() -> None:
     class ServiceCall:
         """Minimal service call stub."""
 
+    class SupportsResponse:
+        OPTIONAL = "optional"
+        ONLY = "only"
+
     core.HomeAssistant = HomeAssistant
     core.ServiceCall = ServiceCall
+    core.ServiceResponse = dict[str, Any]
+    core.SupportsResponse = SupportsResponse
 
     exceptions = _install_module("homeassistant.exceptions")
 

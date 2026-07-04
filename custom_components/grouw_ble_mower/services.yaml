@@ -26,11 +26,6 @@ change_pin:
       example: "4321"
       selector:
         text:
-    old_pin:
-      required: false
-      example: "1234"
-      selector:
-        text:
     address:
       required: false
       example: 'AA:BB:CC:DD:EE:FF'

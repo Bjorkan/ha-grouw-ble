@@ -67,7 +67,8 @@ Detaljerede protokolnoter findes i companion-biblioteket:
 - Tjenesten `grouw_ble_mower.set_mower_settings` til at konfigurere regn, kantklipning, helix og regnforsinkelse.
 - Tjenesten `grouw_ble_mower.set_work_times` til at konfigurere den ugentlige arbejdstidsplan.
 - Tjenesterne `grouw_ble_mower.get_multi_area`, `get_mower_settings` og `get_work_times`
-  til at læse indstillinger fra plæneklipperen og opdatere de tilsvarende sensorer.
+  til at læse indstillinger fra plæneklipperen, returnere svardata og opdatere
+  de tilsvarende sensorer.
 
 Normal polling og styring bruger den HCI-bekræftede DYM-protokol. APK-afledte
 BlueKey-kommandoer er kun tilgængelige som rå debug-prober, indtil
@@ -76,6 +77,9 @@ plæneklippergeneration.
 
 Indstillingslæsning og -skrivning kræver autentificering og udføres på
 anmodning via tjenester. De er ikke en del af den normale polling-cyklus.
+Læsetjenesterne returnerer altid Home Assistant service response-data. Den rå
+debugtjeneste og skrivetjenesterne returnerer deres pyGrouw-svar, når
+action-kaldet anmoder om svardata.
 
 ## Installation
 
@@ -167,7 +171,6 @@ data:
 action: grouw_ble_mower.change_pin
 data:
   new_pin: "4321"
-  # old_pin er valgfrit; standard er den konfigurerede PIN-kode
 ```
 
 ### Multi-area-indstillinger
@@ -176,6 +179,7 @@ Læs multi-area-indstillinger:
 
 ```yaml
 action: grouw_ble_mower.get_multi_area
+response_variable: multi_area
 ```
 
 Indstil multi-area-indstillinger:
@@ -195,6 +199,7 @@ Læs plæneklipperindstillinger:
 
 ```yaml
 action: grouw_ble_mower.get_mower_settings
+response_variable: mower_settings
 ```
 
 Indstil plæneklipperindstillinger:
@@ -215,6 +220,7 @@ Læs arbejdstidsplan:
 
 ```yaml
 action: grouw_ble_mower.get_work_times
+response_variable: work_times
 ```
 
 Indstil arbejdstidsplan (7 dage, mandag til søndag):

@@ -2,7 +2,7 @@
 
 Testing guide for the Grouw Mower Home Assistant custom integration.
 
-Last updated: 2026-06-28.
+Last updated: 2026-07-04.
 
 ## Quick Verification
 
@@ -58,7 +58,7 @@ tests/test_config_flow.py      Manual setup, PIN validation, discovery forms
 tests/test_coordinator.py      Polling, commands, cooldowns, reauth mapping
 tests/test_init.py             Config entry setup/unload
 tests/test_lawn_mower.py       Activity mapping and mower commands
-tests/test_services.py         Raw debug service validation/routing
+tests/test_services.py         Service validation/routing and response support
 ```
 
 ## Current Coverage
@@ -82,10 +82,12 @@ Coordinator/service coverage:
 - polling and commands delegated to `pygrouw.GrouwMower`
 - concurrent raw request serialization
 - raw service target resolution failures
+- service response support for read and optional debug/write services
 - confirmed PIN/auth mismatches mapped to reauth
 - `pygrouw` BLE exceptions mapped to HA update/service errors
 - settings service handlers delegated to new coordinator methods
-- sensor and binary sensor `available` property overrides for settings entities
+- sensor and binary sensor `available` property overrides for status and
+  settings-backed entities
 
 Entity/config coverage:
 
