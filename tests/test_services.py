@@ -202,3 +202,40 @@ def test_change_pin_uses_configured_current_pin() -> None:
         assert coordinator.new_pin == "4321"
 
     asyncio.run(run())
+
+
+def test_change_pin_ignores_legacy_old_pin_field() -> None:
+    """Existing automations may still pass old_pin, but pyGrouw should not see it."""
+    async def run() -> None:
+        hass = _Hass()
+
+        class Coordinator:
+            address = "AA:BB:CC:DD:EE:FF"
+            called_with: tuple[Any, ...] | None = None
+
+            async def async_change_pin(self, *args: Any) -> dict[str, Any]:
+                self.called_with = args
+                return {"pin_change_success": True}
+
+        coordinator = Coordinator()
+        hass.data[DOMAIN]["entry-1"] = coordinator
+        _async_register_services(hass)
+        handler = hass.services.handlers[(DOMAIN, SERVICE_CHANGE_PIN)]
+
+        call = type(
+            "Call",
+            (),
+            {
+                "data": {
+                    "entry_id": "entry-1",
+                    "new_pin": "4321",
+                    "old_pin": "1234",
+                },
+                "return_response": True,
+            },
+        )()
+
+        assert await handler(call) == {"pin_change_success": True}
+        assert coordinator.called_with == ("4321",)
+
+    asyncio.run(run())

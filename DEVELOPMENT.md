@@ -166,7 +166,8 @@ bytes with `value & 0xff`; the APK trailer value `510` is therefore emitted as
 The following services are registered for on-demand settings operations:
 
 - `change_pin` — delegates to `client.async_change_pin(new_pin)` and relies on
-  the configured PIN as the current PIN.
+  the configured PIN as the current PIN. The HA service schema still accepts a
+  legacy `old_pin` field for existing automations, but ignores it.
 - `set_multi_area` — delegates to `client.async_set_multi_area(...)`.
 - `set_mower_settings` — delegates to `client.async_set_mower_settings(...)`.
 - `set_work_times` — delegates to `client.async_set_work_times(...)`.

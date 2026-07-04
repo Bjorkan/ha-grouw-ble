@@ -81,6 +81,9 @@ def _work_duration_validator(value: list[int]) -> list[int]:
 SERVICE_CHANGE_PIN_SCHEMA = vol.Schema(
     {
         vol.Required("new_pin"): vol.All(cv.string, cv.matches_regex(PIN_REGEX)),
+        # Backward compatibility for existing automations; pyGrouw uses the
+        # configured current PIN.
+        vol.Optional("old_pin"): vol.All(cv.string, cv.matches_regex(PIN_REGEX)),
         vol.Optional("address"): cv.string,
         vol.Optional("entry_id"): cv.string,
     }
