@@ -165,7 +165,9 @@ bytes with `value & 0xff`; the APK trailer value `510` is therefore emitted as
 
 The following services are registered for on-demand settings operations:
 
-- `change_pin` — delegates to `client.async_change_pin(new_pin, old_pin)`.
+- `change_pin` — delegates to `client.async_change_pin(new_pin)` and relies on
+  the configured PIN as the current PIN. The HA service schema still accepts a
+  legacy `old_pin` field for existing automations, but ignores it.
 - `set_multi_area` — delegates to `client.async_set_multi_area(...)`.
 - `set_mower_settings` — delegates to `client.async_set_mower_settings(...)`.
 - `set_work_times` — delegates to `client.async_set_work_times(...)`.
@@ -180,6 +182,10 @@ errors, and update coordinator state on success.
 
 Settings sensors and binary sensors display cached values from the coordinator.
 They show `None` until the corresponding get or set service is called.
+Their availability follows the pyGrouw data source they use: normal status
+entities require a status `MowerState.last_seen`, while settings entities become
+available once their corresponding settings cache has been read or written,
+even if the latest normal status poll failed.
 
 ## Implementation Notes
 
@@ -200,7 +206,13 @@ They show `None` until the corresponding get or set service is called.
 - Coordinator resolves the target mower for service calls using
   `_resolve_coordinator()` helper which checks `entry_id`, `address`, or falls
   back to the sole configured coordinator.
-- All services are unregistered when the last config entry is unloaded.
+- Services are registered from `async_setup` so Home Assistant can validate
+  actions even when no config entry is loaded. Handlers raise
+  `ServiceValidationError` when no loaded coordinator can be resolved.
+- Read, debug, and write services use `SupportsResponse.OPTIONAL` and return
+  pyGrouw response data only when the action call requests a response. On Home
+  Assistant versions without service-response support, services are registered
+  without the `supports_response` keyword.
 
 ## When Adding Features
 

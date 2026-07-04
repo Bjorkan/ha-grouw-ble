@@ -65,7 +65,8 @@ Detailed protocol notes live in the companion library:
 - Service `grouw_ble_mower.set_mower_settings` to configure rain, boundary cut, helix, and rain delay.
 - Service `grouw_ble_mower.set_work_times` to configure the weekly work time schedule.
 - Services `grouw_ble_mower.get_multi_area`, `get_mower_settings`, and `get_work_times`
-  to read settings from the mower and update the corresponding sensors.
+  to read settings from the mower, return response data, and update the
+  corresponding sensors.
 
 Normal polling and controls use the HCI-confirmed DYM protocol. APK-derived
 BlueKey commands are available only as raw debug probes until hardware captures
@@ -73,6 +74,8 @@ prove their exact on-wire behavior for this mower generation.
 
 Settings read/write operations require authentication and are performed on
 demand through services. They are not part of the normal polling cycle.
+Read, debug, and write services return their pyGrouw response when the action
+call requests response data.
 
 ## Installation
 
@@ -164,7 +167,6 @@ data:
 action: grouw_ble_mower.change_pin
 data:
   new_pin: "4321"
-  # old_pin is optional; defaults to the configured PIN
 ```
 
 ### Multi-area settings
@@ -173,6 +175,7 @@ Read multi-area settings:
 
 ```yaml
 action: grouw_ble_mower.get_multi_area
+response_variable: multi_area
 ```
 
 Set multi-area settings:
@@ -192,6 +195,7 @@ Read mower settings:
 
 ```yaml
 action: grouw_ble_mower.get_mower_settings
+response_variable: mower_settings
 ```
 
 Set mower settings:
@@ -212,6 +216,7 @@ Read work time schedule:
 
 ```yaml
 action: grouw_ble_mower.get_work_times
+response_variable: work_times
 ```
 
 Set work time schedule (7 days, Monday through Sunday):

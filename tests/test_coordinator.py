@@ -272,6 +272,38 @@ def test_command_authentication_failure_starts_reauth() -> None:
     asyncio.run(run())
 
 
+def test_change_pin_delegates_with_new_pin_only() -> None:
+    """Coordinator lets pyGrouw use its configured current PIN."""
+
+    async def run() -> None:
+        class Hass:
+            class ConfigEntries:
+                def async_update_entry(self, *args: Any, **kwargs: Any) -> None:
+                    pass
+
+            config_entries = ConfigEntries()
+
+        coordinator = GrouwMowerCoordinator(
+            Hass(), _Entry(), "AA:BB:CC:DD:EE:FF", "Test mower", "1234"
+        )
+
+        class Client:
+            called_with: tuple[Any, ...] | None = None
+
+            async def async_change_pin(self, *args: Any) -> dict[str, Any]:
+                self.called_with = args
+                return {"pin_change_success": True}
+
+        client = Client()
+        coordinator.client = client
+
+        await coordinator.async_change_pin("4321")
+
+        assert client.called_with == ("4321",)
+
+    asyncio.run(run())
+
+
 def test_command_cooldown_starts_after_ble_transaction() -> None:
     """Manual-command cooldown should be measured after the BLE request."""
 

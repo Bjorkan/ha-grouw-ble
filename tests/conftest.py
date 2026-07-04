@@ -2,7 +2,9 @@
 from __future__ import annotations
 
 import importlib.util
+from dataclasses import dataclass
 from datetime import UTC
+from enum import Enum
 import sys
 import types
 from pathlib import Path
@@ -79,6 +81,44 @@ def _install_lightweight_stubs() -> None:
     lawn_mower.LawnMowerEntity = _LawnMowerEntity
     lawn_mower.LawnMowerEntityFeature = _LawnMowerEntityFeature
 
+    sensor = _install_module("homeassistant.components.sensor")
+    components.sensor = sensor
+
+    class SensorDeviceClass:
+        BATTERY = "battery"
+        DURATION = "duration"
+
+    class SensorEntity:
+        """Minimal SensorEntity stub."""
+
+    @dataclass(frozen=True, kw_only=True)
+    class SensorEntityDescription:
+        key: str
+        translation_key: str | None = None
+        device_class: Any = None
+        entity_category: Any = None
+        native_unit_of_measurement: str | None = None
+
+    sensor.SensorDeviceClass = SensorDeviceClass
+    sensor.SensorEntity = SensorEntity
+    sensor.SensorEntityDescription = SensorEntityDescription
+
+    binary_sensor = _install_module("homeassistant.components.binary_sensor")
+    components.binary_sensor = binary_sensor
+
+    class BinarySensorEntity:
+        """Minimal BinarySensorEntity stub."""
+
+    @dataclass(frozen=True, kw_only=True)
+    class BinarySensorEntityDescription:
+        key: str
+        translation_key: str | None = None
+        entity_category: Any = None
+        icon: str | None = None
+
+    binary_sensor.BinarySensorEntity = BinarySensorEntity
+    binary_sensor.BinarySensorEntityDescription = BinarySensorEntityDescription
+
     config_entries = _install_module("homeassistant.config_entries")
 
     class ConfigEntry:
@@ -88,6 +128,8 @@ def _install_lightweight_stubs() -> None:
 
     const = _install_module("homeassistant.const")
     const.CONF_NAME = "name"
+    const.EntityCategory = types.SimpleNamespace(DIAGNOSTIC="diagnostic")
+    const.PERCENTAGE = "%"
 
     class Platform:
         LAWN_MOWER = "lawn_mower"
@@ -104,8 +146,14 @@ def _install_lightweight_stubs() -> None:
     class ServiceCall:
         """Minimal service call stub."""
 
+    class SupportsResponse(Enum):
+        OPTIONAL = "optional"
+        ONLY = "only"
+
     core.HomeAssistant = HomeAssistant
     core.ServiceCall = ServiceCall
+    core.ServiceResponse = dict[str, Any]
+    core.SupportsResponse = SupportsResponse
 
     exceptions = _install_module("homeassistant.exceptions")
 

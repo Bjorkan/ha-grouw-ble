@@ -184,9 +184,7 @@ class GrouwMowerCoordinator(DataUpdateCoordinator[MowerState]):
         finally:
             self._pending_commands -= 1
 
-    async def async_change_pin(
-        self, new_pin: str, old_pin: str | None = None
-    ) -> dict[str, Any]:
+    async def async_change_pin(self, new_pin: str) -> dict[str, Any]:
         """Change the mower PIN."""
         self._pending_commands += 1
         try:
@@ -202,7 +200,7 @@ class GrouwMowerCoordinator(DataUpdateCoordinator[MowerState]):
                     )
                     if self._last_state is not None:
                         self.mower.state = self._last_state
-                    response = await self.client.async_change_pin(new_pin, old_pin)
+                    response = await self.client.async_change_pin(new_pin)
             except GrouwBleAuthenticationError as err:
                 now = datetime.now(timezone.utc)
                 self._last_command_time = now
