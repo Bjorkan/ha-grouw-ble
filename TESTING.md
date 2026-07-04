@@ -56,6 +56,7 @@ act -j validate -P ubuntu-latest=catthehacker/ubuntu:act-latest
 ```text
 tests/test_config_flow.py      Manual setup, PIN validation, discovery forms
 tests/test_coordinator.py      Polling, commands, cooldowns, reauth mapping
+tests/test_entity_availability.py  Status/settings-backed entity availability
 tests/test_init.py             Config entry setup/unload
 tests/test_lawn_mower.py       Activity mapping and mower commands
 tests/test_services.py         Service validation/routing and response support

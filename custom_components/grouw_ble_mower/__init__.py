@@ -299,25 +299,25 @@ def _async_register_services(hass: HomeAssistant) -> None:
         _LOGGER.info("Work time schedule written to %s", coordinator.address)
         return _service_response(call, result)
 
-    async def _handle_get_multi_area(call: ServiceCall) -> ServiceResponse:
+    async def _handle_get_multi_area(call: ServiceCall) -> ServiceResponse | None:
         coordinator = _resolve_coordinator(hass, call)
         result = await coordinator.async_get_multi_area()
         _LOGGER.info(
             "Multi-area settings from %s: %s",
             coordinator.address, result.get("multi_area"),
         )
-        return result
+        return _service_response(call, result)
 
-    async def _handle_get_mower_settings(call: ServiceCall) -> ServiceResponse:
+    async def _handle_get_mower_settings(call: ServiceCall) -> ServiceResponse | None:
         coordinator = _resolve_coordinator(hass, call)
         result = await coordinator.async_get_mower_settings()
         _LOGGER.info(
             "Mower settings from %s: %s",
             coordinator.address, result.get("mower_settings"),
         )
-        return result
+        return _service_response(call, result)
 
-    async def _handle_get_work_times(call: ServiceCall) -> ServiceResponse:
+    async def _handle_get_work_times(call: ServiceCall) -> ServiceResponse | None:
         coordinator = _resolve_coordinator(hass, call)
         result = await coordinator.async_get_work_times()
         _LOGGER.info(
@@ -326,7 +326,7 @@ def _async_register_services(hass: HomeAssistant) -> None:
             result.get("work_time_starts"),
             result.get("work_time_durations"),
         )
-        return result
+        return _service_response(call, result)
 
     hass.services.async_register(
         DOMAIN,
@@ -368,19 +368,19 @@ def _async_register_services(hass: HomeAssistant) -> None:
         SERVICE_GET_MULTI_AREA,
         _handle_get_multi_area,
         schema=SERVICE_GET_SETTINGS_SCHEMA,
-        supports_response=SupportsResponse.ONLY,
+        supports_response=SupportsResponse.OPTIONAL,
     )
     hass.services.async_register(
         DOMAIN,
         SERVICE_GET_MOWER_SETTINGS,
         _handle_get_mower_settings,
         schema=SERVICE_GET_SETTINGS_SCHEMA,
-        supports_response=SupportsResponse.ONLY,
+        supports_response=SupportsResponse.OPTIONAL,
     )
     hass.services.async_register(
         DOMAIN,
         SERVICE_GET_WORK_TIMES,
         _handle_get_work_times,
         schema=SERVICE_GET_SETTINGS_SCHEMA,
-        supports_response=SupportsResponse.ONLY,
+        supports_response=SupportsResponse.OPTIONAL,
     )

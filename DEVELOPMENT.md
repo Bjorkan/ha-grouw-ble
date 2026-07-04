@@ -183,7 +183,8 @@ Settings sensors and binary sensors display cached values from the coordinator.
 They show `None` until the corresponding get or set service is called.
 Their availability follows the pyGrouw data source they use: normal status
 entities require a status `MowerState.last_seen`, while settings entities become
-available once their corresponding settings cache has been read or written.
+available once their corresponding settings cache has been read or written,
+even if the latest normal status poll failed.
 
 ## Implementation Notes
 
@@ -207,10 +208,8 @@ available once their corresponding settings cache has been read or written.
 - Services are registered from `async_setup` so Home Assistant can validate
   actions even when no config entry is loaded. Handlers raise
   `ServiceValidationError` when no loaded coordinator can be resolved.
-- `get_multi_area`, `get_mower_settings`, and `get_work_times` are registered
-  with `SupportsResponse.ONLY` and return pyGrouw response data. Debug and
-  write services use `SupportsResponse.OPTIONAL` and return data only when the
-  action call requests a response.
+- Read, debug, and write services use `SupportsResponse.OPTIONAL` and return
+  pyGrouw response data only when the action call requests a response.
 
 ## When Adding Features
 

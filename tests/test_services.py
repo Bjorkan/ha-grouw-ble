@@ -94,15 +94,15 @@ def test_services_are_registered_with_response_support() -> None:
     )
     assert (
         hass.services.supports_response[(DOMAIN, SERVICE_GET_MULTI_AREA)]
-        is SupportsResponse.ONLY
+        is SupportsResponse.OPTIONAL
     )
     assert (
         hass.services.supports_response[(DOMAIN, SERVICE_GET_MOWER_SETTINGS)]
-        is SupportsResponse.ONLY
+        is SupportsResponse.OPTIONAL
     )
     assert (
         hass.services.supports_response[(DOMAIN, SERVICE_GET_WORK_TIMES)]
-        is SupportsResponse.ONLY
+        is SupportsResponse.OPTIONAL
     )
 
 
@@ -121,9 +121,15 @@ def test_get_multi_area_returns_response_data() -> None:
         _async_register_services(hass)
         handler = hass.services.handlers[(DOMAIN, SERVICE_GET_MULTI_AREA)]
 
-        result = await handler(type("Call", (), {"data": {"entry_id": "entry-1"}})())
+        quiet_call = type("Call", (), {"data": {"entry_id": "entry-1"}})()
+        response_call = type(
+            "Call",
+            (),
+            {"data": {"entry_id": "entry-1"}, "return_response": True},
+        )()
 
-        assert result == {"multi_area": {"area2_percentage": 5}}
+        assert await handler(quiet_call) is None
+        assert await handler(response_call) == {"multi_area": {"area2_percentage": 5}}
 
     asyncio.run(run())
 

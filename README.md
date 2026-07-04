@@ -74,9 +74,8 @@ prove their exact on-wire behavior for this mower generation.
 
 Settings read/write operations require authentication and are performed on
 demand through services. They are not part of the normal polling cycle.
-The read services always return Home Assistant service response data. The raw
-debug and write services return their pyGrouw response when the action call
-requests response data.
+Read, debug, and write services return their pyGrouw response when the action
+call requests response data.
 
 ## Installation
 

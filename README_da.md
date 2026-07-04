@@ -77,8 +77,7 @@ plæneklippergeneration.
 
 Indstillingslæsning og -skrivning kræver autentificering og udføres på
 anmodning via tjenester. De er ikke en del af den normale polling-cyklus.
-Læsetjenesterne returnerer altid Home Assistant service response-data. Den rå
-debugtjeneste og skrivetjenesterne returnerer deres pyGrouw-svar, når
+Læse-, debug- og skrivetjenesterne returnerer deres pyGrouw-svar, når
 action-kaldet anmoder om svardata.
 
 ## Installation

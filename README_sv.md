@@ -77,8 +77,7 @@ klippargeneration.
 
 Inställningsläsning och -skrivning kräver autentisering och utförs på
 begäran via tjänster. De ingår inte i den normala pollingscykeln.
-Lästjänsterna returnerar alltid Home Assistant service response-data. Den råa
-debugtjänsten och skrivtjänsterna returnerar sina pyGrouw-svar när action-anropet
+Läs-, debug- och skrivtjänsterna returnerar sina pyGrouw-svar när action-anropet
 begär svarsdata.
 
 ## Installation

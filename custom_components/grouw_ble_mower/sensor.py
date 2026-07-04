@@ -33,12 +33,12 @@ def _has_status_state(coord: GrouwMowerCoordinator) -> bool:
 
 def _has_multi_area(coord: GrouwMowerCoordinator) -> bool:
     """Return true when multi-area settings have been read or written."""
-    return coord.last_update_success and coord.multi_area is not None
+    return coord.multi_area is not None
 
 
 def _has_mower_settings(coord: GrouwMowerCoordinator) -> bool:
     """Return true when mower settings have been read or written."""
-    return coord.last_update_success and coord.mower_settings is not None
+    return coord.mower_settings is not None
 
 
 SENSORS: tuple[GrouwSensorEntityDescription, ...] = (
