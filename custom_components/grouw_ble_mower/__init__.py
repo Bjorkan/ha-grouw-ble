@@ -1,6 +1,7 @@
 """Grouw Mower integration."""
 from __future__ import annotations
 
+from enum import Enum
 import logging
 from typing import Any
 
@@ -8,12 +9,20 @@ import voluptuous as vol
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_NAME, Platform
-from homeassistant.core import (
-    HomeAssistant,
-    ServiceCall,
-    ServiceResponse,
-    SupportsResponse,
-)
+from homeassistant.core import HomeAssistant, ServiceCall
+try:
+    from homeassistant.core import ServiceResponse, SupportsResponse
+except ImportError:
+    ServiceResponse = dict[str, Any]
+
+    class SupportsResponse(Enum):
+        """Fallback SupportsResponse for older Home Assistant versions."""
+
+        OPTIONAL = "optional"
+
+    _SUPPORTS_SERVICE_RESPONSE = False
+else:
+    _SUPPORTS_SERVICE_RESPONSE = True
 from homeassistant.exceptions import (
     ConfigEntryAuthFailed,
     ConfigEntryNotReady,
@@ -204,6 +213,27 @@ def _service_response(
     return None
 
 
+def _async_register_service(
+    hass: HomeAssistant,
+    service: str,
+    handler: Any,
+    schema: vol.Schema,
+    supports_response: SupportsResponse,
+) -> None:
+    """Register a service with service-response support when available."""
+    kwargs: dict[str, Any] = {"schema": schema}
+    if _SUPPORTS_SERVICE_RESPONSE:
+        kwargs["supports_response"] = supports_response
+
+    try:
+        hass.services.async_register(DOMAIN, service, handler, **kwargs)
+    except TypeError:
+        if "supports_response" not in kwargs:
+            raise
+        kwargs.pop("supports_response")
+        hass.services.async_register(DOMAIN, service, handler, **kwargs)
+
+
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Grouw Mower from a config entry."""
     if not _has_valid_configured_pin(entry.data.get(CONF_PIN)):
@@ -248,9 +278,6 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
 def _async_register_services(hass: HomeAssistant) -> None:
     """Register integration services once."""
-    if hass.services.has_service(DOMAIN, SERVICE_SEND_RAW_JSON):
-        return
-
     async def _handle_send_raw_json(call: ServiceCall) -> ServiceResponse | None:
         payload: dict[str, Any] = call.data["payload"]
         coordinator = _resolve_coordinator(hass, call)
@@ -331,59 +358,43 @@ def _async_register_services(hass: HomeAssistant) -> None:
         )
         return _service_response(call, result)
 
-    hass.services.async_register(
-        DOMAIN,
-        SERVICE_SEND_RAW_JSON,
-        _handle_send_raw_json,
-        schema=SERVICE_SEND_RAW_JSON_SCHEMA,
-        supports_response=SupportsResponse.OPTIONAL,
+    services = (
+        (
+            SERVICE_SEND_RAW_JSON,
+            _handle_send_raw_json,
+            SERVICE_SEND_RAW_JSON_SCHEMA,
+        ),
+        (SERVICE_CHANGE_PIN, _handle_change_pin, SERVICE_CHANGE_PIN_SCHEMA),
+        (
+            SERVICE_SET_MULTI_AREA,
+            _handle_set_multi_area,
+            SERVICE_SET_MULTI_AREA_SCHEMA,
+        ),
+        (
+            SERVICE_SET_MOWER_SETTINGS,
+            _handle_set_mower_settings,
+            SERVICE_SET_MOWER_SETTINGS_SCHEMA,
+        ),
+        (SERVICE_SET_WORK_TIMES, _handle_set_work_times, SERVICE_SET_WORK_TIMES_SCHEMA),
+        (SERVICE_GET_MULTI_AREA, _handle_get_multi_area, SERVICE_GET_SETTINGS_SCHEMA),
+        (
+            SERVICE_GET_MOWER_SETTINGS,
+            _handle_get_mower_settings,
+            SERVICE_GET_SETTINGS_SCHEMA,
+        ),
+        (SERVICE_GET_WORK_TIMES, _handle_get_work_times, SERVICE_GET_SETTINGS_SCHEMA),
     )
-    hass.services.async_register(
-        DOMAIN,
-        SERVICE_CHANGE_PIN,
-        _handle_change_pin,
-        schema=SERVICE_CHANGE_PIN_SCHEMA,
-        supports_response=SupportsResponse.OPTIONAL,
-    )
-    hass.services.async_register(
-        DOMAIN,
-        SERVICE_SET_MULTI_AREA,
-        _handle_set_multi_area,
-        schema=SERVICE_SET_MULTI_AREA_SCHEMA,
-        supports_response=SupportsResponse.OPTIONAL,
-    )
-    hass.services.async_register(
-        DOMAIN,
-        SERVICE_SET_MOWER_SETTINGS,
-        _handle_set_mower_settings,
-        schema=SERVICE_SET_MOWER_SETTINGS_SCHEMA,
-        supports_response=SupportsResponse.OPTIONAL,
-    )
-    hass.services.async_register(
-        DOMAIN,
-        SERVICE_SET_WORK_TIMES,
-        _handle_set_work_times,
-        schema=SERVICE_SET_WORK_TIMES_SCHEMA,
-        supports_response=SupportsResponse.OPTIONAL,
-    )
-    hass.services.async_register(
-        DOMAIN,
-        SERVICE_GET_MULTI_AREA,
-        _handle_get_multi_area,
-        schema=SERVICE_GET_SETTINGS_SCHEMA,
-        supports_response=SupportsResponse.OPTIONAL,
-    )
-    hass.services.async_register(
-        DOMAIN,
-        SERVICE_GET_MOWER_SETTINGS,
-        _handle_get_mower_settings,
-        schema=SERVICE_GET_SETTINGS_SCHEMA,
-        supports_response=SupportsResponse.OPTIONAL,
-    )
-    hass.services.async_register(
-        DOMAIN,
-        SERVICE_GET_WORK_TIMES,
-        _handle_get_work_times,
-        schema=SERVICE_GET_SETTINGS_SCHEMA,
-        supports_response=SupportsResponse.OPTIONAL,
-    )
+
+    if all(hass.services.has_service(DOMAIN, service) for service, _, _ in services):
+        return
+
+    for service, handler, schema in services:
+        if hass.services.has_service(DOMAIN, service):
+            continue
+        _async_register_service(
+            hass,
+            service,
+            handler,
+            schema,
+            SupportsResponse.OPTIONAL,
+        )

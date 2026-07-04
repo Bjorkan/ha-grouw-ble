@@ -210,7 +210,9 @@ even if the latest normal status poll failed.
   actions even when no config entry is loaded. Handlers raise
   `ServiceValidationError` when no loaded coordinator can be resolved.
 - Read, debug, and write services use `SupportsResponse.OPTIONAL` and return
-  pyGrouw response data only when the action call requests a response.
+  pyGrouw response data only when the action call requests a response. On Home
+  Assistant versions without service-response support, services are registered
+  without the `supports_response` keyword.
 
 ## When Adding Features
 

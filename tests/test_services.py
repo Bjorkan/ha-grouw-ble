@@ -41,6 +41,24 @@ class _ServiceRegistry:
         self.supports_response[(domain, service)] = supports_response
 
 
+class _ServiceRegistryWithoutResponse:
+    def __init__(self) -> None:
+        self.handlers: dict[tuple[str, str], Any] = {}
+
+    def has_service(self, domain: str, service: str) -> bool:
+        return (domain, service) in self.handlers
+
+    def async_register(
+        self,
+        domain: str,
+        service: str,
+        handler: Any,
+        *,
+        schema: Any = None,
+    ) -> None:
+        self.handlers[(domain, service)] = handler
+
+
 class _Hass:
     def __init__(self) -> None:
         self.data = {DOMAIN: {}}
@@ -104,6 +122,40 @@ def test_services_are_registered_with_response_support() -> None:
         hass.services.supports_response[(DOMAIN, SERVICE_GET_WORK_TIMES)]
         is SupportsResponse.OPTIONAL
     )
+
+
+def test_missing_services_are_registered_after_partial_state() -> None:
+    """A partial service registry should not block the remaining actions."""
+    hass = _Hass()
+    existing_handler = object()
+    hass.services.handlers[(DOMAIN, SERVICE_SEND_RAW_JSON)] = existing_handler
+
+    _async_register_services(hass)
+
+    assert hass.services.handlers[(DOMAIN, SERVICE_SEND_RAW_JSON)] is existing_handler
+    assert (DOMAIN, SERVICE_CHANGE_PIN) in hass.services.handlers
+    assert (DOMAIN, SERVICE_SET_MULTI_AREA) in hass.services.handlers
+    assert (DOMAIN, SERVICE_SET_MOWER_SETTINGS) in hass.services.handlers
+    assert (DOMAIN, SERVICE_SET_WORK_TIMES) in hass.services.handlers
+    assert (DOMAIN, SERVICE_GET_MULTI_AREA) in hass.services.handlers
+    assert (DOMAIN, SERVICE_GET_MOWER_SETTINGS) in hass.services.handlers
+    assert (DOMAIN, SERVICE_GET_WORK_TIMES) in hass.services.handlers
+
+
+def test_services_register_without_response_support(monkeypatch: Any) -> None:
+    """Older Home Assistant service registries do not accept supports_response."""
+    import custom_components.grouw_ble_mower as integration
+
+    hass = _Hass()
+    hass.services = _ServiceRegistryWithoutResponse()
+
+    monkeypatch.setattr(integration, "_SUPPORTS_SERVICE_RESPONSE", False)
+
+    _async_register_services(hass)
+
+    assert (DOMAIN, SERVICE_SEND_RAW_JSON) in hass.services.handlers
+    assert (DOMAIN, SERVICE_CHANGE_PIN) in hass.services.handlers
+    assert (DOMAIN, SERVICE_GET_MULTI_AREA) in hass.services.handlers
 
 
 def test_get_multi_area_returns_response_data() -> None:
