@@ -895,7 +895,7 @@ dev = [
 [package.metadata.requires-dev]
 dev = [
     { name = "aiousbwatcher" },
-    { name = "pygrouw", specifier = ">=0.1.3.1" },
+    { name = "pygrouw", specifier = ">=0.1.4.1" },
     { name = "pyserial" },
     { name = "pytest" },
     { name = "pytest-homeassistant-custom-component" },
@@ -1571,15 +1571,15 @@ wheels = [
 
 [[package]]
 name = "pygrouw"
-version = "0.1.3.1"
+version = "0.1.4.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "bleak" },
     { name = "bleak-retry-connector" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/1e/09/85fd800e1acdf1f174eea6f376b33564cbea804fa27caad0fe7737c864ad/pygrouw-0.1.3.1.tar.gz", hash = "sha256:c509124029c52d3e0a7d29f74977d146e19cd2a705488194719675fa28950a57", size = 46785, upload-time = "2026-07-03T19:56:49.227Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/35/9a/e49d895b89f760054da63a9eac2a4331f4c1a0403f58c0ef98311723a48d/pygrouw-0.1.4.1.tar.gz", hash = "sha256:1ac9a84ccb45deeb6841b20a2f0cfd5b77dae6f8a9c189c63f41673625cb64d8", size = 47726, upload-time = "2026-07-15T21:42:55.891Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/32/fa/0e87a16976032c20a72cfd83f769c692c4f7f14d0aec6ce0a0ec750ac549/pygrouw-0.1.3.1-py3-none-any.whl", hash = "sha256:3e09945868f841a220ee82376ebb7bce60536f34f40be9a800b0233453516a04", size = 20243, upload-time = "2026-07-03T19:56:48.012Z" },
+    { url = "https://files.pythonhosted.org/packages/9f/8a/621f31e96d5d61788caa7a6facfae0674cfc6215cf4054f2dce5370a8d9e/pygrouw-0.1.4.1-py3-none-any.whl", hash = "sha256:1e84cdadc340147af6f523b35fa32d9bd68090f441ebf02e6be3147c4b18a6f8", size = 20514, upload-time = "2026-07-15T21:42:54.671Z" },
 ]
 
 [[package]]
