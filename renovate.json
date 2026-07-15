@@ -1,4 +1,3 @@
-```json
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": [
@@ -29,7 +28,7 @@
     {
       "customType": "regex",
       "description": "Update simple PyPI requirements in the Home Assistant manifest",
-      "managerFilePatterns": [
+      "fileMatch": [
         "/(^|/)custom_components/grouw_ble_mower/manifest\\.json$/"
       ],
       "matchStrings": [
@@ -66,4 +65,3 @@
     }
   ]
 }
-```
