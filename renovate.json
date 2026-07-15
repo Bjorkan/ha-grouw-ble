@@ -29,7 +29,7 @@
       "customType": "regex",
       "description": "Update simple PyPI requirements in the Home Assistant manifest",
       "managerFilePatterns": [
-        "/(^|/)custom_components/grouw_ble_mower/manifest\\.json$/"
+        "//(^|/)custom_components/grouw_ble_mower/manifest\\.json$//"
       ],
       "matchStrings": [
         "\"(?<depName>[A-Za-z0-9_.-]+)>=(?<currentValue>[0-9][0-9A-Za-z.!+_-]*)\"",
@@ -42,10 +42,11 @@
   ],
   "packageRules": [
     {
-      "description": "Keep pygrouw synchronized between pyproject.toml and manifest.json",
+      "description": "Keep pygrouw synchronized between pyproject.toml and manifest.json without a release-age delay",
       "matchPackageNames": ["pygrouw"],
       "groupName": "pygrouw",
       "groupSlug": "pygrouw",
+      "minimumReleaseAge": null,
       "automerge": true
     },
     {
