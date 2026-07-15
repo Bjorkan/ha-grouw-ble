@@ -2,7 +2,7 @@
 name = "ha-grouw-ble"
 version = "1.2.1"
 description = "Home Assistant integration for Grouw BLE robotic lawn mowers"
-requires-python = ">=3.13,<3.14"
+requires-python = ">=3.14.6,<3.15"
 dependencies = []
 
 [dependency-groups]
