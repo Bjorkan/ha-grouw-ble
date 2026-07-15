@@ -1,20 +1,22 @@
 name: Apply prepared configuration patch
 
 on:
-  push:
+  pull_request:
     branches:
-      - fix/05-config-release
+      - main
 
 permissions:
   contents: write
 
 jobs:
   apply-prepared-patch:
+    if: github.head_ref == 'fix/05-config-release'
     runs-on: ubuntu-latest
     steps:
       - name: Check out branch
         uses: actions/checkout@v4
         with:
+          ref: ${{ github.head_ref }}
           fetch-depth: 0
       - name: Apply and validate prepared patch
         run: |
@@ -65,4 +67,4 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A
           git commit -m "fix: verify configuration and pin release inputs"
-          git push origin HEAD:fix/05-config-release
+          git push origin HEAD:${{ github.head_ref }}
