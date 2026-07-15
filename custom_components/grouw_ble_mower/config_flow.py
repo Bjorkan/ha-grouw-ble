@@ -1,9 +1,16 @@
 """Config flow for Grouw Mower."""
+
 from __future__ import annotations
 
 from collections.abc import Mapping
 from typing import Any
 
+from pygrouw import (
+    has_supported_service_uuid,
+    is_supported_bluetooth_name,
+    is_valid_pin,
+    normalize_address,
+)
 import voluptuous as vol
 
 from homeassistant.components import bluetooth
@@ -11,19 +18,8 @@ from homeassistant.config_entries import ConfigFlow
 from homeassistant.const import CONF_NAME
 from homeassistant.data_entry_flow import FlowResult
 from homeassistant.helpers import selector
-from pygrouw import (
-    has_supported_service_uuid,
-    is_supported_bluetooth_name,
-    is_valid_pin,
-    normalize_address,
-)
 
-from .const import (
-    CONF_ADDRESS,
-    CONF_PIN,
-    DEFAULT_NAME,
-    DOMAIN,
-)
+from .const import CONF_ADDRESS, CONF_PIN, DEFAULT_NAME, DOMAIN
 
 
 def _normalize_address(address: str) -> str:
@@ -120,9 +116,7 @@ class GrouwBleMowerConfigFlow(ConfigFlow, domain=DOMAIN):
             )
 
         name = (
-            self._discovery_info.name
-            or self._discovery_info.local_name
-            or DEFAULT_NAME
+            self._discovery_info.name or self._discovery_info.local_name or DEFAULT_NAME
         )
         return self.async_show_form(
             step_id="bluetooth_confirm",
@@ -143,9 +137,7 @@ class GrouwBleMowerConfigFlow(ConfigFlow, domain=DOMAIN):
                     CONF_ADDRESS: user_input[CONF_ADDRESS],
                     CONF_NAME: user_input.get(CONF_NAME, DEFAULT_NAME),
                 }
-                return self._pin_form(
-                    "pin", user_input.get(CONF_NAME, DEFAULT_NAME)
-                )
+                return self._pin_form("pin", user_input.get(CONF_NAME, DEFAULT_NAME))
 
             pin = user_input.get(CONF_PIN, "").strip()
             pin_data = self.context.get("pin_data", {})
@@ -169,9 +161,7 @@ class GrouwBleMowerConfigFlow(ConfigFlow, domain=DOMAIN):
 
         return self.async_abort(reason="missing_data")
 
-    async def async_step_reauth(
-        self, entry_data: Mapping[str, Any]
-    ) -> FlowResult:
+    async def async_step_reauth(self, entry_data: Mapping[str, Any]) -> FlowResult:
         """Handle reauthentication after a mower PIN/auth failure."""
         address = _normalize_address(entry_data[CONF_ADDRESS])
         name = entry_data.get(CONF_NAME, DEFAULT_NAME)

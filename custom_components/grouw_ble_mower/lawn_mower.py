@@ -1,4 +1,5 @@
 """Lawn mower platform for Grouw Mower."""
+
 from __future__ import annotations
 
 from homeassistant.components.lawn_mower import (
@@ -84,11 +85,7 @@ class GrouwBleLawnMower(GrouwMowerEntity, LawnMowerEntity):
             await self.coordinator.async_request_refresh()
             data = self.coordinator.data
 
-        if (
-            not self._status_is_fresh()
-            or data is None
-            or data.station is None
-        ):
+        if not self._status_is_fresh() or data is None or data.station is None:
             raise HomeAssistantError(
                 "Cannot determine mower station state before starting. "
                 "Ensure the mower is reachable, then try again."

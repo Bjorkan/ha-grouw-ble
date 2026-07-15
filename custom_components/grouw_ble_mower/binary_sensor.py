@@ -1,10 +1,14 @@
 """Binary sensors for Grouw Mower."""
+
 from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
 
-from homeassistant.components.binary_sensor import BinarySensorEntity, BinarySensorEntityDescription
+from homeassistant.components.binary_sensor import (
+    BinarySensorEntity,
+    BinarySensorEntityDescription,
+)
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
@@ -45,7 +49,9 @@ BINARY_SENSORS: tuple[GrouwBinarySensorEntityDescription, ...] = (
         translation_key="mow_in_rain",
         entity_category=None,
         icon="mdi:weather-pouring",
-        value_fn=lambda coord: coord.mower_settings.get("mow_in_rain") if coord.mower_settings else None,
+        value_fn=lambda coord: (
+            coord.mower_settings.get("mow_in_rain") if coord.mower_settings else None
+        ),
         available_fn=_has_mower_settings,
     ),
     GrouwBinarySensorEntityDescription(
@@ -53,7 +59,9 @@ BINARY_SENSORS: tuple[GrouwBinarySensorEntityDescription, ...] = (
         translation_key="boundary_cut",
         entity_category=None,
         icon="mdi:border-all",
-        value_fn=lambda coord: coord.mower_settings.get("boundary_cut") if coord.mower_settings else None,
+        value_fn=lambda coord: (
+            coord.mower_settings.get("boundary_cut") if coord.mower_settings else None
+        ),
         available_fn=_has_mower_settings,
     ),
     GrouwBinarySensorEntityDescription(
@@ -61,7 +69,9 @@ BINARY_SENSORS: tuple[GrouwBinarySensorEntityDescription, ...] = (
         translation_key="helix",
         entity_category=None,
         icon="mdi:spiral",
-        value_fn=lambda coord: coord.mower_settings.get("helix") if coord.mower_settings else None,
+        value_fn=lambda coord: (
+            coord.mower_settings.get("helix") if coord.mower_settings else None
+        ),
         available_fn=_has_mower_settings,
     ),
 )
@@ -74,7 +84,10 @@ async def async_setup_entry(
 ) -> None:
     """Set up binary sensors."""
     coordinator: GrouwMowerCoordinator = hass.data[entry.domain][entry.entry_id]
-    async_add_entities(GrouwMowerBinarySensor(coordinator, description) for description in BINARY_SENSORS)
+    async_add_entities(
+        GrouwMowerBinarySensor(coordinator, description)
+        for description in BINARY_SENSORS
+    )
 
 
 class GrouwMowerBinarySensor(GrouwMowerEntity, BinarySensorEntity):

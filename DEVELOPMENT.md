@@ -3,7 +3,7 @@
 Durable development notes for the Grouw Mower Home Assistant custom
 integration.
 
-Last updated: 2026-06-28.
+Last updated: 2026-07-15.
 
 ## Read First
 
@@ -37,6 +37,7 @@ custom_components/grouw_ble_mower/   Home Assistant custom integration
 tests/                               Unit tests and HA-style tests
 .github/workflows/                   GitHub Actions for tests and hassfest
 requirements-test.txt                Test and CI dependencies
+ruff.toml                            Ruff lint and format configuration
 README.md                            User-facing setup and current status
 DEVELOPMENT.md                       Development and architecture notes
 TESTING.md                           Test commands, coverage, hardware checks

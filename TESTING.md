@@ -2,17 +2,19 @@
 
 Testing guide for the Grouw Mower Home Assistant custom integration.
 
-Last updated: 2026-07-04.
+Last updated: 2026-07-15.
 
 ## Quick Verification
 
 Run these before handing off changes:
 
 ```bash
+ruff check .
+ruff format --check .
 pytest -q -p no:cacheprovider
 python3 -m compileall -q custom_components/grouw_ble_mower tests
 find custom_components tests -type d -name __pycache__ -prune -exec rm -rf {} +
-rm -rf .pytest_cache
+rm -rf .pytest_cache .ruff_cache
 ```
 
 `-p no:cacheprovider` keeps pytest from creating `.pytest_cache`.
@@ -31,16 +33,17 @@ The stubs are only for tests. Do not import them from production code.
 Validation runs on both `push` and `pull_request`:
 
 ```text
-.github/workflows/tests.yaml
-.github/workflows/hassfest.yaml
+.github/workflows/test_unit.yaml
+.github/workflows/validate_hassfest.yaml
+.github/workflows/validate_hacs.yaml
 ```
 
-`tests.yaml` installs `requirements-test.txt`, runs pytest, and compiles the
-integration and tests. The CI environment includes
-`pytest-homeassistant-custom-component`, so HA setup/unload and config flow
-tests run there instead of being skipped.
+`test_unit.yaml` installs `requirements-test.txt`, runs Ruff lint and format
+checks, runs pytest, and compiles the integration and tests. The CI environment
+includes `pytest-homeassistant-custom-component`, so HA setup/unload and config
+flow tests run there instead of being skipped.
 
-`hassfest.yaml` runs Home Assistant's custom-component metadata validation.
+`validate_hassfest.yaml` runs Home Assistant's custom-component metadata validation.
 Treat hassfest failures as blocking unless the issue is clearly temporary
 upstream tooling.
 

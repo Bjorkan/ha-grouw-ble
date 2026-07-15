@@ -1,13 +1,18 @@
 """Sensor platform for Grouw Mower."""
+
 from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any
 
-from homeassistant.components.sensor import SensorDeviceClass, SensorEntity, SensorEntityDescription
+from homeassistant.components.sensor import (
+    SensorDeviceClass,
+    SensorEntity,
+    SensorEntityDescription,
+)
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import EntityCategory, PERCENTAGE
+from homeassistant.const import PERCENTAGE, EntityCategory
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
@@ -68,7 +73,9 @@ SENSORS: tuple[GrouwSensorEntityDescription, ...] = (
         translation_key="area2_percentage",
         entity_category=EntityCategory.DIAGNOSTIC,
         native_unit_of_measurement=PERCENTAGE,
-        value_fn=lambda coord: coord.multi_area.get("area2_percentage") if coord.multi_area else None,
+        value_fn=lambda coord: (
+            coord.multi_area.get("area2_percentage") if coord.multi_area else None
+        ),
         available_fn=_has_multi_area,
     ),
     GrouwSensorEntityDescription(
@@ -76,7 +83,9 @@ SENSORS: tuple[GrouwSensorEntityDescription, ...] = (
         translation_key="area2_distance",
         entity_category=EntityCategory.DIAGNOSTIC,
         native_unit_of_measurement="m",
-        value_fn=lambda coord: coord.multi_area.get("area2_distance") if coord.multi_area else None,
+        value_fn=lambda coord: (
+            coord.multi_area.get("area2_distance") if coord.multi_area else None
+        ),
         available_fn=_has_multi_area,
     ),
     GrouwSensorEntityDescription(
@@ -84,7 +93,9 @@ SENSORS: tuple[GrouwSensorEntityDescription, ...] = (
         translation_key="area3_percentage",
         entity_category=EntityCategory.DIAGNOSTIC,
         native_unit_of_measurement=PERCENTAGE,
-        value_fn=lambda coord: coord.multi_area.get("area3_percentage") if coord.multi_area else None,
+        value_fn=lambda coord: (
+            coord.multi_area.get("area3_percentage") if coord.multi_area else None
+        ),
         available_fn=_has_multi_area,
     ),
     GrouwSensorEntityDescription(
@@ -92,7 +103,9 @@ SENSORS: tuple[GrouwSensorEntityDescription, ...] = (
         translation_key="area3_distance",
         entity_category=EntityCategory.DIAGNOSTIC,
         native_unit_of_measurement="m",
-        value_fn=lambda coord: coord.multi_area.get("area3_distance") if coord.multi_area else None,
+        value_fn=lambda coord: (
+            coord.multi_area.get("area3_distance") if coord.multi_area else None
+        ),
         available_fn=_has_multi_area,
     ),
     GrouwSensorEntityDescription(
@@ -101,7 +114,11 @@ SENSORS: tuple[GrouwSensorEntityDescription, ...] = (
         entity_category=EntityCategory.DIAGNOSTIC,
         device_class=SensorDeviceClass.DURATION,
         native_unit_of_measurement="h",
-        value_fn=lambda coord: coord.mower_settings.get("rain_delay_hour") if coord.mower_settings else None,
+        value_fn=lambda coord: (
+            coord.mower_settings.get("rain_delay_hour")
+            if coord.mower_settings
+            else None
+        ),
         available_fn=_has_mower_settings,
     ),
     GrouwSensorEntityDescription(
@@ -110,14 +127,22 @@ SENSORS: tuple[GrouwSensorEntityDescription, ...] = (
         entity_category=EntityCategory.DIAGNOSTIC,
         device_class=SensorDeviceClass.DURATION,
         native_unit_of_measurement="min",
-        value_fn=lambda coord: coord.mower_settings.get("rain_delay_minute") if coord.mower_settings else None,
+        value_fn=lambda coord: (
+            coord.mower_settings.get("rain_delay_minute")
+            if coord.mower_settings
+            else None
+        ),
         available_fn=_has_mower_settings,
     ),
     GrouwSensorEntityDescription(
         key="unknown_setting",
         translation_key="unknown_setting",
         entity_category=EntityCategory.DIAGNOSTIC,
-        value_fn=lambda coord: coord.mower_settings.get("unknown_setting") if coord.mower_settings else None,
+        value_fn=lambda coord: (
+            coord.mower_settings.get("unknown_setting")
+            if coord.mower_settings
+            else None
+        ),
         available_fn=_has_mower_settings,
     ),
 )
@@ -130,7 +155,9 @@ async def async_setup_entry(
 ) -> None:
     """Set up sensors."""
     coordinator: GrouwMowerCoordinator = hass.data[entry.domain][entry.entry_id]
-    async_add_entities(GrouwMowerSensor(coordinator, description) for description in SENSORS)
+    async_add_entities(
+        GrouwMowerSensor(coordinator, description) for description in SENSORS
+    )
 
 
 class GrouwMowerSensor(GrouwMowerEntity, SensorEntity):

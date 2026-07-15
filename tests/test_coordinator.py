@@ -1,23 +1,20 @@
 """Tests for Grouw mower coordinator behavior."""
+
 from __future__ import annotations
 
 import asyncio
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
+from pygrouw import GrouwBleAuthenticationError, GrouwBleError, MowerState
 import pytest
 
-from homeassistant.exceptions import ConfigEntryAuthFailed, HomeAssistantError
-from pygrouw import (
-    GrouwBleAuthenticationError,
-    GrouwBleError,
-    MowerState,
-)
 from custom_components.grouw_ble_mower.const import CONF_ADDRESS
 from custom_components.grouw_ble_mower.coordinator import (
     GrouwMowerCoordinator,
     UpdateFailed,
 )
+from homeassistant.exceptions import ConfigEntryAuthFailed, HomeAssistantError
 
 
 class _Entry:
@@ -33,17 +30,18 @@ class _Hass:
 
 def test_recent_command_does_not_create_a_false_success_poll() -> None:
     """A recent command does not make cached data count as a fresh poll."""
+
     async def run() -> None:
         coordinator = GrouwMowerCoordinator(
             _Hass(), _Entry(), "AA:BB:CC:DD:EE:FF", "Test mower"
         )
-        coordinator._last_command_time = datetime.now(timezone.utc)
+        coordinator._last_command_time = datetime.now(UTC)
         expected = MowerState(
             address="AA:BB:CC:DD:EE:FF",
             battery_level=75,
             mode=0,
             station=False,
-            last_seen=datetime.now(timezone.utc),
+            last_seen=datetime.now(UTC),
         )
 
         class Mower:
@@ -56,7 +54,9 @@ def test_recent_command_does_not_create_a_false_success_poll() -> None:
     asyncio.run(run())
 
 
-def test_device_provider_uses_home_assistant_bluetooth_manager(monkeypatch: Any) -> None:
+def test_device_provider_uses_home_assistant_bluetooth_manager(
+    monkeypatch: Any,
+) -> None:
     """pyGrouw should receive devices resolved through Home Assistant Bluetooth."""
     from custom_components.grouw_ble_mower import coordinator as coordinator_module
 
@@ -64,7 +64,9 @@ def test_device_provider_uses_home_assistant_bluetooth_manager(monkeypatch: Any)
     resolved_device = object()
     calls: list[tuple[Any, str, bool]] = []
 
-    def async_ble_device_from_address(hass_arg: Any, address: str, *, connectable: bool) -> object:
+    def async_ble_device_from_address(
+        hass_arg: Any, address: str, *, connectable: bool
+    ) -> object:
         calls.append((hass_arg, address, connectable))
         return resolved_device
 
@@ -84,6 +86,7 @@ def test_device_provider_uses_home_assistant_bluetooth_manager(monkeypatch: Any)
 
 def test_initial_poll_failure_raises_update_failed() -> None:
     """Initial poll failure raises UpdateFailed and does not return placeholder state."""
+
     async def run() -> None:
         coordinator = GrouwMowerCoordinator(
             _Hass(), _Entry(), "AA:BB:CC:DD:EE:FF", "Test mower"
@@ -140,6 +143,7 @@ def test_poll_unverifiable_auth_response_raises_update_failed() -> None:
 
 def test_poll_is_deferred_when_ble_transaction_is_active() -> None:
     """Background polling does not wait behind an active BLE transaction."""
+
     async def run() -> None:
         coordinator = GrouwMowerCoordinator(
             _Hass(), _Entry(), "AA:BB:CC:DD:EE:FF", "Test mower"
@@ -156,6 +160,7 @@ def test_poll_is_deferred_when_ble_transaction_is_active() -> None:
 
 def test_poll_is_deferred_when_command_is_pending() -> None:
     """Background polling should not jump ahead of a waiting manual command."""
+
     async def run() -> None:
         coordinator = GrouwMowerCoordinator(
             _Hass(), _Entry(), "AA:BB:CC:DD:EE:FF", "Test mower"
@@ -170,6 +175,7 @@ def test_poll_is_deferred_when_command_is_pending() -> None:
 
 def test_pending_command_does_not_republish_cached_state_as_fresh() -> None:
     """A deferred poll preserves cached data without reporting fresh success."""
+
     async def run() -> None:
         coordinator = GrouwMowerCoordinator(
             _Hass(), _Entry(), "AA:BB:CC:DD:EE:FF", "Test mower"
@@ -177,7 +183,7 @@ def test_pending_command_does_not_republish_cached_state_as_fresh() -> None:
         state = MowerState(
             address="AA:BB:CC:DD:EE:FF",
             battery_level=80,
-            last_seen=datetime.now(timezone.utc),
+            last_seen=datetime.now(UTC),
         )
         coordinator._last_state = state
         coordinator._pending_commands = 1
@@ -191,15 +197,16 @@ def test_pending_command_does_not_republish_cached_state_as_fresh() -> None:
 
 def test_failure_backoff_after_state_raises_update_failed() -> None:
     """Backoff after a BLE failure should keep entities unavailable."""
+
     async def run() -> None:
         coordinator = GrouwMowerCoordinator(
             _Hass(), _Entry(), "AA:BB:CC:DD:EE:FF", "Test mower"
         )
         coordinator._last_state = MowerState(
             address="AA:BB:CC:DD:EE:FF",
-            last_seen=datetime.now(timezone.utc) - timedelta(seconds=10),
+            last_seen=datetime.now(UTC) - timedelta(seconds=10),
         )
-        coordinator._last_failure_time = datetime.now(timezone.utc)
+        coordinator._last_failure_time = datetime.now(UTC)
 
         with pytest.raises(UpdateFailed, match="failure backoff"):
             await coordinator._async_update_data()
@@ -209,6 +216,7 @@ def test_failure_backoff_after_state_raises_update_failed() -> None:
 
 def test_raw_payload_requests_are_serialized() -> None:
     """Concurrent service calls do not create overlapping BLE transactions."""
+
     async def run() -> None:
         coordinator = GrouwMowerCoordinator(
             _Hass(), _Entry(), "AA:BB:CC:DD:EE:FF", "Test mower"
@@ -231,7 +239,7 @@ def test_raw_payload_requests_are_serialized() -> None:
                     battery_level=payload["battery_level"],
                     raw={"cmd": 0x80, "battery_level": payload["battery_level"]},
                     last_response_cmd=0x80,
-                    last_seen=datetime.now(timezone.utc),
+                    last_seen=datetime.now(UTC),
                 )
                 return {"cmd": 0x80, "battery_level": payload["battery_level"]}
 
@@ -327,13 +335,13 @@ def test_command_cooldown_starts_after_ble_transaction() -> None:
         async def write_command(command: str) -> MowerState:
             nonlocal client_finished_at
             await asyncio.sleep(0)
-            client_finished_at = datetime.now(timezone.utc)
+            client_finished_at = datetime.now(UTC)
             return MowerState(
                 address="AA:BB:CC:DD:EE:FF",
                 battery_level=70,
                 mode=0x14,
                 station=False,
-                last_seen=datetime.now(timezone.utc),
+                last_seen=datetime.now(UTC),
             )
 
         coordinator._async_write_command = write_command  # type: ignore[method-assign]
@@ -350,6 +358,7 @@ def test_command_cooldown_starts_after_ble_transaction() -> None:
 
 def test_settings_update_notifies_after_cache_is_updated() -> None:
     """Settings listeners see the new cache without publishing status data."""
+
     async def run() -> None:
         coordinator = GrouwMowerCoordinator(
             _Hass(), _Entry(), "AA:BB:CC:DD:EE:FF", "Test mower"
@@ -373,6 +382,7 @@ def test_settings_update_notifies_after_cache_is_updated() -> None:
 
 def test_duplicate_active_commands_share_one_ble_write() -> None:
     """Repeated identical clicks are coalesced while the first is active."""
+
     async def run() -> None:
         coordinator = GrouwMowerCoordinator(
             _Hass(), _Entry(), "AA:BB:CC:DD:EE:FF", "Test mower"
@@ -388,7 +398,7 @@ def test_duplicate_active_commands_share_one_ble_write() -> None:
                 address=coordinator.address,
                 mode=0x14,
                 station=False,
-                last_seen=datetime.now(timezone.utc),
+                last_seen=datetime.now(UTC),
             )
 
         coordinator._async_write_command = write_command  # type: ignore[method-assign]
@@ -407,6 +417,7 @@ def test_duplicate_active_commands_share_one_ble_write() -> None:
 
 def test_newer_command_supersedes_older_unsent_command() -> None:
     """A newer desired action prevents an older queued action from being sent."""
+
     async def run() -> None:
         coordinator = GrouwMowerCoordinator(
             _Hass(), _Entry(), "AA:BB:CC:DD:EE:FF", "Test mower"
@@ -420,7 +431,7 @@ def test_newer_command_supersedes_older_unsent_command() -> None:
                 address=coordinator.address,
                 mode=0x03 if command == "dock" else 0x14,
                 station=False,
-                last_seen=datetime.now(timezone.utc),
+                last_seen=datetime.now(UTC),
             )
 
         coordinator._async_write_command = write_command  # type: ignore[method-assign]
@@ -440,11 +451,12 @@ def test_newer_command_supersedes_older_unsent_command() -> None:
 
 def test_successful_settings_read_does_not_clear_status_failure() -> None:
     """Settings communication cannot make stale status available again."""
+
     async def run() -> None:
         coordinator = GrouwMowerCoordinator(
             _Hass(), _Entry(), "AA:BB:CC:DD:EE:FF", "Test mower"
         )
-        failure_time = datetime.now(timezone.utc)
+        failure_time = datetime.now(UTC)
         coordinator._last_failure_time = failure_time
 
         class Client:

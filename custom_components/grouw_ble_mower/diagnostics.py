@@ -1,4 +1,5 @@
 """Diagnostics support for Grouw Mower."""
+
 from __future__ import annotations
 
 from dataclasses import asdict
@@ -15,7 +16,9 @@ async def async_get_config_entry_diagnostics(
     hass: HomeAssistant, entry: ConfigEntry
 ) -> dict[str, Any]:
     """Return privacy-safe state, routing, and failure diagnostics."""
-    coordinator: GrouwMowerCoordinator | None = hass.data[entry.domain].get(entry.entry_id)
+    coordinator: GrouwMowerCoordinator | None = hass.data[entry.domain].get(
+        entry.entry_id
+    )
     data = asdict(coordinator.data) if coordinator and coordinator.data else None
     if data is not None:
         data.pop("address", None)
@@ -39,7 +42,11 @@ async def async_get_config_entry_diagnostics(
     reachability = None
     reachability_fn = getattr(bluetooth, "async_address_reachability_diagnostics", None)
     intent_type = getattr(bluetooth, "BluetoothReachabilityIntent", None)
-    if reachability_fn is not None and intent_type is not None and coordinator is not None:
+    if (
+        reachability_fn is not None
+        and intent_type is not None
+        and coordinator is not None
+    ):
         reachability = reachability_fn(
             hass, coordinator.address, intent_type.CONNECTION
         )

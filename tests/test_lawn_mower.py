@@ -1,14 +1,13 @@
 """Tests for Grouw mower lawn mower entity."""
+
 from __future__ import annotations
 
 import asyncio
 from typing import Any
 
-import pytest
-
 from pygrouw import MowerState
+
 from custom_components.grouw_ble_mower.const import (
-    CONF_ADDRESS,
     DAYE_MODE_IDLE,
     DAYE_MODE_MOWING,
     DAYE_MODE_MOWING_ALTERNATE,
@@ -35,8 +34,8 @@ class _Coord:
 
 def test_activity_mowing() -> None:
     """Mowing mode returns MOWING activity."""
-    from homeassistant.components.lawn_mower import LawnMowerActivity
     from custom_components.grouw_ble_mower.lawn_mower import GrouwBleLawnMower
+    from homeassistant.components.lawn_mower import LawnMowerActivity
 
     mower = GrouwBleLawnMower(_Coord(_make_state(DAYE_MODE_MOWING, False)))
     assert mower.activity is LawnMowerActivity.MOWING
@@ -44,19 +43,17 @@ def test_activity_mowing() -> None:
 
 def test_activity_mowing_alternate_mode_code() -> None:
     """Observed alternate mowing mode code returns MOWING activity."""
-    from homeassistant.components.lawn_mower import LawnMowerActivity
     from custom_components.grouw_ble_mower.lawn_mower import GrouwBleLawnMower
+    from homeassistant.components.lawn_mower import LawnMowerActivity
 
-    mower = GrouwBleLawnMower(
-        _Coord(_make_state(DAYE_MODE_MOWING_ALTERNATE, False))
-    )
+    mower = GrouwBleLawnMower(_Coord(_make_state(DAYE_MODE_MOWING_ALTERNATE, False)))
     assert mower.activity is LawnMowerActivity.MOWING
 
 
 def test_activity_docked_overrides_mowing_mode() -> None:
     """Station flag wins when the mower reports docked while mode is mowing."""
-    from homeassistant.components.lawn_mower import LawnMowerActivity
     from custom_components.grouw_ble_mower.lawn_mower import GrouwBleLawnMower
+    from homeassistant.components.lawn_mower import LawnMowerActivity
 
     mower = GrouwBleLawnMower(_Coord(_make_state(DAYE_MODE_MOWING, True)))
     assert mower.activity is LawnMowerActivity.DOCKED
@@ -64,8 +61,8 @@ def test_activity_docked_overrides_mowing_mode() -> None:
 
 def test_activity_returning() -> None:
     """Returning mode returns RETURNING activity."""
-    from homeassistant.components.lawn_mower import LawnMowerActivity
     from custom_components.grouw_ble_mower.lawn_mower import GrouwBleLawnMower
+    from homeassistant.components.lawn_mower import LawnMowerActivity
 
     mower = GrouwBleLawnMower(_Coord(_make_state(DAYE_MODE_RETURNING, False)))
     assert mower.activity is LawnMowerActivity.RETURNING
@@ -73,8 +70,8 @@ def test_activity_returning() -> None:
 
 def test_activity_docked() -> None:
     """Stopped + station=True returns DOCKED."""
-    from homeassistant.components.lawn_mower import LawnMowerActivity
     from custom_components.grouw_ble_mower.lawn_mower import GrouwBleLawnMower
+    from homeassistant.components.lawn_mower import LawnMowerActivity
 
     mower = GrouwBleLawnMower(_Coord(_make_state(DAYE_MODE_IDLE, True)))
     assert mower.activity is LawnMowerActivity.DOCKED
@@ -82,8 +79,8 @@ def test_activity_docked() -> None:
 
 def test_activity_paused() -> None:
     """Stopped + station=False returns PAUSED."""
-    from homeassistant.components.lawn_mower import LawnMowerActivity
     from custom_components.grouw_ble_mower.lawn_mower import GrouwBleLawnMower
+    from homeassistant.components.lawn_mower import LawnMowerActivity
 
     mower = GrouwBleLawnMower(_Coord(_make_state(DAYE_MODE_IDLE, False)))
     assert mower.activity is LawnMowerActivity.PAUSED
@@ -91,8 +88,8 @@ def test_activity_paused() -> None:
 
 def test_activity_idle_unknown_station() -> None:
     """Idle + station=None returns PAUSED."""
-    from homeassistant.components.lawn_mower import LawnMowerActivity
     from custom_components.grouw_ble_mower.lawn_mower import GrouwBleLawnMower
+    from homeassistant.components.lawn_mower import LawnMowerActivity
 
     mower = GrouwBleLawnMower(_Coord(_make_state(DAYE_MODE_IDLE, None)))
     assert mower.activity is LawnMowerActivity.PAUSED
@@ -135,7 +132,9 @@ def test_start_mowing_refreshes_when_station_unknown() -> None:
         mower = GrouwBleLawnMower(_CoordWithRefresh())
         await mower.async_start_mowing()
 
-        assert refresh_called, "async_request_refresh should be called when station is None"
+        assert refresh_called, (
+            "async_request_refresh should be called when station is None"
+        )
         assert send_command_called, "async_send_command should be called after refresh"
 
     asyncio.run(run())

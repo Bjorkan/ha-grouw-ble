@@ -1,4 +1,5 @@
 """Tests for integration service action routing."""
+
 from __future__ import annotations
 
 import asyncio
@@ -71,6 +72,7 @@ class _Call:
 
 def test_send_raw_payload_requires_resolvable_target_mower() -> None:
     """The raw BLE payload action reports bad targeting as a validation error."""
+
     async def run() -> None:
         hass = _Hass()
         _async_register_services(hass)
@@ -160,6 +162,7 @@ def test_services_register_without_response_support(monkeypatch: Any) -> None:
 
 def test_get_multi_area_returns_response_data() -> None:
     """Read services return pyGrouw response data for service response variables."""
+
     async def run() -> None:
         hass = _Hass()
 
@@ -188,6 +191,7 @@ def test_get_multi_area_returns_response_data() -> None:
 
 def test_optional_response_services_return_only_when_requested() -> None:
     """Write/debug services keep normal calls quiet and honor response requests."""
+
     async def run() -> None:
         hass = _Hass()
 
@@ -225,6 +229,7 @@ def test_optional_response_services_return_only_when_requested() -> None:
 
 def test_change_pin_uses_configured_current_pin() -> None:
     """The public action only needs the new PIN; coordinator knows the old one."""
+
     async def run() -> None:
         hass = _Hass()
 
@@ -258,6 +263,7 @@ def test_change_pin_uses_configured_current_pin() -> None:
 
 def test_change_pin_ignores_legacy_old_pin_field() -> None:
     """Existing automations may still pass old_pin, but pyGrouw should not see it."""
+
     async def run() -> None:
         hass = _Hass()
 

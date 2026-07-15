@@ -1,4 +1,5 @@
 """Home Assistant config flow tests."""
+
 from __future__ import annotations
 
 from unittest.mock import AsyncMock, patch
@@ -7,11 +8,7 @@ import pytest
 
 pytest.importorskip("pytest_homeassistant_custom_component")
 
-from homeassistant import config_entries
-from homeassistant.components import bluetooth
-from homeassistant.const import CONF_NAME
-from homeassistant.core import HomeAssistant
-from homeassistant.data_entry_flow import FlowResultType
+from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.grouw_ble_mower.config_flow import (
     _has_supported_service_uuid,
@@ -19,14 +16,17 @@ from custom_components.grouw_ble_mower.config_flow import (
     _is_valid_address,
     _is_valid_pin,
 )
-from pytest_homeassistant_custom_component.common import MockConfigEntry
-
 from custom_components.grouw_ble_mower.const import (
     CONF_ADDRESS,
     CONF_PIN,
     DAYE_PRIMARY_SERVICE_UUID,
     DOMAIN,
 )
+from homeassistant import config_entries
+from homeassistant.components import bluetooth
+from homeassistant.const import CONF_NAME
+from homeassistant.core import HomeAssistant
+from homeassistant.data_entry_flow import FlowResultType
 
 
 def test_supported_bluetooth_names_include_daye_app_device_name() -> None:

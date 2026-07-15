@@ -1,13 +1,14 @@
 """Test support for local and Home Assistant test environments."""
+
 from __future__ import annotations
 
-import importlib.util
 from dataclasses import dataclass
 from datetime import UTC
 from enum import Enum
+import importlib.util
+from pathlib import Path
 import sys
 import types
-from pathlib import Path
 from typing import Any
 
 import pytest
@@ -181,8 +182,13 @@ def _install_lightweight_stubs() -> None:
     config_validation.boolean = lambda v: v
     config_validation.ensure_list = lambda v: v if isinstance(v, list) else [v]
     import re as _re
+
     config_validation.matches_regex = lambda regex: (
-        (lambda v: v if _re.compile(regex).search(v) else (_ for _ in ()).throw(ValueError(f"does not match {regex}")))
+        lambda v: (
+            v
+            if _re.compile(regex).search(v)
+            else (_ for _ in ()).throw(ValueError(f"does not match {regex}"))
+        )
     )
 
     entity_platform = _install_module("homeassistant.helpers.entity_platform")
@@ -313,8 +319,12 @@ if importlib.util.find_spec("homeassistant") is None:
 
 
 if importlib.util.find_spec("pytest_homeassistant_custom_component") is not None:
+    from pytest_homeassistant_custom_component.common import (
+        MockModule,
+        mock_integration,
+    )
+
     from homeassistant.util import dt as dt_util
-    from pytest_homeassistant_custom_component.common import MockModule, mock_integration
 
     @pytest.fixture(autouse=True)
     def reset_default_timezone() -> None:
@@ -329,9 +339,7 @@ if importlib.util.find_spec("pytest_homeassistant_custom_component") is not None
         return True
 
     @pytest.fixture
-    def mock_bluetooth_adapters(
-        hass: Any, enable_custom_integrations: Any
-    ) -> None:
+    def mock_bluetooth_adapters(hass: Any, enable_custom_integrations: Any) -> None:
         """Mock HA's Bluetooth adapter dependency without opening real sockets."""
 
         async def _async_setup(*args: Any, **kwargs: Any) -> bool:

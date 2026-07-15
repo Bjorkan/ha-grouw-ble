@@ -1,28 +1,17 @@
 """Grouw Mower integration."""
+
 from __future__ import annotations
 
 from enum import Enum
 import logging
 from typing import Any
 
+from pygrouw import is_valid_pin, redact_daye_message
 import voluptuous as vol
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_NAME, Platform
 from homeassistant.core import HomeAssistant, ServiceCall
-try:
-    from homeassistant.core import ServiceResponse, SupportsResponse
-except ImportError:
-    ServiceResponse = dict[str, Any]
-
-    class SupportsResponse(Enum):
-        """Fallback SupportsResponse for older Home Assistant versions."""
-
-        OPTIONAL = "optional"
-
-    _SUPPORTS_SERVICE_RESPONSE = False
-else:
-    _SUPPORTS_SERVICE_RESPONSE = True
 from homeassistant.exceptions import (
     ConfigEntryAuthFailed,
     ConfigEntryNotReady,
@@ -30,7 +19,6 @@ from homeassistant.exceptions import (
 )
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.update_coordinator import UpdateFailed
-from pygrouw import is_valid_pin, redact_daye_message
 
 from .const import (
     CONF_ADDRESS,
@@ -47,6 +35,20 @@ from .const import (
     SERVICE_SET_WORK_TIMES,
 )
 from .coordinator import GrouwMowerCoordinator
+
+try:
+    from homeassistant.core import ServiceResponse, SupportsResponse
+except ImportError:
+    ServiceResponse = dict[str, Any]
+
+    class SupportsResponse(Enum):
+        """Fallback SupportsResponse for older Home Assistant versions."""
+
+        OPTIONAL = "optional"
+
+    _SUPPORTS_SERVICE_RESPONSE = False
+else:
+    _SUPPORTS_SERVICE_RESPONSE = True
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -100,10 +102,18 @@ SERVICE_CHANGE_PIN_SCHEMA = vol.Schema(
 
 SERVICE_SET_MULTI_AREA_SCHEMA = vol.Schema(
     {
-        vol.Required("area2_percentage"): vol.All(vol.Coerce(int), vol.Range(min=0, max=100)),
-        vol.Required("area2_distance"): vol.All(vol.Coerce(int), vol.Range(min=0, max=999)),
-        vol.Required("area3_percentage"): vol.All(vol.Coerce(int), vol.Range(min=0, max=100)),
-        vol.Required("area3_distance"): vol.All(vol.Coerce(int), vol.Range(min=0, max=999)),
+        vol.Required("area2_percentage"): vol.All(
+            vol.Coerce(int), vol.Range(min=0, max=100)
+        ),
+        vol.Required("area2_distance"): vol.All(
+            vol.Coerce(int), vol.Range(min=0, max=999)
+        ),
+        vol.Required("area3_percentage"): vol.All(
+            vol.Coerce(int), vol.Range(min=0, max=100)
+        ),
+        vol.Required("area3_distance"): vol.All(
+            vol.Coerce(int), vol.Range(min=0, max=999)
+        ),
         vol.Optional("address"): cv.string,
         vol.Optional("entry_id"): cv.string,
     }
@@ -114,8 +124,12 @@ SERVICE_SET_MOWER_SETTINGS_SCHEMA = vol.Schema(
         vol.Required("mow_in_rain"): cv.boolean,
         vol.Required("boundary_cut"): cv.boolean,
         vol.Required("helix"): cv.boolean,
-        vol.Required("rain_delay_hours"): vol.All(vol.Coerce(int), vol.Range(min=0, max=23)),
-        vol.Required("rain_delay_minutes"): vol.All(vol.Coerce(int), vol.Range(min=0, max=59)),
+        vol.Required("rain_delay_hours"): vol.All(
+            vol.Coerce(int), vol.Range(min=0, max=23)
+        ),
+        vol.Required("rain_delay_minutes"): vol.All(
+            vol.Coerce(int), vol.Range(min=0, max=59)
+        ),
         vol.Optional("unknown_setting"): cv.boolean,
         vol.Optional("address"): cv.string,
         vol.Optional("entry_id"): cv.string,
@@ -127,30 +141,38 @@ SERVICE_SET_WORK_TIMES_SCHEMA = vol.Schema(
         vol.Required("starts"): vol.All(
             cv.ensure_list,
             vol.Length(min=7, max=7),
-            [vol.All(
-                cv.ensure_list,
-                vol.Length(min=2, max=2),
-                [vol.All(
-                    vol.Coerce(int),
-                    vol.Range(min=0),
-                )],
-                vol.Length(min=2, max=2),
-                _work_start_validator,
-            )]
+            [
+                vol.All(
+                    cv.ensure_list,
+                    vol.Length(min=2, max=2),
+                    [
+                        vol.All(
+                            vol.Coerce(int),
+                            vol.Range(min=0),
+                        )
+                    ],
+                    vol.Length(min=2, max=2),
+                    _work_start_validator,
+                )
+            ],
         ),
         vol.Required("durations"): vol.All(
             cv.ensure_list,
             vol.Length(min=7, max=7),
-            [vol.All(
-                cv.ensure_list,
-                vol.Length(min=2, max=2),
-                [vol.All(
-                    vol.Coerce(int),
-                    vol.Range(min=0),
-                )],
-                vol.Length(min=2, max=2),
-                _work_duration_validator,
-            )]
+            [
+                vol.All(
+                    cv.ensure_list,
+                    vol.Length(min=2, max=2),
+                    [
+                        vol.All(
+                            vol.Coerce(int),
+                            vol.Range(min=0),
+                        )
+                    ],
+                    vol.Length(min=2, max=2),
+                    _work_duration_validator,
+                )
+            ],
         ),
         vol.Optional("address"): cv.string,
         vol.Optional("entry_id"): cv.string,
@@ -254,7 +276,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     try:
         await coordinator.async_config_entry_first_refresh()
     except (ConfigEntryNotReady, UpdateFailed):
-        _LOGGER.debug("Initial BLE refresh failed, continuing with unavailable entities")
+        _LOGGER.debug(
+            "Initial BLE refresh failed, continuing with unavailable entities"
+        )
         coordinator.data = None
         coordinator.last_update_success = False
 
@@ -279,6 +303,7 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
 def _async_register_services(hass: HomeAssistant) -> None:
     """Register integration services once."""
+
     async def _handle_send_raw_json(call: ServiceCall) -> ServiceResponse | None:
         payload: dict[str, Any] = call.data["payload"]
         coordinator = _resolve_coordinator(hass, call)
@@ -335,7 +360,8 @@ def _async_register_services(hass: HomeAssistant) -> None:
         result = await coordinator.async_get_multi_area()
         _LOGGER.info(
             "Multi-area settings from %s: %s",
-            coordinator.address, result.get("multi_area"),
+            coordinator.address,
+            result.get("multi_area"),
         )
         return _service_response(call, result)
 
@@ -344,7 +370,8 @@ def _async_register_services(hass: HomeAssistant) -> None:
         result = await coordinator.async_get_mower_settings()
         _LOGGER.info(
             "Mower settings from %s: %s",
-            coordinator.address, result.get("mower_settings"),
+            coordinator.address,
+            result.get("mower_settings"),
         )
         return _service_response(call, result)
 
