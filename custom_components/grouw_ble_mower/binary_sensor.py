@@ -25,8 +25,7 @@ class GrouwBinarySensorEntityDescription(BinarySensorEntityDescription):
 
 def _has_status_state(coord: GrouwMowerCoordinator) -> bool:
     """Return true when normal status polling has produced a usable state."""
-    data = coord.data
-    return coord.last_update_success and data is not None and data.last_seen is not None
+    return coord.status_is_fresh()
 
 
 def _has_mower_settings(coord: GrouwMowerCoordinator) -> bool:
@@ -63,14 +62,6 @@ BINARY_SENSORS: tuple[GrouwBinarySensorEntityDescription, ...] = (
         entity_category=None,
         icon="mdi:spiral",
         value_fn=lambda coord: coord.mower_settings.get("helix") if coord.mower_settings else None,
-        available_fn=_has_mower_settings,
-    ),
-    GrouwBinarySensorEntityDescription(
-        key="led",
-        translation_key="led",
-        entity_category=None,
-        icon="mdi:led-on",
-        value_fn=lambda coord: coord.mower_settings.get("led") if coord.mower_settings else None,
         available_fn=_has_mower_settings,
     ),
 )

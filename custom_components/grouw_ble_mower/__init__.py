@@ -116,7 +116,7 @@ SERVICE_SET_MOWER_SETTINGS_SCHEMA = vol.Schema(
         vol.Required("helix"): cv.boolean,
         vol.Required("rain_delay_hours"): vol.All(vol.Coerce(int), vol.Range(min=0, max=23)),
         vol.Required("rain_delay_minutes"): vol.All(vol.Coerce(int), vol.Range(min=0, max=59)),
-        vol.Optional("unknown_setting", default=False): cv.boolean,
+        vol.Optional("unknown_setting"): cv.boolean,
         vol.Optional("address"): cv.string,
         vol.Optional("entry_id"): cv.string,
     }
@@ -249,6 +249,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         entry.data.get(CONF_PIN, ""),
     )
     hass.data[DOMAIN][entry.entry_id] = coordinator
+    coordinator.async_start_bluetooth_tracking()
 
     try:
         await coordinator.async_config_entry_first_refresh()
@@ -285,9 +286,9 @@ def _async_register_services(hass: HomeAssistant) -> None:
         _LOGGER.info(
             "Raw BLE response from %s: %s",
             coordinator.address,
-            redact_daye_message(result),
+            redact_daye_message(result) if result is not None else None,
         )
-        return _service_response(call, result)
+        return _service_response(call, result or {})
 
     async def _handle_change_pin(call: ServiceCall) -> ServiceResponse | None:
         new_pin = call.data["new_pin"]
@@ -315,7 +316,7 @@ def _async_register_services(hass: HomeAssistant) -> None:
             helix=call.data["helix"],
             rain_delay_hours=call.data["rain_delay_hours"],
             rain_delay_minutes=call.data["rain_delay_minutes"],
-            unknown_setting=call.data.get("unknown_setting", False),
+            unknown_setting=call.data.get("unknown_setting"),
         )
         _LOGGER.info("Mower settings written to %s", coordinator.address)
         return _service_response(call, result)

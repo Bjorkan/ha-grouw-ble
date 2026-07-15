@@ -118,6 +118,9 @@ def test_start_mowing_refreshes_when_station_unknown() -> None:
         last_update_success = True
         address = "AA:BB:CC:DD:EE:FF"
 
+        def status_is_fresh(self) -> bool:
+            return self.data.station is not None
+
         async def async_request_refresh(self) -> None:
             nonlocal refresh_called
             refresh_called = True
