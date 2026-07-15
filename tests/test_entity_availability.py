@@ -1,4 +1,5 @@
 """Tests for entity availability behavior."""
+
 from __future__ import annotations
 
 from typing import Any
@@ -15,7 +16,7 @@ class _Coord:
 
 def test_multi_area_sensor_available_from_cache_after_status_failure() -> None:
     """Settings-backed sensors are available when their cache has data."""
-    from custom_components.grouw_ble_mower.sensor import GrouwMowerSensor, SENSORS
+    from custom_components.grouw_ble_mower.sensor import SENSORS, GrouwMowerSensor
 
     coord = _Coord()
     coord.multi_area = {"area2_percentage": 5}
@@ -27,7 +28,9 @@ def test_multi_area_sensor_available_from_cache_after_status_failure() -> None:
     assert sensor.native_value == 5
 
 
-def test_mower_settings_binary_sensor_available_from_cache_after_status_failure() -> None:
+def test_mower_settings_binary_sensor_available_from_cache_after_status_failure() -> (
+    None
+):
     """Settings-backed binary sensors are available when their cache has data."""
     from custom_components.grouw_ble_mower.binary_sensor import (
         BINARY_SENSORS,

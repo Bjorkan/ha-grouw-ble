@@ -1,4 +1,5 @@
 """Home Assistant setup/unload tests."""
+
 from __future__ import annotations
 
 from unittest.mock import AsyncMock, patch
@@ -7,14 +8,14 @@ import pytest
 
 pytest.importorskip("pytest_homeassistant_custom_component")
 
-from homeassistant.config_entries import ConfigEntryState
-from homeassistant.const import CONF_NAME
-from homeassistant.core import HomeAssistant
-from homeassistant.exceptions import ConfigEntryAuthFailed
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.grouw_ble_mower import async_setup_entry
 from custom_components.grouw_ble_mower.const import CONF_ADDRESS, CONF_PIN, DOMAIN
+from homeassistant.config_entries import ConfigEntryState
+from homeassistant.const import CONF_NAME
+from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import ConfigEntryAuthFailed
 
 
 async def test_setup_unload_entry(
@@ -33,17 +34,21 @@ async def test_setup_unload_entry(
     )
     entry.add_to_hass(hass)
 
-    with patch.object(
-        hass.config_entries,
-        "async_forward_entry_setups",
-        AsyncMock(return_value=True),
-    ), patch.object(
-        hass.config_entries,
-        "async_unload_platforms",
-        AsyncMock(return_value=True),
-    ), patch(
-        "custom_components.grouw_ble_mower.coordinator.GrouwMowerCoordinator.async_config_entry_first_refresh",
-        AsyncMock(),
+    with (
+        patch.object(
+            hass.config_entries,
+            "async_forward_entry_setups",
+            AsyncMock(return_value=True),
+        ),
+        patch.object(
+            hass.config_entries,
+            "async_unload_platforms",
+            AsyncMock(return_value=True),
+        ),
+        patch(
+            "custom_components.grouw_ble_mower.coordinator.GrouwMowerCoordinator.async_config_entry_first_refresh",
+            AsyncMock(),
+        ),
     ):
         assert await hass.config_entries.async_setup(entry.entry_id)
         await hass.async_block_till_done()

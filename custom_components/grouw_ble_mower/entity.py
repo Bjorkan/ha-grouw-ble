@@ -1,7 +1,8 @@
 """Base entities for Grouw Mower."""
+
 from __future__ import annotations
 
-from homeassistant.const import CONF_NAME, Platform
+from homeassistant.const import CONF_NAME
 from homeassistant.helpers.device_registry import CONNECTION_BLUETOOTH
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
@@ -15,7 +16,9 @@ class GrouwMowerEntity(CoordinatorEntity[GrouwMowerCoordinator]):
 
     _attr_has_entity_name = True
 
-    def __init__(self, coordinator: GrouwMowerCoordinator, suffix: str | None = None) -> None:
+    def __init__(
+        self, coordinator: GrouwMowerCoordinator, suffix: str | None = None
+    ) -> None:
         super().__init__(coordinator)
         self._suffix = suffix
         key = suffix.lower().replace(" ", "_") if suffix else "mower"
@@ -29,7 +32,11 @@ class GrouwMowerEntity(CoordinatorEntity[GrouwMowerCoordinator]):
             connections={(CONNECTION_BLUETOOTH, self.coordinator.address)},
             manufacturer="Grouw",
             model=data.model if data else None,
-            name=(data.name if data and data.name else self.coordinator.config_entry.data.get(CONF_NAME, DEFAULT_NAME)),
+            name=(
+                data.name
+                if data and data.name
+                else self.coordinator.config_entry.data.get(CONF_NAME, DEFAULT_NAME)
+            ),
             serial_number=data.serial if data else None,
             sw_version=data.firmware_version if data else None,
         )

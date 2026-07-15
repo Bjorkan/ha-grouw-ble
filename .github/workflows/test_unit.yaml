@@ -4,28 +4,41 @@ on:
   push:
   pull_request:
 
+permissions:
+  contents: read
+
 jobs:
   run-tests:
     name: Run unit tests
     runs-on: ubuntu-latest
+
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - name: Install uv
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
         with:
-          python-version: "3.13"
-          cache: pip
-          cache-dependency-path: requirements-test.txt
+          version: "0.11.29"
+          enable-cache: true
 
-      - name: Install test dependencies
-        run: |
-          python -m pip install --upgrade pip
-          python -m pip install -r requirements-test.txt
+      - name: Install Python
+        run: uv python install
+
+      - name: Install dependencies
+        run: uv sync --locked
+
+      - name: Run Ruff lint checks
+        run: uv run --locked ruff check .
+
+      - name: Verify Ruff formatting
+        run: uv run --locked ruff format --check .
 
       - name: Run pytest
-        run: pytest -q -p no:cacheprovider
+        run: uv run --locked pytest -q -p no:cacheprovider
 
       - name: Compile Python files
-        run: python -m compileall -q custom_components/grouw_ble_mower tests
+        run: >
+          uv run --locked python -m compileall -q
+          custom_components/grouw_ble_mower
+          tests

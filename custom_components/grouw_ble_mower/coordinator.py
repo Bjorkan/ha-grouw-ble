@@ -1,17 +1,13 @@
 """DataUpdateCoordinator for Grouw Mower."""
+
 from __future__ import annotations
 
 import asyncio
 from collections.abc import Awaitable, Callable
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 import logging
 from typing import Any, TypeVar
 
-from homeassistant.components import bluetooth
-from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant
-from homeassistant.exceptions import ConfigEntryAuthFailed, HomeAssistantError
-from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 from pygrouw import (
     GrouwBleAuthenticationError,
     GrouwBleError,
@@ -20,6 +16,12 @@ from pygrouw import (
     MowerState,
     state_from_message,
 )
+
+from homeassistant.components import bluetooth
+from homeassistant.config_entries import ConfigEntry
+from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import ConfigEntryAuthFailed, HomeAssistantError
+from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from .const import (
     COMMAND_CONFIRM_INTERVAL,
@@ -119,7 +121,7 @@ class GrouwMowerCoordinator(DataUpdateCoordinator[MowerState]):
                 source = str(value) if value is not None else None
             if source is not None and source != self._last_route_source:
                 self._last_route_source = source
-                self._route_changed_at = datetime.now(timezone.utc)
+                self._route_changed_at = datetime.now(UTC)
         return device
 
     def async_start_bluetooth_tracking(self) -> None:
@@ -176,7 +178,7 @@ class GrouwMowerCoordinator(DataUpdateCoordinator[MowerState]):
         if isinstance(rssi, int):
             self._last_route_rssi = rssi
         if source_changed:
-            self._route_changed_at = datetime.now(timezone.utc)
+            self._route_changed_at = datetime.now(UTC)
 
         if not source_changed and self._last_failure_time is None:
             return
@@ -200,7 +202,7 @@ class GrouwMowerCoordinator(DataUpdateCoordinator[MowerState]):
 
     def _record_ble_failure(self, phase: str, error: BaseException) -> datetime:
         """Record a BLE failure with phase and typed diagnostic metadata."""
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         self._last_failure_time = now
         self._last_failure_phase = phase
         self._last_failure_type = type(error).__name__
@@ -208,7 +210,7 @@ class GrouwMowerCoordinator(DataUpdateCoordinator[MowerState]):
         return now
 
     def _record_communication(self) -> None:
-        self._last_communication_time = datetime.now(timezone.utc)
+        self._last_communication_time = datetime.now(UTC)
 
     def _async_start_reauth(self) -> None:
         """Start a Home Assistant reauth flow when supported."""
@@ -221,11 +223,11 @@ class GrouwMowerCoordinator(DataUpdateCoordinator[MowerState]):
         state = self.data
         if state is None or state.last_seen is None or not self.last_update_success:
             return False
-        return datetime.now(timezone.utc) - state.last_seen <= max_age
+        return datetime.now(UTC) - state.last_seen <= max_age
 
     async def _async_update_data(self) -> MowerState:
         """Fetch a fresh status packet from the mower."""
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         if self._last_failure_time is not None:
             since_failure = now - self._last_failure_time
             if since_failure < DEFAULT_BLE_BACKOFF_INTERVAL:
@@ -311,7 +313,9 @@ class GrouwMowerCoordinator(DataUpdateCoordinator[MowerState]):
             age = asyncio.get_running_loop().time() - queued_at
             if age > COMMAND_MAX_QUEUE_AGE:
                 self._last_command_outcome = "expired"
-                raise HomeAssistantError(f"Command {command} expired before it was sent")
+                raise HomeAssistantError(
+                    f"Command {command} expired before it was sent"
+                )
             if generation != self._command_generation:
                 self._last_command_outcome = "superseded"
                 raise HomeAssistantError(
@@ -336,7 +340,7 @@ class GrouwMowerCoordinator(DataUpdateCoordinator[MowerState]):
                 self._record_ble_failure("command", err)
                 raise HomeAssistantError(str(err)) from err
 
-            self._last_command_time = datetime.now(timezone.utc)
+            self._last_command_time = datetime.now(UTC)
             self._last_command_outcome = "confirmed"
             self._last_failure_time = None
             self._last_state = state
@@ -370,7 +374,7 @@ class GrouwMowerCoordinator(DataUpdateCoordinator[MowerState]):
             self.async_set_updated_data(state)
             if self._command_is_confirmed(command, state):
                 return state
-        self._last_command_time = datetime.now(timezone.utc)
+        self._last_command_time = datetime.now(UTC)
         self._last_command_outcome = "unconfirmed"
         raise HomeAssistantError(
             f"Command {command} was written, but the requested mower state "
@@ -409,7 +413,7 @@ class GrouwMowerCoordinator(DataUpdateCoordinator[MowerState]):
             self._pending_commands -= 1
 
         self._record_communication()
-        self._settings_updated_at[phase] = datetime.now(timezone.utc)
+        self._settings_updated_at[phase] = datetime.now(UTC)
         return result
 
     def _async_notify_non_status_update(self) -> None:
@@ -534,7 +538,11 @@ class GrouwMowerCoordinator(DataUpdateCoordinator[MowerState]):
             "raw", lambda: self.mower.async_send_raw_json(payload)
         )
         state = self.mower.state
-        if response is not None and state.last_seen is not None and state.last_seen != before:
+        if (
+            response is not None
+            and state.last_seen is not None
+            and state.last_seen != before
+        ):
             self._last_state = state
             self.async_set_updated_data(state)
         else:

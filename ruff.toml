@@ -1,0 +1,110 @@
+# Ruff is the only Python linting and formatting tool used by this repository.
+required-version = ">=0.15.20"
+target-version = "py313"
+line-length = 88
+src = ["custom_components", "tests"]
+show-fixes = true
+
+[lint]
+select = [
+  "A001", # Do not shadow Python builtins.
+  "ASYNC", # Detect common async mistakes.
+  "B", # flake8-bugbear correctness checks.
+  "BLE", # Do not catch blind Exception/BaseException values.
+  "C4", # Prefer clearer and more efficient comprehensions.
+  "DTZ", # Require timezone-aware datetime usage.
+  "E4", # Import and whitespace errors.
+  "E7", # Statement errors.
+  "E9", # Runtime and syntax errors.
+  "F", # Pyflakes: undefined names, unused imports, and similar errors.
+  "FLY", # Prefer f-strings where they improve clarity.
+  "G", # Logging format correctness.
+  "I", # Import sorting.
+  "ICN", # Enforce conventional import aliases.
+  "LOG", # Logging best practices.
+  "N", # PEP 8 naming rules.
+  "PERF", # Avoid common performance mistakes.
+  "PGH", # Validate type-ignore and noqa usage.
+  "PIE", # Miscellaneous unnecessary or error-prone constructs.
+  "PLC", # Pylint convention checks.
+  "PLE", # Pylint error checks.
+  "PLW", # Pylint warning checks.
+  "PT", # pytest best practices.
+  "RET", # Clear and consistent return statements.
+  "RSE", # Remove unnecessary exception parentheses.
+  "RUF", # Ruff-specific correctness checks.
+  # High-signal Bandit security rules used by Home Assistant Core.
+  "S102",
+  "S103",
+  "S107",
+  "S108",
+  "S301",
+  "S306",
+  "S307",
+  "S313",
+  "S314",
+  "S315",
+  "S316",
+  "S317",
+  "S318",
+  "S319",
+  "S601",
+  "S602",
+  "S604",
+  "S608",
+  "S609",
+  "SIM", # Safe simplifications.
+  "SLOT", # Require slots for suitable immutable classes.
+  "T10", # Reject forgotten debugger calls.
+  "T20", # Reject print/pprint in committed code.
+  "TID", # Keep imports explicit and maintainable.
+  "TRY", # Exception-handling best practices.
+  "UP", # Modernize code for the configured Python version.
+  "W", # pycodestyle warnings.
+]
+ignore = [
+  # These simplifications are subjective and can make HA control flow harder
+  # to read or debug.
+  "SIM102",
+  "SIM103",
+  "SIM108",
+  # Home Assistant commonly raises framework exceptions with messages at the
+  # call site instead of defining a custom exception for every validation path.
+  "TRY003",
+  # Preserve explicit logging levels where they are intentional.
+  "TRY400",
+  # Ruff's formatter owns indentation; this lint rule conflicts with it.
+  "W191",
+]
+
+[lint.flake8-import-conventions.extend-aliases]
+voluptuous = "vol"
+
+[lint.flake8-pytest-style]
+fixture-parentheses = false
+mark-parentheses = false
+
+[lint.isort]
+force-sort-within-sections = true
+combine-as-imports = true
+split-on-trailing-comma = false
+known-first-party = ["custom_components", "homeassistant"]
+
+[lint.per-file-ignores]
+# Tests install lightweight Home Assistant stubs before importing the modules
+# under test, so some imports intentionally remain inside test functions.
+"tests/**" = ["PLC0415", "RUF012"]
+# These full-width digits are deliberate invalid-PIN test data.
+"tests/test_config_flow.py" = ["RUF001"]
+# These classes mirror Home Assistant exception names in the test stubs.
+"tests/conftest.py" = ["N818"]
+# This module intentionally re-exports constants from pyGrouw.
+"custom_components/grouw_ble_mower/const.py" = ["F401"]
+
+[format]
+quote-style = "double"
+indent-style = "space"
+line-ending = "auto"
+skip-magic-trailing-comma = false
+docstring-code-format = true
+docstring-code-line-length = "dynamic"
