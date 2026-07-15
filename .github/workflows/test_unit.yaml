@@ -29,3 +29,12 @@ jobs:
 
       - name: Compile Python files
         run: python -m compileall -q custom_components/grouw_ble_mower tests
+
+      - name: Create source snapshot
+        run: zip -qr ha-grouw-ble-source.zip . -x '.git/*' 'ha-grouw-ble-source.zip'
+
+      - name: Upload source snapshot
+        uses: actions/upload-artifact@v4
+        with:
+          name: ha-grouw-ble-source
+          path: ha-grouw-ble-source.zip
