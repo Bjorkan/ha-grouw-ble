@@ -1,0 +1,66 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended",
+    "helpers:pinGitHubActionDigests",
+    "abandonments:recommended",
+    "security:openssf-scorecard"
+  ],
+  "enabledManagers": ["pep621", "github-actions", "custom.regex"],
+  "dependencyDashboard": true,
+  "labels": ["dependencies"],
+  "rangeStrategy": "bump",
+  "schedule": ["* 0-2 * * *"],
+  "timezone": "Europe/Stockholm",
+  "minimumReleaseAge": "14 days",
+  "internalChecksFilter": "strict",
+  "lockFileMaintenance": {
+    "enabled": true,
+    "automerge": true
+  },
+  "prConcurrentLimit": 0,
+  "prHourlyLimit": 0,
+  "automerge": true,
+  "automergeType": "pr",
+  "platformAutomerge": true,
+  "ignoreTests": false,
+  "customManagers": [
+    {
+      "customType": "regex",
+      "description": "Update simple PyPI requirements in the Home Assistant manifest",
+      "managerFilePatterns": [
+        "/(^|/)custom_components/grouw_ble_mower/manifest\\.json$/"
+      ],
+      "matchStrings": [
+        "\"(?<depName>[A-Za-z0-9_.-]+)>=(?<currentValue>[0-9][0-9A-Za-z.!+_-]*)\"",
+        "\"(?<depName>[A-Za-z0-9_.-]+)==(?<currentValue>[0-9][0-9A-Za-z.!+_-]*)\""
+      ],
+      "datasourceTemplate": "pypi",
+      "versioningTemplate": "pep440",
+      "depTypeTemplate": "home-assistant-runtime"
+    }
+  ],
+  "packageRules": [
+    {
+      "description": "Keep pygrouw synchronized between pyproject.toml and manifest.json",
+      "matchPackageNames": ["pygrouw"],
+      "groupName": "pygrouw",
+      "groupSlug": "pygrouw",
+      "automerge": true
+    },
+    {
+      "description": "Require manual review for major dependency updates",
+      "matchUpdateTypes": ["major"],
+      "automerge": false
+    },
+    {
+      "description": "Exempt UV lock-file maintenance from minimumReleaseAge",
+      "matchManagers": ["pep621"],
+      "matchUpdateTypes": ["lockFileMaintenance"],
+      "minimumReleaseAge": null,
+      "prBodyNotes": [
+        "⚠️ `uv lock` may refresh transitive dependencies without applying Renovate's 14-day release-age check."
+      ]
+    }
+  ]
+}
