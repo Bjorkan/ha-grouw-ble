@@ -31,17 +31,27 @@ class _Hass:
     pass
 
 
-def test_initial_poll_cooldown_after_command() -> None:
-    """Poll is skipped when a manual command happened recently."""
+def test_recent_command_does_not_create_a_false_success_poll() -> None:
+    """A recent command does not make cached data count as a fresh poll."""
     async def run() -> None:
         coordinator = GrouwMowerCoordinator(
             _Hass(), _Entry(), "AA:BB:CC:DD:EE:FF", "Test mower"
         )
         coordinator._last_command_time = datetime.now(timezone.utc)
+        expected = MowerState(
+            address="AA:BB:CC:DD:EE:FF",
+            battery_level=75,
+            mode=0,
+            station=False,
+            last_seen=datetime.now(timezone.utc),
+        )
 
-        from custom_components.grouw_ble_mower.coordinator import UpdateFailed
-        with pytest.raises(UpdateFailed, match="cooldown"):
-            await coordinator._async_update_data()
+        class Mower:
+            async def async_update(self) -> MowerState:
+                return expected
+
+        coordinator.mower = Mower()
+        assert await coordinator._async_update_data() is expected
 
     asyncio.run(run())
 
@@ -158,8 +168,8 @@ def test_poll_is_deferred_when_command_is_pending() -> None:
     asyncio.run(run())
 
 
-def test_poll_returns_last_state_when_command_is_pending() -> None:
-    """A skipped poll during command priority can keep the latest state visible."""
+def test_pending_command_does_not_republish_cached_state_as_fresh() -> None:
+    """A deferred poll preserves cached data without reporting fresh success."""
     async def run() -> None:
         coordinator = GrouwMowerCoordinator(
             _Hass(), _Entry(), "AA:BB:CC:DD:EE:FF", "Test mower"
@@ -172,7 +182,9 @@ def test_poll_returns_last_state_when_command_is_pending() -> None:
         coordinator._last_state = state
         coordinator._pending_commands = 1
 
-        assert await coordinator._async_update_data() is state
+        with pytest.raises(UpdateFailed, match="pending command"):
+            await coordinator._async_update_data()
+        assert coordinator._last_state is state
 
     asyncio.run(run())
 
@@ -258,11 +270,10 @@ def test_command_authentication_failure_starts_reauth() -> None:
             hass, entry, "AA:BB:CC:DD:EE:FF", "Test mower"
         )
 
-        class Mower:
-            async def async_command(self, command: str) -> MowerState:
-                raise GrouwBleAuthenticationError("bad pin")
+        async def fail_command(command: str) -> MowerState:
+            raise GrouwBleAuthenticationError("bad pin")
 
-        coordinator.mower = Mower()
+        coordinator._async_write_command = fail_command  # type: ignore[method-assign]
         with pytest.raises(HomeAssistantError, match="reauthentication"):
             await coordinator.async_send_command("pause")
 
@@ -313,18 +324,19 @@ def test_command_cooldown_starts_after_ble_transaction() -> None:
         )
         client_finished_at: datetime | None = None
 
-        class Mower:
-            async def async_command(self, command: str) -> MowerState:
-                nonlocal client_finished_at
-                await asyncio.sleep(0)
-                client_finished_at = datetime.now(timezone.utc)
-                return MowerState(
-                    address="AA:BB:CC:DD:EE:FF",
-                    battery_level=70,
-                    last_seen=datetime.now(timezone.utc),
-                )
+        async def write_command(command: str) -> MowerState:
+            nonlocal client_finished_at
+            await asyncio.sleep(0)
+            client_finished_at = datetime.now(timezone.utc)
+            return MowerState(
+                address="AA:BB:CC:DD:EE:FF",
+                battery_level=70,
+                mode=0x14,
+                station=False,
+                last_seen=datetime.now(timezone.utc),
+            )
 
-        coordinator.mower = Mower()
+        coordinator._async_write_command = write_command  # type: ignore[method-assign]
 
         await coordinator.async_send_command("pause")
 
@@ -332,5 +344,116 @@ def test_command_cooldown_starts_after_ble_transaction() -> None:
         assert coordinator._last_command_time is not None
         assert coordinator._last_command_time >= client_finished_at
         assert coordinator._pending_commands == 0
+
+    asyncio.run(run())
+
+
+def test_settings_update_notifies_after_cache_is_updated() -> None:
+    """Settings listeners see the new cache without publishing status data."""
+    async def run() -> None:
+        coordinator = GrouwMowerCoordinator(
+            _Hass(), _Entry(), "AA:BB:CC:DD:EE:FF", "Test mower"
+        )
+        seen: list[dict[str, Any] | None] = []
+
+        class Client:
+            async def async_get_multi_area(self) -> dict[str, Any]:
+                return {"multi_area": {"area2_percentage": 10}}
+
+        coordinator.client = Client()
+        coordinator.async_update_listeners = lambda: seen.append(coordinator.multi_area)
+        response = await coordinator.async_get_multi_area()
+
+        assert response["multi_area"]["area2_percentage"] == 10
+        assert seen == [{"area2_percentage": 10}]
+        assert coordinator.data is None
+
+    asyncio.run(run())
+
+
+def test_duplicate_active_commands_share_one_ble_write() -> None:
+    """Repeated identical clicks are coalesced while the first is active."""
+    async def run() -> None:
+        coordinator = GrouwMowerCoordinator(
+            _Hass(), _Entry(), "AA:BB:CC:DD:EE:FF", "Test mower"
+        )
+        writes = 0
+        release = asyncio.Event()
+
+        async def write_command(command: str) -> MowerState:
+            nonlocal writes
+            writes += 1
+            await release.wait()
+            return MowerState(
+                address=coordinator.address,
+                mode=0x14,
+                station=False,
+                last_seen=datetime.now(timezone.utc),
+            )
+
+        coordinator._async_write_command = write_command  # type: ignore[method-assign]
+        first = asyncio.create_task(coordinator.async_send_command("pause"))
+        await asyncio.sleep(0)
+        second = asyncio.create_task(coordinator.async_send_command("pause"))
+        await asyncio.sleep(0)
+        release.set()
+        await asyncio.gather(first, second)
+
+        assert writes == 1
+        assert coordinator._pending_commands == 0
+
+    asyncio.run(run())
+
+
+def test_newer_command_supersedes_older_unsent_command() -> None:
+    """A newer desired action prevents an older queued action from being sent."""
+    async def run() -> None:
+        coordinator = GrouwMowerCoordinator(
+            _Hass(), _Entry(), "AA:BB:CC:DD:EE:FF", "Test mower"
+        )
+        await coordinator._ble_lock.acquire()
+        sent: list[str] = []
+
+        async def write_command(command: str) -> MowerState:
+            sent.append(command)
+            return MowerState(
+                address=coordinator.address,
+                mode=0x03 if command == "dock" else 0x14,
+                station=False,
+                last_seen=datetime.now(timezone.utc),
+            )
+
+        coordinator._async_write_command = write_command  # type: ignore[method-assign]
+        old = asyncio.create_task(coordinator.async_send_command("pause"))
+        await asyncio.sleep(0)
+        newest = asyncio.create_task(coordinator.async_send_command("dock"))
+        await asyncio.sleep(0)
+        coordinator._ble_lock.release()
+
+        with pytest.raises(HomeAssistantError, match="superseded"):
+            await old
+        await newest
+        assert sent == ["dock"]
+
+    asyncio.run(run())
+
+
+def test_successful_settings_read_does_not_clear_status_failure() -> None:
+    """Settings communication cannot make stale status available again."""
+    async def run() -> None:
+        coordinator = GrouwMowerCoordinator(
+            _Hass(), _Entry(), "AA:BB:CC:DD:EE:FF", "Test mower"
+        )
+        failure_time = datetime.now(timezone.utc)
+        coordinator._last_failure_time = failure_time
+
+        class Client:
+            async def async_get_mower_settings(self) -> dict[str, Any]:
+                return {"mower_settings": {"unknown_setting": True}}
+
+        coordinator.client = Client()
+        await coordinator.async_get_mower_settings()
+        assert coordinator._last_failure_time is failure_time
+        assert coordinator.data is None
 
     asyncio.run(run())

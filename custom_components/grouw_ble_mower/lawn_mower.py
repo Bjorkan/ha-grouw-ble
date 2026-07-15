@@ -65,14 +65,30 @@ class GrouwBleLawnMower(GrouwMowerEntity, LawnMowerEntity):
         data = self.coordinator.data
         return data.battery_level if data else None
 
+    def _status_is_fresh(self) -> bool:
+        """Return status freshness while remaining compatible with test doubles."""
+        status_is_fresh = getattr(self.coordinator, "status_is_fresh", None)
+        if status_is_fresh is not None:
+            return bool(status_is_fresh())
+        data = self.coordinator.data
+        return bool(
+            self.coordinator.last_update_success
+            and data is not None
+            and data.last_seen is not None
+        )
+
     async def async_start_mowing(self) -> None:
         """Start mowing."""
         data = self.coordinator.data
-        if data is None or data.station is None:
+        if not self._status_is_fresh() or data is None or data.station is None:
             await self.coordinator.async_request_refresh()
             data = self.coordinator.data
 
-        if data is None or data.station is None:
+        if (
+            not self._status_is_fresh()
+            or data is None
+            or data.station is None
+        ):
             raise HomeAssistantError(
                 "Cannot determine mower station state before starting. "
                 "Ensure the mower is reachable, then try again."
