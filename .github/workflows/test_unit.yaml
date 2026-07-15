@@ -9,7 +9,7 @@ permissions:
 
 jobs:
   apply-prepared-patch:
-    if: github.event_name == 'pull_request' && github.head_ref == 'fix/04-runtime-reliability'
+    if: github.event_name == 'pull_request' && github.head_ref == 'fix/04-runtime-reliability-final'
     runs-on: ubuntu-latest
     steps:
       - name: Check out branch
