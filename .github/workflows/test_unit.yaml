@@ -20,8 +20,9 @@ jobs:
           fetch-depth: 0
       - name: Apply and validate prepared patch
         run: |
+          set -o pipefail
           base64 -d automation_patch.gz.b64 | gzip -d > config-release.patch
-          git apply --exclude=.github/workflows/test_unit.yaml config-release.patch
+          git apply --exclude=.github/workflows/test_unit.yaml config-release.patch 2>&1 | tee automation-validation.log
           rm automation_patch.gz.b64 config-release.patch
           cat > .github/workflows/test_unit.yaml <<'EOF'
           name: Run unit tests
@@ -59,12 +60,20 @@ jobs:
                 - name: Compile Python files
                   run: python -m compileall -q custom_components/grouw_ble_mower tests
           EOF
-          python -m pip install --upgrade pip
-          python -m pip install -r requirements-test.txt
-          pytest -q -p no:cacheprovider
-          python -m compileall -q custom_components/grouw_ble_mower tests
+          python -m pip install --upgrade pip 2>&1 | tee -a automation-validation.log
+          python -m pip install -r requirements-test.txt 2>&1 | tee -a automation-validation.log
+          pytest -q -p no:cacheprovider 2>&1 | tee -a automation-validation.log
+          python -m compileall -q custom_components/grouw_ble_mower tests 2>&1 | tee -a automation-validation.log
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A
-          git commit -m "fix: verify configuration and pin release inputs"
-          git push origin HEAD:${{ github.head_ref }}
+          git commit -m "fix: verify configuration and pin release inputs" 2>&1 | tee -a automation-validation.log
+          git push origin HEAD:${{ github.head_ref }} 2>&1 | tee -a automation-validation.log
+          rm automation-validation.log
+      - name: Upload validation log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: config-patch-validation-full
+          path: automation-validation.log
+          if-no-files-found: ignore
