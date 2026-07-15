@@ -1,3 +1,4 @@
+```json
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": [
@@ -42,10 +43,11 @@
   ],
   "packageRules": [
     {
-      "description": "Keep pygrouw synchronized between pyproject.toml and manifest.json",
+      "description": "Keep pygrouw synchronized between pyproject.toml and manifest.json without a release-age delay",
       "matchPackageNames": ["pygrouw"],
       "groupName": "pygrouw",
       "groupSlug": "pygrouw",
+      "minimumReleaseAge": null,
       "automerge": true
     },
     {
@@ -64,3 +66,4 @@
     }
   ]
 }
+```
