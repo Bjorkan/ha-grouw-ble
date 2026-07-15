@@ -22,7 +22,7 @@ jobs:
         run: |
           set -o pipefail
           base64 -d automation_patch.gz.b64 | gzip -d > config-release.patch
-          git apply --exclude=.github/workflows/test_unit.yaml config-release.patch
+          git apply --exclude='.github/workflows/*' config-release.patch
           rm automation_patch.gz.b64 config-release.patch
           python -m pip install --upgrade pip
           python -m pip install -r requirements-test.txt
