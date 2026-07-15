@@ -13,6 +13,7 @@ dev = [
   "pytest",
   "pytest-homeassistant-custom-component",
   "ruff==0.15.21",
+  "serialx[esphome]",
 ]
 
 [tool.uv]
