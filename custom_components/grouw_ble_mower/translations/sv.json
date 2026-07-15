@@ -34,32 +34,62 @@
     "abort": {
       "already_configured": "Den här klipparen är redan konfigurerad.",
       "missing_data": "Konfigurationsdata saknas.",
-      "reauth_successful": "Omautentiseringen lyckades."
+      "reauth_successful": "Omautentiseringen lyckades.",
+      "unsupported_device": "Bluetooth-enheten är inte en gräsklippare från Grouw som stöds."
     },
     "error": {
       "invalid_address": "Ange en Bluetooth-adress, eller välj en hittad klippare i listan.",
-      "invalid_pin": "Ange klipparens 4-siffriga PIN-kod."
+      "invalid_pin": "Ange klipparens 4-siffriga PIN-kod.",
+      "cannot_connect": "Gräsklipparen kunde inte nås via Bluetooth. Flytta den närmare en mottagare och försök igen.",
+      "invalid_auth": "PIN-koden stämde inte med gräsklipparen."
     }
   },
   "entity": {
     "sensor": {
-      "battery": { "name": "Batteri" },
-      "mode": { "name": "Lägeskod" },
-      "last_response_cmd": { "name": "Senaste svarskommando" },
-      "area2_percentage": { "name": "Område 2 procent" },
-      "area2_distance": { "name": "Område 2 avstånd" },
-      "area3_percentage": { "name": "Område 3 procent" },
-      "area3_distance": { "name": "Område 3 avstånd" },
-      "rain_delay_hour": { "name": "Regnfördröjning timmar" },
-      "rain_delay_minute": { "name": "Regnfördröjning minuter" },
-      "unknown_setting": { "name": "Okänd inställning" }
+      "battery": {
+        "name": "Batteri"
+      },
+      "mode": {
+        "name": "Lägeskod"
+      },
+      "last_response_cmd": {
+        "name": "Senaste svarskommando"
+      },
+      "area2_percentage": {
+        "name": "Område 2 procent"
+      },
+      "area2_distance": {
+        "name": "Område 2 avstånd"
+      },
+      "area3_percentage": {
+        "name": "Område 3 procent"
+      },
+      "area3_distance": {
+        "name": "Område 3 avstånd"
+      },
+      "rain_delay_hour": {
+        "name": "Regnfördröjning timmar"
+      },
+      "rain_delay_minute": {
+        "name": "Regnfördröjning minuter"
+      },
+      "unknown_setting": {
+        "name": "Okänd inställning"
+      }
     },
     "binary_sensor": {
-      "docked": { "name": "Dockad" },
-      "mow_in_rain": { "name": "Klippa i regn" },
-      "boundary_cut": { "name": "Gränsklippning" },
-      "helix": { "name": "Helix" },
-      "led": { "name": "LED" }
+      "docked": {
+        "name": "Dockad"
+      },
+      "mow_in_rain": {
+        "name": "Klippa i regn"
+      },
+      "boundary_cut": {
+        "name": "Gränsklippning"
+      },
+      "helix": {
+        "name": "Helix"
+      }
     }
   }
 }

@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from dataclasses import asdict
+from importlib.metadata import PackageNotFoundError, version
 from typing import Any
 
 from homeassistant.components import bluetooth
@@ -44,7 +45,13 @@ async def async_get_config_entry_diagnostics(
             hass, coordinator.address, intent_type.CONNECTION
         )
 
+    try:
+        pygrouw_version = version("pygrouw")
+    except PackageNotFoundError:
+        pygrouw_version = "unknown"
+
     return {
+        "pygrouw_version": pygrouw_version,
         "entry": {
             "title": entry.title,
             "data_keys": sorted(entry.data.keys()),

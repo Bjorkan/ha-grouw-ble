@@ -34,32 +34,62 @@
     "abort": {
       "already_configured": "This mower is already configured.",
       "missing_data": "Missing configuration data.",
-      "reauth_successful": "Re-authentication was successful."
+      "reauth_successful": "Re-authentication was successful.",
+      "unsupported_device": "This Bluetooth device is not a supported Grouw mower."
     },
     "error": {
       "invalid_address": "Enter a Bluetooth address, or select a discovered mower from the list.",
-      "invalid_pin": "Enter the mower's 4-digit PIN code."
+      "invalid_pin": "Enter the mower's 4-digit PIN code.",
+      "cannot_connect": "The mower could not be reached over Bluetooth. Move it closer to a receiver and try again.",
+      "invalid_auth": "The PIN did not match the mower."
     }
   },
   "entity": {
     "sensor": {
-      "battery": { "name": "Battery" },
-      "mode": { "name": "Mode code" },
-      "last_response_cmd": { "name": "Last response command" },
-      "area2_percentage": { "name": "Area 2 percentage" },
-      "area2_distance": { "name": "Area 2 distance" },
-      "area3_percentage": { "name": "Area 3 percentage" },
-      "area3_distance": { "name": "Area 3 distance" },
-      "rain_delay_hour": { "name": "Rain delay hours" },
-      "rain_delay_minute": { "name": "Rain delay minutes" },
-      "unknown_setting": { "name": "Unknown setting" }
+      "battery": {
+        "name": "Battery"
+      },
+      "mode": {
+        "name": "Mode code"
+      },
+      "last_response_cmd": {
+        "name": "Last response command"
+      },
+      "area2_percentage": {
+        "name": "Area 2 percentage"
+      },
+      "area2_distance": {
+        "name": "Area 2 distance"
+      },
+      "area3_percentage": {
+        "name": "Area 3 percentage"
+      },
+      "area3_distance": {
+        "name": "Area 3 distance"
+      },
+      "rain_delay_hour": {
+        "name": "Rain delay hours"
+      },
+      "rain_delay_minute": {
+        "name": "Rain delay minutes"
+      },
+      "unknown_setting": {
+        "name": "Unknown setting"
+      }
     },
     "binary_sensor": {
-      "docked": { "name": "Docked" },
-      "mow_in_rain": { "name": "Mow in rain" },
-      "boundary_cut": { "name": "Boundary cut" },
-      "helix": { "name": "Helix" },
-      "led": { "name": "LED" }
+      "docked": {
+        "name": "Docked"
+      },
+      "mow_in_rain": {
+        "name": "Mow in rain"
+      },
+      "boundary_cut": {
+        "name": "Boundary cut"
+      },
+      "helix": {
+        "name": "Helix"
+      }
     }
   }
 }

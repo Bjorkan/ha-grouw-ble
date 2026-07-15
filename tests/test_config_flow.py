@@ -51,6 +51,8 @@ def test_manual_address_validation_rejects_blank_values() -> None:
     assert _is_valid_address("AA:BB:CC:DD:EE:FF")
     assert not _is_valid_address("")
     assert not _is_valid_address("   ")
+    assert not _is_valid_address("not-a-bluetooth-address")
+    assert _is_valid_address("01234567-89AB-CDEF-0123-456789ABCDEF")
 
 
 def test_pin_validation_matches_daye_four_digit_pin_shape() -> None:
@@ -98,10 +100,22 @@ async def test_reauth_updates_existing_pin(
     )
     entry.add_to_hass(hass)
 
-    with patch.object(
-        hass.config_entries,
-        "async_reload",
-        AsyncMock(return_value=True),
+    with (
+        patch.object(
+            hass.config_entries,
+            "async_reload",
+            AsyncMock(return_value=True),
+        ),
+        patch.object(
+            bluetooth,
+            "async_ble_device_from_address",
+            return_value=object(),
+        ),
+        patch(
+            "custom_components.grouw_ble_mower.config_flow."
+            "GrouwBleMowerClient.async_get_mower_settings",
+            AsyncMock(return_value={"mower_settings": {}}),
+        ),
     ):
         result = await hass.config_entries.flow.async_init(
             DOMAIN,
@@ -124,6 +138,98 @@ async def test_reauth_updates_existing_pin(
     assert result["type"] is FlowResultType.ABORT
     assert result["reason"] == "reauth_successful"
     assert entry.data[CONF_PIN] == "4321"
+
+    await hass.async_stop()
+    await hass.async_block_till_done()
+
+
+async def test_reauth_rejects_unverified_pin(
+    hass: HomeAssistant, mock_bluetooth_adapters: None
+) -> None:
+    """A syntactically valid but incorrect PIN must not close reauth."""
+    from pygrouw import GrouwBleAuthenticationError
+
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        title="Test mower",
+        data={
+            CONF_ADDRESS: "AA:BB:CC:DD:EE:FF",
+            CONF_NAME: "Test mower",
+            CONF_PIN: "1234",
+        },
+        unique_id="AA:BB:CC:DD:EE:FF",
+    )
+    entry.add_to_hass(hass)
+
+    with (
+        patch.object(
+            bluetooth,
+            "async_ble_device_from_address",
+            return_value=object(),
+        ),
+        patch(
+            "custom_components.grouw_ble_mower.config_flow."
+            "GrouwBleMowerClient.async_get_mower_settings",
+            AsyncMock(side_effect=GrouwBleAuthenticationError("bad pin")),
+        ),
+    ):
+        result = await hass.config_entries.flow.async_init(
+            DOMAIN,
+            context={
+                "source": config_entries.SOURCE_REAUTH,
+                "entry_id": entry.entry_id,
+                "unique_id": entry.unique_id,
+            },
+            data=entry.data,
+        )
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"], {CONF_PIN: "4321"}
+        )
+
+    assert result["type"] is FlowResultType.FORM
+    assert result["step_id"] == "reauth_confirm"
+    assert result["errors"] == {"base": "invalid_auth"}
+    assert entry.data[CONF_PIN] == "1234"
+
+    await hass.async_stop()
+    await hass.async_block_till_done()
+
+
+async def test_reauth_requires_reachable_mower(
+    hass: HomeAssistant, mock_bluetooth_adapters: None
+) -> None:
+    """Reauth must not store an unverified PIN while the mower is absent."""
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        title="Test mower",
+        data={
+            CONF_ADDRESS: "AA:BB:CC:DD:EE:FF",
+            CONF_NAME: "Test mower",
+            CONF_PIN: "1234",
+        },
+        unique_id="AA:BB:CC:DD:EE:FF",
+    )
+    entry.add_to_hass(hass)
+
+    with patch.object(
+        bluetooth, "async_ble_device_from_address", return_value=None
+    ):
+        result = await hass.config_entries.flow.async_init(
+            DOMAIN,
+            context={
+                "source": config_entries.SOURCE_REAUTH,
+                "entry_id": entry.entry_id,
+                "unique_id": entry.unique_id,
+            },
+            data=entry.data,
+        )
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"], {CONF_PIN: "4321"}
+        )
+
+    assert result["type"] is FlowResultType.FORM
+    assert result["errors"] == {"base": "cannot_connect"}
+    assert entry.data[CONF_PIN] == "1234"
 
     await hass.async_stop()
     await hass.async_block_till_done()

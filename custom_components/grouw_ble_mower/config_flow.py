@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
+import re
 from typing import Any
 
 import voluptuous as vol
@@ -12,6 +13,9 @@ from homeassistant.const import CONF_NAME
 from homeassistant.data_entry_flow import FlowResult
 from homeassistant.helpers import selector
 from pygrouw import (
+    GrouwBleAuthenticationError,
+    GrouwBleError,
+    GrouwBleMowerClient,
     has_supported_service_uuid,
     is_supported_bluetooth_name,
     is_valid_pin,
@@ -25,14 +29,23 @@ from .const import (
     DOMAIN,
 )
 
+_MAC_ADDRESS_RE = re.compile(r"^(?:[0-9A-F]{2}:){5}[0-9A-F]{2}$")
+_CORE_BLUETOOTH_UUID_RE = re.compile(
+    r"^[0-9A-F]{8}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{12}$"
+)
+
 
 def _normalize_address(address: str) -> str:
     return normalize_address(address)
 
 
 def _is_valid_address(address: str) -> bool:
-    """Return true when the manual setup address is not blank."""
-    return bool(_normalize_address(address))
+    """Return true for supported platform Bluetooth identifier shapes."""
+    normalized = _normalize_address(address)
+    return bool(
+        _MAC_ADDRESS_RE.fullmatch(normalized)
+        or _CORE_BLUETOOTH_UUID_RE.fullmatch(normalized)
+    )
 
 
 def _is_supported_bluetooth_name(name: str) -> bool:
@@ -68,6 +81,32 @@ class GrouwBleMowerConfigFlow(ConfigFlow, domain=DOMAIN):
     def __init__(self) -> None:
         self._discovery_info: bluetooth.BluetoothServiceInfoBleak | None = None
 
+    async def _async_validate_pin(
+        self, address: str, name: str, pin: str
+    ) -> str | None:
+        """Validate the PIN against a currently reachable mower."""
+        device = bluetooth.async_ble_device_from_address(
+            self.hass, address, connectable=True
+        )
+        if device is None:
+            return "cannot_connect"
+
+        client = GrouwBleMowerClient(
+            address,
+            name,
+            pin,
+            device_provider=lambda: bluetooth.async_ble_device_from_address(
+                self.hass, address, connectable=True
+            ),
+        )
+        try:
+            await client.async_get_mower_settings()
+        except GrouwBleAuthenticationError:
+            return "invalid_auth"
+        except GrouwBleError:
+            return "cannot_connect"
+        return None
+
     def _pin_form(
         self,
         step_id: str,
@@ -91,6 +130,8 @@ class GrouwBleMowerConfigFlow(ConfigFlow, domain=DOMAIN):
         self, discovery_info: bluetooth.BluetoothServiceInfoBleak
     ) -> FlowResult:
         """Handle Bluetooth discovery."""
+        if not _is_supported_bluetooth_service_info(discovery_info):
+            return self.async_abort(reason="unsupported_device")
         self._discovery_info = discovery_info
         await self.async_set_unique_id(_normalize_address(discovery_info.address))
         self._abort_if_unique_id_configured()
@@ -151,12 +192,23 @@ class GrouwBleMowerConfigFlow(ConfigFlow, domain=DOMAIN):
             pin_data = self.context.get("pin_data", {})
             if not pin_data:
                 return self.async_abort(reason="missing_data")
+            name = pin_data.get(CONF_NAME, DEFAULT_NAME)
             if not _is_valid_pin(pin):
                 return self._pin_form(
                     "pin",
-                    pin_data.get(CONF_NAME, DEFAULT_NAME),
+                    name,
                     default_pin=pin,
                     errors={CONF_PIN: "invalid_pin"},
+                )
+            validation_error = await self._async_validate_pin(
+                pin_data[CONF_ADDRESS], name, pin
+            )
+            if validation_error is not None:
+                return self._pin_form(
+                    "pin",
+                    name,
+                    default_pin=pin,
+                    errors={"base": validation_error},
                 )
             return self.async_create_entry(
                 title=pin_data.get(CONF_NAME, DEFAULT_NAME),
@@ -201,6 +253,17 @@ class GrouwBleMowerConfigFlow(ConfigFlow, domain=DOMAIN):
                     name,
                     default_pin=pin,
                     errors={CONF_PIN: "invalid_pin"},
+                )
+
+            validation_error = await self._async_validate_pin(
+                pin_data[CONF_ADDRESS], name, pin
+            )
+            if validation_error is not None:
+                return self._pin_form(
+                    "reauth_confirm",
+                    name,
+                    default_pin=pin,
+                    errors={"base": validation_error},
                 )
 
             await self.async_set_unique_id(pin_data[CONF_ADDRESS])
