@@ -34,32 +34,62 @@
     "abort": {
       "already_configured": "Denne plæneklipper er allerede konfigureret.",
       "missing_data": "Konfigurationsdata mangler.",
-      "reauth_successful": "Genautentificeringen lykkedes."
+      "reauth_successful": "Genautentificeringen lykkedes.",
+      "unsupported_device": "Bluetooth-enheden er ikke en understøttet Grouw-plæneklipper."
     },
     "error": {
       "invalid_address": "Indtast en Bluetooth-adresse, eller vælg en fundet plæneklipper fra listen.",
-      "invalid_pin": "Indtast plæneklipperens 4-cifrede PIN-kode."
+      "invalid_pin": "Indtast plæneklipperens 4-cifrede PIN-kode.",
+      "cannot_connect": "Plæneklipperen kunne ikke nås via Bluetooth. Flyt den tættere på en modtager, og prøv igen.",
+      "invalid_auth": "PIN-koden stemte ikke overens med plæneklipperen."
     }
   },
   "entity": {
     "sensor": {
-      "battery": { "name": "Batteri" },
-      "mode": { "name": "Tilstandskode" },
-      "last_response_cmd": { "name": "Seneste svarkommando" },
-      "area2_percentage": { "name": "Område 2 procent" },
-      "area2_distance": { "name": "Område 2 afstand" },
-      "area3_percentage": { "name": "Område 3 procent" },
-      "area3_distance": { "name": "Område 3 afstand" },
-      "rain_delay_hour": { "name": "Regnforsinkelse timer" },
-      "rain_delay_minute": { "name": "Regnforsinkelse minutter" },
-      "unknown_setting": { "name": "Ukendt indstilling" }
+      "battery": {
+        "name": "Batteri"
+      },
+      "mode": {
+        "name": "Tilstandskode"
+      },
+      "last_response_cmd": {
+        "name": "Seneste svarkommando"
+      },
+      "area2_percentage": {
+        "name": "Område 2 procent"
+      },
+      "area2_distance": {
+        "name": "Område 2 afstand"
+      },
+      "area3_percentage": {
+        "name": "Område 3 procent"
+      },
+      "area3_distance": {
+        "name": "Område 3 afstand"
+      },
+      "rain_delay_hour": {
+        "name": "Regnforsinkelse timer"
+      },
+      "rain_delay_minute": {
+        "name": "Regnforsinkelse minutter"
+      },
+      "unknown_setting": {
+        "name": "Ukendt indstilling"
+      }
     },
     "binary_sensor": {
-      "docked": { "name": "I ladestationen" },
-      "mow_in_rain": { "name": "Klip i regn" },
-      "boundary_cut": { "name": "Kantklipning" },
-      "helix": { "name": "Helix" },
-      "led": { "name": "LED" }
+      "docked": {
+        "name": "I ladestationen"
+      },
+      "mow_in_rain": {
+        "name": "Klip i regn"
+      },
+      "boundary_cut": {
+        "name": "Kantklipning"
+      },
+      "helix": {
+        "name": "Helix"
+      }
     }
   }
 }
