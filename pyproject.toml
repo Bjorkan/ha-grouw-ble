@@ -12,7 +12,7 @@ dev = [
   "pyserial",
   "pytest",
   "pytest-homeassistant-custom-component",
-  "ruff==0.16.5",
+  "ruff==0.16.6",
   "serialx[esphome]",
 ]
 
