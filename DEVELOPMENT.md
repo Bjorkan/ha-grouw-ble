@@ -3,7 +3,7 @@
 Durable development notes for the Grouw Mower Home Assistant custom
 integration.
 
-Last updated: 2026-07-15.
+Last updated: 2026-10-29.
 
 ## Read First
 

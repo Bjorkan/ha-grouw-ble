@@ -33,8 +33,12 @@
     "bluetooth_adapters"
   ],
   "documentation": "https://github.com/Bjorkan/ha-grouw-ble#readme",
+  "integration_type": "device",
   "iot_class": "local_polling",
   "issue_tracker": "https://github.com/Bjorkan/ha-grouw-ble/issues",
+  "loggers": [
+    "pygrouw"
+  ],
   "requirements": [
     "pygrouw==0.1.4.1"
   ],
