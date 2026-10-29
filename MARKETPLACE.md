@@ -34,7 +34,7 @@ the mower BLE protocol.
 | Single component | `custom_components/grouw_ble_mower/` with Python code and assets; no secondary Marketplace domain |
 | Domain continuity | `grouw_ble_mower` unchanged to preserve existing HA installations and entity identifiers |
 | Installable package | `__init__.py`, manifest, config flow, platforms, locales and brand images inside installable folder |
-| `hacs.json` | Root name and minimum HA version, no irrelevant layout flags or ignored legacy key `render_readme` |
+| `hacs.json` | Root name and minimum HA version 2024.9.0; no irrelevant layout flags or ignored legacy key `render_readme` |
 | Version | Manifest `1.3.1` matches `pyproject.toml` and `uv.lock`; publish GitHub Release with same tag |
 | Required manifest | HTTPS documentation, issue tracker, code owner, domain/name, version, sorted manifest keys |
 | Integration type | `device`: one Grouw BLE mower per config entry |
@@ -65,7 +65,7 @@ Home Assistant reads the included `translations/*.json` files.
 - [ ] [Hassfest](https://github.com/Bjorkan/ha-grouw-ble/actions/workflows/validate_hassfest.yaml) succeeds on **final commit**, including metadata and translations.
 - [ ] [Unit tests, Ruff and package regression tests](https://github.com/Bjorkan/ha-grouw-ble/actions/workflows/test_unit.yaml) succeed on **final commit**.
 - [ ] Test fresh Marketplace installation **from a published GitHub Release**, automatic PyPI dependency installation, Bluetooth discovery and manual setup on a real supported mower.
-- [ ] Verify `homeassistant: 2024.1.0` with a **real runtime** before claiming backwards compatibility. This is a retained historical floor, not established by current CI.
+- [ ] Verify `homeassistant: 2024.9.0` with a **real runtime** before claiming full backwards compatibility. The former `2024.1.0` minimum was invalid: this integration imports `LawnMowerActivity.RETURNING`, introduced in [Core 2024.9](https://developers.home-assistant.io/blog/2024/08/23/lawn-mower-activity-returning/). Confirmed absent in Core 2024.1 and present in Core 2024.9 source.
 - [ ] Test integration compatibility with an upcoming Home Assistant beta; monitor core API deprecation announcements.
 
 ## Publishing GitHub Release 1.3.1
@@ -102,6 +102,6 @@ Home Assistant reads the included `translations/*.json` files.
    catalog update/removal procedure; do not just delete a listed repository.
 
 **Still unverified:** Home Assistant Marketplace installation on a running HA
-instance, physical BLE mower operation, claimed 2024.1 version floor, new
+instance, physical BLE mower operation, claimed 2024.9 version floor, new
 GitHub Release 1.3.1 (not yet published) and upstream catalog approval.
 Automated passing checks alone cannot prove any of these.

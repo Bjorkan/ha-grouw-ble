@@ -105,6 +105,8 @@ not require a restart. Restart Home Assistant when prompted after updates.
 ### HACS (Home Assistant before 2026.11)
 
 HACS must already be installed in Home Assistant.
+**Grouw Mower 1.3.1 requires Home Assistant 2024.9 or later** because it uses
+the lawn-mower returning activity introduced in that release.
 
 Open this repository in HACS:
 

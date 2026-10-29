@@ -31,7 +31,7 @@ def test_marketplace_metadata() -> None:
     manifest = _load_json(INTEGRATION / "manifest.json")
 
     assert hacs["name"] == manifest["name"] == "Grouw Mower"
-    assert hacs["homeassistant"]
+    assert hacs["homeassistant"] == "2024.9.0"
     assert set(hacs) == {"name", "homeassistant"}
     assert manifest["domain"] == INTEGRATION.name
     assert manifest["config_flow"] is True

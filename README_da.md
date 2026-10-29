@@ -108,6 +108,8 @@ Genstart Home Assistant, hvis det kræves efter en opdatering.
 ### HACS (Home Assistant før 2026.11)
 
 HACS skal allerede være installeret i Home Assistant.
+**Grouw Mower 1.3.1 kræver Home Assistant 2024.9 eller nyere**, fordi
+integrationen bruger den nye lawn mower-aktivitet for tilbagevenden til dock.
 
 Åbn dette repository i HACS:
 
