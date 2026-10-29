@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 import json
+from pathlib import Path
 import struct
 import tomllib
-from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 INTEGRATION = ROOT / "custom_components" / "grouw_ble_mower"
@@ -41,7 +41,9 @@ def test_marketplace_metadata() -> None:
     assert manifest["categories"] == ["garden_plants"]
     assert manifest["requirements"] == ["pygrouw==0.1.4.1"]
     assert "pygrouw" in manifest["loggers"]
-    assert manifest["documentation"].startswith("https://github.com/Bjorkan/ha-grouw-ble")
+    assert manifest["documentation"].startswith(
+        "https://github.com/Bjorkan/ha-grouw-ble"
+    )
     assert manifest["issue_tracker"] == "https://github.com/Bjorkan/ha-grouw-ble/issues"
     assert (INTEGRATION / "__init__.py").is_file()
 
