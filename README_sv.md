@@ -82,9 +82,35 @@ begär svarsdata.
 
 ## Installation
 
-### HACS
+### Marketplace (Home Assistant 2026.11+)
+
+Från Home Assistant 2026.11 finns Marketplace under
+**Inställningar > Marketplace**. Du behöver inte installera HACS separat.
+
+[![Öppna Grouw Mower i Home Assistant Marketplace.](https://my.home-assistant.io/badges/marketplace_repository.svg)](https://my.home-assistant.io/redirect/marketplace_repository/?owner=Bjorkan&repository=ha-grouw-ble&category=integration)
+
+Öppna länken och installera **Grouw Mower**. Lägg till repositoryt som ett
+anpassat repository om det ännu inte finns i den publika katalogen.
+Home Assistant installerar automatiskt det publicerade Python-biblioteket
+`pygrouw`; `pyGrouw` är ingen separat Marketplace-integration.
+
+Starta därefter konfigurationen:
+
+[![Konfigurera Grouw Mower.](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start/?domain=grouw_ble_mower)
+
+```text
+Inställningar -> Enheter och tjänster -> Lägg till integration -> Grouw Mower
+```
+
+Vid den första installationen behövs normalt ingen omstart när ett
+konfigurationsflöde finns. Starta om Home Assistant om det begärs efter en
+uppdatering.
+
+### HACS (Home Assistant före 2026.11)
 
 HACS måste redan vara installerat i Home Assistant.
+**Grouw Mower 1.3.1 kräver Home Assistant 2024.9 eller senare** eftersom
+integrationen använder gräsklipparaktiviteten för återvändande som infördes då.
 
 Öppna detta repository i HACS:
 

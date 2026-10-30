@@ -3,11 +3,12 @@
 Durable development notes for the Grouw Mower Home Assistant custom
 integration.
 
-Last updated: 2026-07-15.
+Last updated: 2026-10-29.
 
 ## Read First
 
 - User setup and feature status: [README.md](README.md)
+- Marketplace publishing and release checklist: [MARKETPLACE.md](MARKETPLACE.md)
 - Test strategy and commands: [TESTING.md](TESTING.md)
 - Protocol map and detailed findings:
   [../pyGrouw/reverse_engineered/index.md](../pyGrouw/reverse_engineered/index.md)

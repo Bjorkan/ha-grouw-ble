@@ -79,9 +79,34 @@ call requests response data.
 
 ## Installation
 
-### HACS
+### Marketplace (Home Assistant 2026.11+)
+
+Home Assistant 2026.11 and later includes the Marketplace under
+**Settings > Marketplace**. You do not need to install HACS separately.
+
+[![Open Grouw Mower in the Home Assistant Marketplace.](https://my.home-assistant.io/badges/marketplace_repository.svg)](https://my.home-assistant.io/redirect/marketplace_repository/?owner=Bjorkan&repository=ha-grouw-ble&category=integration)
+
+Open the link and install **Grouw Mower**. If the repository is not in the
+public catalog yet, add it as a custom repository when prompted. Home
+Assistant installs the published `pygrouw` Python library automatically;
+`pyGrouw` is not a separate Marketplace integration.
+
+After installation, start the integration setup:
+
+[![Set up Grouw Mower.](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start/?domain=grouw_ble_mower)
+
+```text
+Settings -> Devices & services -> Add integration -> Grouw Mower
+```
+
+The first installation of an integration with a config flow normally does
+not require a restart. Restart Home Assistant when prompted after updates.
+
+### HACS (Home Assistant before 2026.11)
 
 HACS must already be installed in Home Assistant.
+**Grouw Mower 1.3.1 requires Home Assistant 2024.9 or later** because it uses
+the lawn-mower returning activity introduced in that release.
 
 Open this repository in HACS:
 

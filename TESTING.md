@@ -38,8 +38,8 @@ Validation runs on both `push` and `pull_request`:
 .github/workflows/validate_hacs.yaml
 ```
 
-`test_unit.yaml` installs `requirements-test.txt`, runs Ruff lint and format
-checks, runs pytest, and compiles the integration and tests. The CI environment
+`test_unit.yaml` installs locked dependencies with `uv sync --locked`, runs
+Ruff lint and format checks, runs pytest, and compiles integration and tests. The CI environment
 includes `pytest-homeassistant-custom-component`, so HA setup/unload and config
 flow tests run there instead of being skipped.
 
@@ -50,8 +50,9 @@ upstream tooling.
 When Docker and `act` are available, reproduce the workflows with:
 
 ```bash
-act -j tests -P ubuntu-latest=catthehacker/ubuntu:act-latest
-act -j validate -P ubuntu-latest=catthehacker/ubuntu:act-latest
+act -j run-tests -P ubuntu-latest=catthehacker/ubuntu:act-latest
+act -j validate-with-hassfest -P ubuntu-latest=catthehacker/ubuntu:act-latest
+act -j validate-with-hacs -P ubuntu-latest=catthehacker/ubuntu:act-latest
 ```
 
 ## Test Files
@@ -63,6 +64,7 @@ tests/test_entity_availability.py  Status/settings-backed entity availability
 tests/test_init.py             Config entry setup/unload
 tests/test_lawn_mower.py       Activity mapping and mower commands
 tests/test_services.py         Service validation/routing and response support
+tests/test_marketplace_package.py  Marketplace manifest, assets, translations
 ```
 
 ## Current Coverage
