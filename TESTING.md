@@ -64,6 +64,7 @@ tests/test_entity_availability.py  Status/settings-backed entity availability
 tests/test_init.py             Config entry setup/unload
 tests/test_lawn_mower.py       Activity mapping and mower commands
 tests/test_services.py         Service validation/routing and response support
+tests/test_pygrouw_features.py  Settings buttons, work-time sensors and locales
 tests/test_marketplace_package.py  Marketplace manifest, assets, translations
 ```
 
@@ -94,6 +95,9 @@ Coordinator/service coverage:
 - settings service handlers delegated to new coordinator methods
 - sensor and binary sensor `available` property overrides for status and
   settings-backed entities
+- buttons for on-demand, authenticated pyGrouw settings reads
+- weekly schedule sensors show each named day, raw duration attributes,
+  unavailable/malformed data and no extra polling
 
 Entity/config coverage:
 
@@ -147,6 +151,10 @@ Use this checklist against a real mower:
 13. Confirm mower settings read/write via `get_mower_settings` / `set_mower_settings`
     services and that binary sensor entities update after reading.
 14. Confirm work time read/write via `get_work_times` / `set_work_times` services.
+    Check that the seven daily start-time sensors populate with duration
+    attributes, including after a schedule write.
+    Confirm that the read buttons for multi-area, mower settings and schedule
+    trigger authenticated BLE reads from the device page, and propagate errors.
 15. Update `README.md`, `DEVELOPMENT.md`, `TESTING.md`, and the companion
     library's `reverse_engineered/` folder with validated facts and remaining
     uncertainty.

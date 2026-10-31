@@ -59,6 +59,11 @@ Detailed protocol notes live in the companion library:
   - rain delay hours and minutes
   - unknown setting byte
   - mow in rain, boundary cut, helix, LED
+- Config buttons **Read multi-area**, **Read mower settings**, and **Read work times**
+  to call the authenticated pyGrouw reads from the device page without YAML.
+- Seven weekly start-time sensors (Monday–Sunday), with the corresponding
+  duration components (`duration_hours`, `duration_tenths`) as attributes
+  after reading the schedule.
 - Debug service `grouw_ble_mower.send_raw_json` for protocol validation.
 - Service `grouw_ble_mower.change_pin` to change the mower PIN.
 - Service `grouw_ble_mower.set_multi_area` to configure multi-area mowing.
@@ -72,8 +77,10 @@ Normal polling and controls use the HCI-confirmed DYM protocol. APK-derived
 BlueKey commands are available only as raw debug probes until hardware captures
 prove their exact on-wire behavior for this mower generation.
 
-Settings read/write operations require authentication and are performed on
-demand through services. They are not part of the normal polling cycle.
+Settings reads require authentication and are performed on demand through
+the read buttons or services. Writes remain service actions. No additional BLE
+requests are made in the normal polling cycle. Schedule sensors are unavailable
+until the full weekly schedule has been read; their start times are mower-local.
 Read, debug, and write services return their pyGrouw response when the action
 call requests response data.
 

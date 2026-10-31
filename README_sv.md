@@ -61,6 +61,10 @@ Detaljerade protokollanteckningar finns i companion-biblioteket:
   - regnfördröjning timmar och minuter
   - okänd inställningsbyte
   - klipp i regn, kantklippning, helix, LED
+- Knapparna **Läs flerområdesinställningar**, **Läs klipparinställningar** och
+  **Läs arbetstider** hämtar data via pyGrouw direkt från enhetssidan.
+- Sju sensorer för veckans starttider (måndag–söndag), med varaktighetens
+  råfält (`duration_hours`, `duration_tenths`) som attribut när schemat lästs.
 - Debugtjänsten `grouw_ble_mower.send_raw_json` för protokollvalidering.
 - Tjänsten `grouw_ble_mower.change_pin` för att ändra klipparens PIN-kod.
 - Tjänsten `grouw_ble_mower.set_multi_area` för att konfigurera multi-area-klippning.
@@ -75,8 +79,10 @@ APK-härledda BlueKey-kommandon finns endast som råa debugprober tills
 hårdvarucaptures visar deras exakta beteende på kabeln för denna
 klippargeneration.
 
-Inställningsläsning och -skrivning kräver autentisering och utförs på
-begäran via tjänster. De ingår inte i den normala pollingscykeln.
+Inställningsläsning kräver autentisering och kan köras med knappar eller
+tjänster. Skrivning sker fortfarande via tjänsterna. Ingen extra BLE-trafik
+sker i normal polling. Schemasensorerna är otillgängliga tills hela schemat
+lästs in; starttiderna gäller klipparens lokala tid.
 Läs-, debug- och skrivtjänsterna returnerar sina pyGrouw-svar när action-anropet
 begär svarsdata.
 
