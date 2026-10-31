@@ -28,6 +28,7 @@ class GrouwSensorEntityDescription(SensorEntityDescription):
 
     value_fn: Callable[[GrouwMowerCoordinator], Any]
     available_fn: Callable[[GrouwMowerCoordinator], bool]
+    attributes_fn: Callable[[GrouwMowerCoordinator], dict[str, Any] | None] | None = None
 
 
 def _has_status_state(coord: GrouwMowerCoordinator) -> bool:
@@ -43,6 +44,79 @@ def _has_multi_area(coord: GrouwMowerCoordinator) -> bool:
 def _has_mower_settings(coord: GrouwMowerCoordinator) -> bool:
     """Return true when mower settings have been read or written."""
     return coord.mower_settings is not None
+
+
+WORK_TIME_DAYS = (
+    "monday",
+    "tuesday",
+    "wednesday",
+    "thursday",
+    "friday",
+    "saturday",
+    "sunday",
+)
+
+
+def _schedule_day(
+    values: list[dict[str, Any]] | None, day: str
+) -> dict[str, Any] | None:
+    """Find the named day in pyGrouw's parsed DYM work-time response."""
+    if not isinstance(values, list):
+        return None
+    return next(
+        (
+            entry
+            for entry in values
+            if isinstance(entry, dict) and entry.get("day") == day
+        ),
+        None,
+    )
+
+
+def _work_time_start(coord: GrouwMowerCoordinator, day: str) -> str | None:
+    """Format a verified mower-local start time as HH:MM."""
+    item = _schedule_day(coord.work_time_starts, day)
+    if item is None:
+        return None
+    hour, minute = item.get("hour"), item.get("minute")
+    if (
+        isinstance(hour, int)
+        and not isinstance(hour, bool)
+        and 0 <= hour <= 23
+        and isinstance(minute, int)
+        and not isinstance(minute, bool)
+        and 0 <= minute <= 59
+    ):
+        return f"{hour:02d}:{minute:02d}"
+    return None
+
+
+def _work_time_duration(
+    coord: GrouwMowerCoordinator, day: str
+) -> dict[str, int] | None:
+    """Keep the published protocol's hours/tenths fields unmodified."""
+    item = _schedule_day(coord.work_time_durations, day)
+    if item is None:
+        return None
+    hours, tenths = item.get("hours"), item.get("tenths")
+    if (
+        isinstance(hours, int)
+        and not isinstance(hours, bool)
+        and 0 <= hours <= 23
+        and isinstance(tenths, int)
+        and not isinstance(tenths, bool)
+        and 0 <= tenths <= 9
+    ):
+        return {"duration_hours": hours, "duration_tenths": tenths}
+    return None
+
+
+def _has_work_time_day(coord: GrouwMowerCoordinator, day: str) -> bool:
+    """Display a day only after both complete, valid response fields exist."""
+    return (
+        _work_time_start(coord, day) is not None
+        and _work_time_duration(coord, day) is not None
+    )
 
 
 SENSORS: tuple[GrouwSensorEntityDescription, ...] = (
@@ -145,6 +219,16 @@ SENSORS: tuple[GrouwSensorEntityDescription, ...] = (
         ),
         available_fn=_has_mower_settings,
     ),
+) + tuple(
+    GrouwSensorEntityDescription(
+        key=f"work_time_{day}",
+        translation_key=f"work_time_{day}",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=lambda coord, day=day: _work_time_start(coord, day),
+        available_fn=lambda coord, day=day: _has_work_time_day(coord, day),
+        attributes_fn=lambda coord, day=day: _work_time_duration(coord, day),
+    )
+    for day in WORK_TIME_DAYS
 )
 
 
@@ -180,3 +264,10 @@ class GrouwMowerSensor(GrouwMowerEntity, SensorEntity):
     @property
     def available(self) -> bool:
         return self.entity_description.available_fn(self.coordinator)
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any] | None:
+        """Expose raw duration components from the cached pyGrouw response."""
+        if not self.available or self.entity_description.attributes_fn is None:
+            return None
+        return self.entity_description.attributes_fn(self.coordinator)

@@ -43,23 +43,85 @@
   },
   "entity": {
     "sensor": {
-      "battery": { "name": "Batteri" },
-      "mode": { "name": "Tilstandskode" },
-      "last_response_cmd": { "name": "Seneste svarkommando" },
-      "area2_percentage": { "name": "Område 2 procent" },
-      "area2_distance": { "name": "Område 2 afstand" },
-      "area3_percentage": { "name": "Område 3 procent" },
-      "area3_distance": { "name": "Område 3 afstand" },
-      "rain_delay_hour": { "name": "Regnforsinkelse timer" },
-      "rain_delay_minute": { "name": "Regnforsinkelse minutter" },
-      "unknown_setting": { "name": "Ukendt indstilling" }
+      "battery": {
+        "name": "Batteri"
+      },
+      "mode": {
+        "name": "Tilstandskode"
+      },
+      "last_response_cmd": {
+        "name": "Seneste svarkommando"
+      },
+      "area2_percentage": {
+        "name": "Område 2 procent"
+      },
+      "area2_distance": {
+        "name": "Område 2 afstand"
+      },
+      "area3_percentage": {
+        "name": "Område 3 procent"
+      },
+      "area3_distance": {
+        "name": "Område 3 afstand"
+      },
+      "rain_delay_hour": {
+        "name": "Regnforsinkelse timer"
+      },
+      "rain_delay_minute": {
+        "name": "Regnforsinkelse minutter"
+      },
+      "unknown_setting": {
+        "name": "Ukendt indstilling"
+      },
+      "work_time_monday": {
+        "name": "Mandag starttid"
+      },
+      "work_time_tuesday": {
+        "name": "Tirsdag starttid"
+      },
+      "work_time_wednesday": {
+        "name": "Onsdag starttid"
+      },
+      "work_time_thursday": {
+        "name": "Torsdag starttid"
+      },
+      "work_time_friday": {
+        "name": "Fredag starttid"
+      },
+      "work_time_saturday": {
+        "name": "Lørdag starttid"
+      },
+      "work_time_sunday": {
+        "name": "Søndag starttid"
+      }
     },
     "binary_sensor": {
-      "docked": { "name": "I ladestationen" },
-      "mow_in_rain": { "name": "Klip i regn" },
-      "boundary_cut": { "name": "Kantklipning" },
-      "helix": { "name": "Helix" },
-      "led": { "name": "LED" }
+      "docked": {
+        "name": "I ladestationen"
+      },
+      "mow_in_rain": {
+        "name": "Klip i regn"
+      },
+      "boundary_cut": {
+        "name": "Kantklipning"
+      },
+      "helix": {
+        "name": "Helix"
+      },
+      "led": {
+        "name": "LED"
+      }
+    },
+    "button": {
+      "read_multi_area": {
+        "name": "Læs områdeindstillinger"
+      },
+      "read_mower_settings": {
+        "name": "Læs plæneklipperindstillinger"
+      },
+      "read_work_times": {
+        "name": "Læs arbejdstider"
+      }
     }
   }
 }

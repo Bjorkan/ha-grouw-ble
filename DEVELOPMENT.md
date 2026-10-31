@@ -182,6 +182,23 @@ All settings services follow the same pattern as `async_send_command`:
 they acquire `_ble_lock`, increment `_pending_commands`, handle auth and BLE
 errors, and update coordinator state on success.
 
+The **button** platform exposes on-demand reads of multi-area, mower settings
+and weekly work times. Buttons call existing coordinator read methods, so
+authentication, the per-mower BLE lock and error mapping are not duplicated.
+Buttons remain pressable when the last status poll failed, enabling a manual
+retry. No extra background BLE traffic is introduced.
+
+The weekly work-time sensors use the published pyGrouw parsed response format:
+seven named days with `hour`/`minute` in `work_time_starts`, and `hours`/
+`tenths` in `work_time_durations`. Each day's start time is shown as mower-local
+`HH:MM`; the duration fields are kept raw as attributes rather than guessing
+an unverified conversion. The day's sensor becomes available only when both
+validated parts have been cached. Existing sensor unique IDs remain unchanged.
+
+The latest code under pyGrouw `main` differs from PyPI `0.1.4.1` only in
+README and GitHub workflow files as of 2026-10-31. There is no unreleased
+runtime API to adopt. Keep the manifest pinned to the published PyPI version.
+
 Settings sensors and binary sensors display cached values from the coordinator.
 They show `None` until the corresponding get or set service is called.
 Their availability follows the pyGrouw data source they use: normal status
