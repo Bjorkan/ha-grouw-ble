@@ -9,12 +9,11 @@ from typing import Any
 
 import pytest
 
-from homeassistant.const import Platform
-from homeassistant.exceptions import HomeAssistantError
-
 from custom_components.grouw_ble_mower import PLATFORMS
 from custom_components.grouw_ble_mower.button import BUTTONS, GrouwMowerButton
-from custom_components.grouw_ble_mower.sensor import GrouwMowerSensor, SENSORS
+from custom_components.grouw_ble_mower.sensor import SENSORS, GrouwMowerSensor
+from homeassistant.const import Platform
+from homeassistant.exceptions import HomeAssistantError
 
 DAYS = (
     "monday",

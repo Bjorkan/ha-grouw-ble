@@ -219,16 +219,17 @@ SENSORS: tuple[GrouwSensorEntityDescription, ...] = (
         ),
         available_fn=_has_mower_settings,
     ),
-) + tuple(
-    GrouwSensorEntityDescription(
-        key=f"work_time_{day}",
-        translation_key=f"work_time_{day}",
-        entity_category=EntityCategory.DIAGNOSTIC,
-        value_fn=lambda coord, day=day: _work_time_start(coord, day),
-        available_fn=lambda coord, day=day: _has_work_time_day(coord, day),
-        attributes_fn=lambda coord, day=day: _work_time_duration(coord, day),
-    )
-    for day in WORK_TIME_DAYS
+    *(
+        GrouwSensorEntityDescription(
+            key=f"work_time_{day}",
+            translation_key=f"work_time_{day}",
+            entity_category=EntityCategory.DIAGNOSTIC,
+            value_fn=lambda coord, day=day: _work_time_start(coord, day),
+            available_fn=lambda coord, day=day: _has_work_time_day(coord, day),
+            attributes_fn=lambda coord, day=day: _work_time_duration(coord, day),
+        )
+        for day in WORK_TIME_DAYS
+    ),
 )
 
 
