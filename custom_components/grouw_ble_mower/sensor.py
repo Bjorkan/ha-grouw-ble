@@ -28,7 +28,9 @@ class GrouwSensorEntityDescription(SensorEntityDescription):
 
     value_fn: Callable[[GrouwMowerCoordinator], Any]
     available_fn: Callable[[GrouwMowerCoordinator], bool]
-    attributes_fn: Callable[[GrouwMowerCoordinator], dict[str, Any] | None] | None = None
+    attributes_fn: Callable[[GrouwMowerCoordinator], dict[str, Any] | None] | None = (
+        None
+    )
 
 
 def _has_status_state(coord: GrouwMowerCoordinator) -> bool:

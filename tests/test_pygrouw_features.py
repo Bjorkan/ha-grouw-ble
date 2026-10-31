@@ -99,13 +99,11 @@ def test_weekly_schedule_sensors_only_available_after_read() -> None:
     assert sensor._attr_unique_id == f"{coord.address}_work_time_monday"
 
     coord.work_time_starts = [
-        {"day": day, "hour": 8 + i, "minute": i}
-        for i, day in enumerate(reversed(DAYS))
+        {"day": day, "hour": 8 + i, "minute": i} for i, day in enumerate(reversed(DAYS))
     ]
     assert sensor.available is False  # Require both response packets.
     coord.work_time_durations = [
-        {"day": day, "hours": i, "tenths": i}
-        for i, day in enumerate(reversed(DAYS))
+        {"day": day, "hours": i, "tenths": i} for i, day in enumerate(reversed(DAYS))
     ]
     assert sensor.available is True
     assert sensor.native_value == "14:06"

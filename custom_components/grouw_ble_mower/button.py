@@ -54,7 +54,9 @@ async def async_setup_entry(
 ) -> None:
     """Set up per-mower settings read buttons."""
     coordinator: GrouwMowerCoordinator = hass.data[entry.domain][entry.entry_id]
-    async_add_entities(GrouwMowerButton(coordinator, description) for description in BUTTONS)
+    async_add_entities(
+        GrouwMowerButton(coordinator, description) for description in BUTTONS
+    )
 
 
 class GrouwMowerButton(GrouwMowerEntity, ButtonEntity):
