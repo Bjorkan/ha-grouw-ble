@@ -43,23 +43,85 @@
   },
   "entity": {
     "sensor": {
-      "battery": { "name": "Battery" },
-      "mode": { "name": "Mode code" },
-      "last_response_cmd": { "name": "Last response command" },
-      "area2_percentage": { "name": "Area 2 percentage" },
-      "area2_distance": { "name": "Area 2 distance" },
-      "area3_percentage": { "name": "Area 3 percentage" },
-      "area3_distance": { "name": "Area 3 distance" },
-      "rain_delay_hour": { "name": "Rain delay hours" },
-      "rain_delay_minute": { "name": "Rain delay minutes" },
-      "unknown_setting": { "name": "Unknown setting" }
+      "battery": {
+        "name": "Battery"
+      },
+      "mode": {
+        "name": "Mode code"
+      },
+      "last_response_cmd": {
+        "name": "Last response command"
+      },
+      "area2_percentage": {
+        "name": "Area 2 percentage"
+      },
+      "area2_distance": {
+        "name": "Area 2 distance"
+      },
+      "area3_percentage": {
+        "name": "Area 3 percentage"
+      },
+      "area3_distance": {
+        "name": "Area 3 distance"
+      },
+      "rain_delay_hour": {
+        "name": "Rain delay hours"
+      },
+      "rain_delay_minute": {
+        "name": "Rain delay minutes"
+      },
+      "unknown_setting": {
+        "name": "Unknown setting"
+      },
+      "work_time_monday": {
+        "name": "Monday work start"
+      },
+      "work_time_tuesday": {
+        "name": "Tuesday work start"
+      },
+      "work_time_wednesday": {
+        "name": "Wednesday work start"
+      },
+      "work_time_thursday": {
+        "name": "Thursday work start"
+      },
+      "work_time_friday": {
+        "name": "Friday work start"
+      },
+      "work_time_saturday": {
+        "name": "Saturday work start"
+      },
+      "work_time_sunday": {
+        "name": "Sunday work start"
+      }
     },
     "binary_sensor": {
-      "docked": { "name": "Docked" },
-      "mow_in_rain": { "name": "Mow in rain" },
-      "boundary_cut": { "name": "Boundary cut" },
-      "helix": { "name": "Helix" },
-      "led": { "name": "LED" }
+      "docked": {
+        "name": "Docked"
+      },
+      "mow_in_rain": {
+        "name": "Mow in rain"
+      },
+      "boundary_cut": {
+        "name": "Boundary cut"
+      },
+      "helix": {
+        "name": "Helix"
+      },
+      "led": {
+        "name": "LED"
+      }
+    },
+    "button": {
+      "read_multi_area": {
+        "name": "Read multi-area"
+      },
+      "read_mower_settings": {
+        "name": "Read mower settings"
+      },
+      "read_work_times": {
+        "name": "Read work times"
+      }
     }
   }
 }

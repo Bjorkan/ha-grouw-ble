@@ -56,6 +56,7 @@ PLATFORMS: list[Platform] = [
     Platform.LAWN_MOWER,
     Platform.SENSOR,
     Platform.BINARY_SENSOR,
+    Platform.BUTTON,
 ]
 
 PIN_REGEX = r"^\d{4}$"

@@ -104,6 +104,21 @@ def _install_lightweight_stubs() -> None:
     sensor.SensorEntity = SensorEntity
     sensor.SensorEntityDescription = SensorEntityDescription
 
+    button = _install_module("homeassistant.components.button")
+    components.button = button
+
+    class ButtonEntity:
+        """Minimal button entity stub."""
+
+    @dataclass(frozen=True, kw_only=True)
+    class ButtonEntityDescription:
+        key: str
+        translation_key: str | None = None
+        entity_category: Any = None
+
+    button.ButtonEntity = ButtonEntity
+    button.ButtonEntityDescription = ButtonEntityDescription
+
     binary_sensor = _install_module("homeassistant.components.binary_sensor")
     components.binary_sensor = binary_sensor
 
@@ -129,13 +144,16 @@ def _install_lightweight_stubs() -> None:
 
     const = _install_module("homeassistant.const")
     const.CONF_NAME = "name"
-    const.EntityCategory = types.SimpleNamespace(DIAGNOSTIC="diagnostic")
+    const.EntityCategory = types.SimpleNamespace(
+        DIAGNOSTIC="diagnostic", CONFIG="config"
+    )
     const.PERCENTAGE = "%"
 
     class Platform:
         LAWN_MOWER = "lawn_mower"
         SENSOR = "sensor"
         BINARY_SENSOR = "binary_sensor"
+        BUTTON = "button"
 
     const.Platform = Platform
 
