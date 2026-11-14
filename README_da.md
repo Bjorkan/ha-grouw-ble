@@ -61,6 +61,10 @@ Detaljerede protokolnoter findes i companion-biblioteket:
   - regnforsinkelse timer og minutter
   - ukendt indstillingsbyte
   - klip i regn, kantklipning, helix, LED
+- Knapperne **Læs områdeindstillinger**, **Læs plæneklipperindstillinger** og
+  **Læs arbejdstider** henter data via pyGrouw fra enhedssiden.
+- Syv sensorer for ugens starttider (mandag–søndag), med varighedens råfelter
+  (`duration_hours`, `duration_tenths`) som attributter, når planen er læst.
 - Debugtjenesten `grouw_ble_mower.send_raw_json` til protokolvalidering.
 - Tjenesten `grouw_ble_mower.change_pin` til at skifte plæneklipperens PIN-kode.
 - Tjenesten `grouw_ble_mower.set_multi_area` til at konfigurere multi-area-klipning.
@@ -75,8 +79,10 @@ BlueKey-kommandoer er kun tilgængelige som rå debug-prober, indtil
 hardware-captures beviser deres præcise on-wire-adfærd for denne
 plæneklippergeneration.
 
-Indstillingslæsning og -skrivning kræver autentificering og udføres på
-anmodning via tjenester. De er ikke en del af den normale polling-cyklus.
+Læsning af indstillinger kræver autentificering og kan udføres via knapper
+eller tjenester. Skrivning sker stadig via tjenesterne. Normal polling udløser
+ingen ekstra BLE-trafik. Plansensorerne er utilgængelige, indtil hele ugen
+er læst; starttiderne er i plæneklipperens lokale tid.
 Læse-, debug- og skrivetjenesterne returnerer deres pyGrouw-svar, når
 action-kaldet anmoder om svardata.
 

@@ -43,23 +43,85 @@
   },
   "entity": {
     "sensor": {
-      "battery": { "name": "Batteri" },
-      "mode": { "name": "Lägeskod" },
-      "last_response_cmd": { "name": "Senaste svarskommando" },
-      "area2_percentage": { "name": "Område 2 procent" },
-      "area2_distance": { "name": "Område 2 avstånd" },
-      "area3_percentage": { "name": "Område 3 procent" },
-      "area3_distance": { "name": "Område 3 avstånd" },
-      "rain_delay_hour": { "name": "Regnfördröjning timmar" },
-      "rain_delay_minute": { "name": "Regnfördröjning minuter" },
-      "unknown_setting": { "name": "Okänd inställning" }
+      "battery": {
+        "name": "Batteri"
+      },
+      "mode": {
+        "name": "Lägeskod"
+      },
+      "last_response_cmd": {
+        "name": "Senaste svarskommando"
+      },
+      "area2_percentage": {
+        "name": "Område 2 procent"
+      },
+      "area2_distance": {
+        "name": "Område 2 avstånd"
+      },
+      "area3_percentage": {
+        "name": "Område 3 procent"
+      },
+      "area3_distance": {
+        "name": "Område 3 avstånd"
+      },
+      "rain_delay_hour": {
+        "name": "Regnfördröjning timmar"
+      },
+      "rain_delay_minute": {
+        "name": "Regnfördröjning minuter"
+      },
+      "unknown_setting": {
+        "name": "Okänd inställning"
+      },
+      "work_time_monday": {
+        "name": "Måndag starttid"
+      },
+      "work_time_tuesday": {
+        "name": "Tisdag starttid"
+      },
+      "work_time_wednesday": {
+        "name": "Onsdag starttid"
+      },
+      "work_time_thursday": {
+        "name": "Torsdag starttid"
+      },
+      "work_time_friday": {
+        "name": "Fredag starttid"
+      },
+      "work_time_saturday": {
+        "name": "Lördag starttid"
+      },
+      "work_time_sunday": {
+        "name": "Söndag starttid"
+      }
     },
     "binary_sensor": {
-      "docked": { "name": "Dockad" },
-      "mow_in_rain": { "name": "Klippa i regn" },
-      "boundary_cut": { "name": "Gränsklippning" },
-      "helix": { "name": "Helix" },
-      "led": { "name": "LED" }
+      "docked": {
+        "name": "Dockad"
+      },
+      "mow_in_rain": {
+        "name": "Klippa i regn"
+      },
+      "boundary_cut": {
+        "name": "Gränsklippning"
+      },
+      "helix": {
+        "name": "Helix"
+      },
+      "led": {
+        "name": "LED"
+      }
+    },
+    "button": {
+      "read_multi_area": {
+        "name": "Läs flerområdesinställningar"
+      },
+      "read_mower_settings": {
+        "name": "Läs klipparinställningar"
+      },
+      "read_work_times": {
+        "name": "Läs arbetstider"
+      }
     }
   }
 }
